@@ -31,7 +31,7 @@ export default function GracePage() {
         <h1 className="text-2xl font-bold mb-2">GRACE Mass Conservation Data</h1>
         <p className="text-gray-600 mb-4">
           Liquid Water Equivalent (LWE) thickness from GRACE and GRACE-FO missions.
-          Shows changes in Earth's gravity field related to water distribution.
+          Shows changes in Earth&apos;s gravity field related to water distribution.
         </p>
         
         <div className="grid grid-cols-3 gap-4 mb-4">

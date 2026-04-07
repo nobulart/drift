@@ -13,7 +13,7 @@ type AxesHelperProps = {
   args?: [number];
 };
 
-const AxesHelper = memo(({ args = [1.5] }: AxesHelperProps) => {
+const AxesHelper = memo(function AxesHelper({ args = [1.5] }: AxesHelperProps) {
   const helper = useMemo(() => new THREE.AxesHelper(args[0]), [args]);
   return <primitive object={helper} />;
 });
@@ -327,8 +327,6 @@ function buildDiagnosticPath(
 
 const VectorArrow = memo(function VectorArrow({ vector, color, label, visible, positionOffset = [0, 0, 0], pathData = [] }: VectorArrowProps) {
   const [hovered, setHovered] = useState(false);
-  if (!visible) return null;
-
   const vecArray = vector as number[];
   const offset = positionOffset as [number, number, number];
   const pathGeometry = useMemo(() => {
@@ -345,6 +343,8 @@ const VectorArrow = memo(function VectorArrow({ vector, color, label, visible, p
 
     return geometry;
   }, [label, pathData]);
+
+  if (!visible) return null;
 
   return (
     <group position={offset}>

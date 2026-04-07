@@ -115,17 +115,19 @@ export default function ThetaOmegaPlots({
      autosize: true
    }), []);
 
-   const axisRange = timeLockEnabled && timeRange
-     ? [new Date(timeRange[0]), new Date(timeRange[1])]
-     : undefined;
+   const layoutWithRange = useMemo(() => {
+     const axisRange = timeLockEnabled && timeRange
+       ? [new Date(timeRange[0]), new Date(timeRange[1])]
+       : undefined;
 
-   const layoutWithRange = useMemo(() => ({
-     ...layout,
-     xaxis: {
-       ...layout.xaxis,
-       range: axisRange
-     }
-   }), [layout, axisRange]);
+     return {
+       ...layout,
+       xaxis: {
+         ...layout.xaxis,
+         range: axisRange
+       }
+     };
+   }, [layout, timeLockEnabled, timeRange]);
 
    if (traces.length === 0) {
      return (

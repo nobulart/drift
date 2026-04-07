@@ -46,7 +46,7 @@ export default function TransitionForecastPanel() {
       const currentTheta = theta3[currentTimeIndex] || 0;
       fetchForecast(currentTheta, currentState, baseProb);
     }
-  }, [lagKernel, currentTimeIndex, currentState, baseProb]);
+  }, [lagKernel, theta3, currentTimeIndex, currentState, baseProb]);
 
   const fetchForecast = async (theta: number, state: number, baseP: number) => {
     try {

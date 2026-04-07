@@ -31,6 +31,7 @@ export default function Home() {
   const sidebarOpen = true;
   const [rollingStatsLoaded, setRollingStatsLoaded] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [panelsOpen, setPanelsOpen] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -311,58 +312,76 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <div className="p-6 flex-1 overflow-y-auto flex flex-col">
+        <div className="p-6 flex flex-1 min-h-0 flex-col overflow-hidden">
            <Controls
              windowSize={windowSize}
              onWindowSizeChange={setWindowSize}
              minDate={datesStr[0]}
              maxDate={datesStr[datesStr.length - 1]}
+             dataPointCount={data.length}
            />
-           <div className="mt-6 pt-6 border-t border-[#374151] flex-1">
-             <div className="mb-3 flex items-center justify-between gap-3">
-               <h3 className="text-xs font-bold uppercase tracking-wider text-[#9ca3af]">Panels</h3>
-               <button
-                 onClick={resetPanelPreferences}
-                 className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
-               >
-                 Reset Defaults
-               </button>
-             </div>
-             <div className="space-y-2 overflow-y-auto pr-2">
-               {PANEL_OPTIONS.map((option) => {
-                 const orderIndex = panelOrder.indexOf(option.id);
-                 return (
-                   <div key={option.id} className="rounded-lg border border-[#1f2937] bg-[#0b1220]/60 p-3">
-                     <div className="flex items-center gap-2">
-                       <input
-                         type="checkbox"
-                         checked={!hiddenPanels.has(option.id)}
-                         onChange={() => togglePanelVisibility(option.id)}
-                         className="h-4 w-4 rounded border-gray-500 text-blue-600 focus:ring-blue-500"
-                       />
-                       <span className="flex-1 text-sm text-gray-300">{option.label}</span>
-                       <span className="text-[10px] text-[#6b7280]">{orderIndex + 1}</span>
-                     </div>
-                     <div className="mt-3 flex gap-2">
-                       <button
-                         onClick={() => movePanel(option.id, 'up')}
-                         disabled={orderIndex <= 0}
-                         className="rounded-md bg-[#1f2937] px-2 py-1 text-xs text-[#d1d5db] transition-colors hover:bg-[#374151] disabled:cursor-not-allowed disabled:opacity-40"
-                       >
-                         Move Up
-                       </button>
-                       <button
-                         onClick={() => movePanel(option.id, 'down')}
-                         disabled={orderIndex === -1 || orderIndex >= panelOrder.length - 1}
-                         className="rounded-md bg-[#1f2937] px-2 py-1 text-xs text-[#d1d5db] transition-colors hover:bg-[#374151] disabled:cursor-not-allowed disabled:opacity-40"
-                       >
-                         Move Down
-                       </button>
-                     </div>
-                   </div>
-                 );
-               })}
-             </div>
+           <div className="mt-6 flex min-h-0 flex-1 flex-col border-t border-[#374151] pt-6">
+             <button
+               type="button"
+               onClick={() => setPanelsOpen((open) => !open)}
+               className="flex items-center justify-between rounded-lg border border-[#374151] bg-[#0b1220]/40 px-3 py-2 text-left transition-colors hover:border-[#60a5fa]"
+             >
+               <span className="text-xs font-bold uppercase tracking-wider text-[#9ca3af]">Panels</span>
+               <span className="text-[#9ca3af]">
+                 {panelsOpen ? (
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                 ) : (
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                 )}
+               </span>
+             </button>
+             {panelsOpen && (
+               <>
+                 <div className="mb-3 mt-3 flex items-center justify-end gap-3">
+                   <button
+                     onClick={resetPanelPreferences}
+                     className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
+                   >
+                     Reset Defaults
+                   </button>
+                 </div>
+                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-2">
+                   {PANEL_OPTIONS.map((option) => {
+                     const orderIndex = panelOrder.indexOf(option.id);
+                     return (
+                       <div key={option.id} className="rounded-lg border border-[#1f2937] bg-[#0b1220]/60 p-3">
+                         <div className="flex items-center gap-2">
+                           <input
+                             type="checkbox"
+                             checked={!hiddenPanels.has(option.id)}
+                             onChange={() => togglePanelVisibility(option.id)}
+                             className="h-4 w-4 rounded border-gray-500 text-blue-600 focus:ring-blue-500"
+                           />
+                           <span className="flex-1 text-sm text-gray-300">{option.label}</span>
+                           <span className="text-[10px] text-[#6b7280]">{orderIndex + 1}</span>
+                         </div>
+                         <div className="mt-3 flex gap-2">
+                           <button
+                             onClick={() => movePanel(option.id, 'up')}
+                             disabled={orderIndex <= 0}
+                             className="rounded-md bg-[#1f2937] px-2 py-1 text-xs text-[#d1d5db] transition-colors hover:bg-[#374151] disabled:cursor-not-allowed disabled:opacity-40"
+                           >
+                             Move Up
+                           </button>
+                           <button
+                             onClick={() => movePanel(option.id, 'down')}
+                             disabled={orderIndex === -1 || orderIndex >= panelOrder.length - 1}
+                             className="rounded-md bg-[#1f2937] px-2 py-1 text-xs text-[#d1d5db] transition-colors hover:bg-[#374151] disabled:cursor-not-allowed disabled:opacity-40"
+                           >
+                             Move Down
+                           </button>
+                         </div>
+                       </div>
+                     );
+                   })}
+                 </div>
+               </>
+             )}
            </div>
          </div>
        </div>

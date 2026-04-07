@@ -9,6 +9,37 @@ interface ControlsProps {
   onWindowSizeChange: (size: number) => void;
   minDate: string;
   maxDate: string;
+  dataPointCount: number;
+}
+
+interface SidebarSectionProps {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  className?: string;
+}
+
+function SidebarSection({ title, open, onToggle, children, className = '' }: SidebarSectionProps) {
+  return (
+    <section className={`flex flex-col gap-3 ${className}`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center justify-between rounded-lg border border-[#374151] bg-[#0b1220]/40 px-3 py-2 text-left transition-colors hover:border-[#60a5fa]"
+      >
+        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{title}</span>
+        <span className="text-[#9ca3af]">
+          {open ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          )}
+        </span>
+      </button>
+      {open && children}
+    </section>
+  );
 }
 
 export default function Controls({
@@ -16,11 +47,20 @@ export default function Controls({
   onWindowSizeChange,
   minDate,
   maxDate,
+  dataPointCount,
 }: ControlsProps) {
   const windowPresets = [180, 365, 730];
   const refetchData = useStore((state) => state.refetchData);
   const lastUpdated = useStore((state) => state.lastUpdated);
   const [isRefetching, setIsRefetching] = useState(false);
+  const [sectionOpen, setSectionOpen] = useState({
+    currentState: true,
+    dataSettings: true,
+    dateRange: true,
+    dataUpdates: false,
+    timeLock: false,
+    sources: false,
+  });
   
   const { timeRange, timeLockEnabled, setTimeLock, setTimeRange } = useTimeStore();
   const [startDate, setStartDate] = useState(minDate);
@@ -44,6 +84,14 @@ export default function Controls({
 
   const normalizedStart = startDate || minDate;
   const normalizedEnd = endDate || maxDate;
+  const selectedRangeDays = Math.max(
+    1,
+    Math.round(
+      (new Date(`${normalizedEnd}T00:00:00Z`).getTime() - new Date(`${normalizedStart}T00:00:00Z`).getTime()) /
+        86400000
+    ) + 1
+  );
+  const rangeLabel = timeRange ? 'Locked range' : 'Full record';
 
   const formatLastUpdated = () => {
     if (!lastUpdated) return 'Never';
@@ -75,11 +123,40 @@ export default function Controls({
     setTimeRange(start <= end ? [start, end] : [end, start]);
   };
 
+  const toggleSection = (key: keyof typeof sectionOpen) => {
+    setSectionOpen((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  };
+
   return (
-    <div className="flex flex-col gap-6 h-full text-gray-900">
-      <section className="flex flex-col gap-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Data Settings</h3>
-        
+    <div className="flex flex-col gap-6 text-gray-900">
+      <SidebarSection title="Current State" open={sectionOpen.currentState} onToggle={() => toggleSection('currentState')}>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#9ca3af]">Window</p>
+            <p className="mt-1 text-sm font-semibold text-white">{windowSize} days</p>
+          </div>
+          <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#9ca3af]">Points</p>
+            <p className="mt-1 text-sm font-semibold text-white">{dataPointCount.toLocaleString()}</p>
+          </div>
+          <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#9ca3af]">{rangeLabel}</p>
+            <p className="mt-1 text-sm font-semibold text-white">{selectedRangeDays.toLocaleString()} days</p>
+          </div>
+          <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#9ca3af]">Latest sample</p>
+            <p className="mt-1 text-sm font-semibold text-white">{maxDate}</p>
+          </div>
+        </div>
+        <p className="rounded-lg border border-[#374151] bg-[#0b1220]/60 px-3 py-2 text-xs leading-relaxed text-[#9ca3af]">
+          Time lock is <span className="font-semibold text-white">{timeLockEnabled ? 'enabled' : 'disabled'}</span>. Use this area as a quick read of the active analysis scope before diving into individual panels.
+        </p>
+      </SidebarSection>
+
+      <SidebarSection title="Data Settings" open={sectionOpen.dataSettings} onToggle={() => toggleSection('dataSettings')}>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">Window Size (days)</label>
           <p className="rounded-lg border border-[#374151] bg-[#0b1220]/60 px-3 py-2 text-xs leading-relaxed text-[#9ca3af]">
@@ -115,11 +192,9 @@ export default function Controls({
             className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
         </div>
-      </section>
+      </SidebarSection>
 
-      <section className="flex flex-col gap-4 pt-4 border-t border-gray-200">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Date Range</h3>
-
+      <SidebarSection title="Date Range" open={sectionOpen.dateRange} onToggle={() => toggleSection('dateRange')} className="pt-4 border-t border-gray-200">
         <div className="grid grid-cols-1 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Start</span>
@@ -164,11 +239,9 @@ export default function Controls({
         <p className="text-xs text-gray-500">
           Chart zoom updates this range, and enabling time lock synchronizes the selected window across time-based panels.
         </p>
-      </section>
+      </SidebarSection>
 
-      <section className="flex flex-col gap-4 pt-4 border-t border-gray-200">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Data Updates</h3>
-        
+      <SidebarSection title="Data Updates" open={sectionOpen.dataUpdates} onToggle={() => toggleSection('dataUpdates')} className="pt-4 border-t border-gray-200">
         <button
           onClick={handleRefetch}
           disabled={isRefetching}
@@ -199,11 +272,9 @@ export default function Controls({
         <p className="text-xs text-gray-500">
           Last updated: {formatLastUpdated()}
         </p>
-      </section>
+      </SidebarSection>
 
-      <section className="flex flex-col gap-4 pt-4 border-t border-gray-200">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Time Lock</h3>
-        
+      <SidebarSection title="Time Lock" open={sectionOpen.timeLock} onToggle={() => toggleSection('timeLock')} className="pt-4 border-t border-gray-200">
         <label className="flex items-center gap-3 cursor-pointer group">
           <div className="relative">
             <input
@@ -235,10 +306,9 @@ export default function Controls({
             Reset Time Window
           </button>
         )}
-      </section>
+      </SidebarSection>
 
-      <section className="flex flex-col gap-3 pt-4 border-t border-gray-200">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Sources</h3>
+      <SidebarSection title="Sources" open={sectionOpen.sources} onToggle={() => toggleSection('sources')} className="pt-4 border-t border-gray-200">
         <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3 text-xs leading-relaxed text-[#9ca3af]">
           <p>
             <span className="font-semibold text-white">IERS EOP</span>
@@ -256,7 +326,7 @@ export default function Controls({
         <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">
           Version v1.1b
         </p>
-      </section>
+      </SidebarSection>
     </div>
   );
 }

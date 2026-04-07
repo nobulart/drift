@@ -232,17 +232,19 @@ export default function CouplingPlot({
     autosize: true
     }), []);
 
-    const axisRange = timeLockEnabled && timeRange
-      ? [new Date(timeRange[0]), new Date(timeRange[1])]
-      : undefined;
+    const layoutWithRange = useMemo(() => {
+      const axisRange = timeLockEnabled && timeRange
+        ? [new Date(timeRange[0]), new Date(timeRange[1])]
+        : undefined;
 
-    const layoutWithRange = useMemo(() => ({
-      ...layout,
-      xaxis: {
-        ...layout.xaxis,
-        range: axisRange
-      }
-    }), [layout, axisRange]);
+      return {
+        ...layout,
+        xaxis: {
+          ...layout.xaxis,
+          range: axisRange
+        }
+      };
+    }, [layout, timeLockEnabled, timeRange]);
 
     return (
       <div className="h-full w-full min-w-0">

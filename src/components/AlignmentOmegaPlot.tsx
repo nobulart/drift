@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
 
+const EVENT_YEARS = [1978, 1991, 1999, 2003];
+
 interface AlignmentOmegaPlotProps {
   dates: string[];
   alignment: number[];
@@ -17,9 +19,6 @@ export default function AlignmentOmegaPlot({
   turningPoints = []
 }: AlignmentOmegaPlotProps) {
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
-
-  // Event dates (years)
-  const eventYears = [1978, 1991, 1999, 2003];
 
   useEffect(() => {
     const alignmentSmooth = alignment.map(a => (a * 180) / Math.PI);
@@ -61,7 +60,7 @@ export default function AlignmentOmegaPlot({
     }
 
     // Add event markers
-    const eventLines = eventYears.map(year => {
+    const eventLines = EVENT_YEARS.map(year => {
       const matchingDates = dates.filter(d => d.startsWith(year.toString()));
       if (matchingDates.length > 0) {
         const dateStr = matchingDates[0];

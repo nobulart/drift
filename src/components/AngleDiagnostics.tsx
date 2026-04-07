@@ -110,18 +110,20 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
     autosize: true
   }), []);
 
-  const axisRange = timeLockEnabled && timeRange
-    ? [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()]
-    : undefined;
+  const layoutWithRange = useMemo(() => {
+    const axisRange = timeLockEnabled && timeRange
+      ? [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()]
+      : undefined;
 
-  const layoutWithRange = useMemo(() => ({
-    ...layout,
-    uirevision: axisRange ? `${axisRange[0]}-${axisRange[1]}` : 'angle-diagnostics-free',
-    xaxis: {
-      ...layout.xaxis,
-      range: axisRange
-    }
-  }), [layout, axisRange]);
+    return {
+      ...layout,
+      uirevision: axisRange ? `${axisRange[0]}-${axisRange[1]}` : 'angle-diagnostics-free',
+      xaxis: {
+        ...layout.xaxis,
+        range: axisRange
+      }
+    };
+  }, [layout, timeLockEnabled, timeRange]);
 
   return (
     <div className="h-full w-full min-w-0">
