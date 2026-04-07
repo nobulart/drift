@@ -66,6 +66,11 @@ export default function Controls({
       href: 'https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4',
     },
     {
+      name: 'JPL DE442',
+      description: 'Earth-geocentric planetary ephemerides used for overlay comparisons and torque-screening context.',
+      href: 'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/',
+    },
+    {
       name: 'Framework Paper',
       description: 'constraint-first interpretation basis for the dashboard.',
       href: 'https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion',

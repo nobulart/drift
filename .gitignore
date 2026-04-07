@@ -6,6 +6,7 @@ out/
 .DS_Store
 public/data/.rolling-stats-cache/
 data/.rolling-stats-cache/
+data/kernels/
 scripts/__pycache__/
 docs/*.aux
 docs/*.out

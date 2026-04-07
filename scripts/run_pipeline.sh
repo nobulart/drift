@@ -35,38 +35,43 @@ fi
 
 # Check required Python packages
 log_info "Checking Python dependencies..."
-python3 -c "import numpy, scipy, pandas, json" 2>/dev/null || {
+python3 -c "import numpy, scipy, pandas, json, spiceypy" 2>/dev/null || {
     log_warn "Some Python packages may be missing. Installing..."
-    pip install numpy scipy pandas -q
+    pip install numpy scipy pandas spiceypy -q
 }
 
 # Step 1: Fetch latest data
-log_info "Step 1/6: Fetching latest data..."
+log_info "Step 1/7: Fetching latest data..."
 python3 scripts/fetch_latest.py
 log_info "Downloaded: eop_latest.json, grace_latest.json, geomag_gfz_latest.json, combined_latest.json"
 
 # Step 2: Process EOP data
-log_info "Step 2/6: Processing EOP data..."
+log_info "Step 2/7: Processing EOP data..."
 python3 scripts/build_eop.py
 log_info "Created: eop_historic.json"
 
 # Step 3: Process GFZ-KP geomagnetic data
-log_info "Step 3/6: Processing GFZ-KP geomagnetic data..."
+log_info "Step 3/7: Processing GFZ-KP geomagnetic data..."
 python3 scripts/build_geomag_gfz.py
 log_info "Created: geomag_gfz_kp.json"
 
 # Step 4: Process GRACE data
-log_info "Step 4/6: Processing GRACE data..."
+log_info "Step 4/7: Processing GRACE data..."
 python3 scripts/build_grace.py
 log_info "Created: grace_historic.json"
 
 # Step 5: Process inertia data
-log_info "Step 5/6: Processing inertia data..."
+log_info "Step 5/7: Processing inertia data..."
 python3 scripts/build_inertia.py
 log_info "Created: inertia_timeseries.json"
 
-# Step 6: Combine all data
-log_info "Step 6/6: Combining all data..."
+# Step 6: Process ephemeris data
+log_info "Step 6/7: Processing DE442 ephemeris data..."
+python3 scripts/build_ephemeris.py
+log_info "Created: ephemeris_historic.json"
+
+# Step 7: Combine all data
+log_info "Step 7/7: Combining all data..."
 python3 scripts/combine_data.py
 log_info "Created: combined_historic.json"
 

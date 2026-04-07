@@ -1,48 +1,118 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Plot from 'react-plotly.js';
+import { loadEphemerisData } from '@/lib/dataLoader';
+import {
+  EPHEMERIS_BODY_CONFIG,
+  EPHEMERIS_METRIC_CONFIG,
+  getEphemerisSignalLabel,
+} from '@/lib/ephemeris';
+import { extractPlotlyDateRange } from '@/lib/timeRange';
+import { EphemerisDataset, EphemerisRecord } from '@/lib/types';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
-import { extractPlotlyDateRange } from '@/lib/timeRange';
 
-interface SignalConfig {
+interface CoreSignalConfig {
   label: string;
-  key: string;
 }
 
-const SIGNALS: Record<string, SignalConfig> = {
-  drift: { label: 'Drift', key: 'lon' },
-  alignment: { label: 'Alignment', key: 'alignment' },
-  theta: { label: 'θ (Phase)', key: 'theta' },
-  omega: { label: 'ω (Angular Velocity)', key: 'omega' },
-  R: { label: 'R(t)', key: 'rRatio' },
-  kp: { label: 'Kp', key: 'kp' },
-  ap: { label: 'ap', key: 'ap' }
+const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
+  drift: { label: 'Drift' },
+  alignment: { label: 'Alignment' },
+  theta: { label: 'θ (Phase)' },
+  omega: { label: 'ω (Angular Velocity)' },
+  R: { label: 'R(t)' },
+  kp: { label: 'Kp' },
+  ap: { label: 'ap' },
 };
 
 function normalize(series: number[]): number[] {
-  const valid = series.filter(v => !isNaN(v) && v !== null);
+  const valid = series.filter(v => Number.isFinite(v));
   if (valid.length === 0) return series;
-  
+
   const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
   const variance = valid.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / valid.length;
   const std = Math.sqrt(variance);
-  
+
   return series.map(v => {
-    if (isNaN(v!) || v === null) return NaN;
-    return (v! - mean) / (std || 1);
+    if (!Number.isFinite(v)) return NaN;
+    return (v - mean) / (std || 1);
+  });
+}
+
+function getCoreSignalSeries(key: string, rollingStats: any, data: Array<{ kp?: number | null; ap?: number | null }>): number[] | undefined {
+  switch (key) {
+    case 'drift':
+      return rollingStats.driftAxis?.map((d: [number, number, number]) =>
+        (Math.atan2(d[1], d[0]) * 180 / Math.PI) + 90
+      );
+    case 'alignment':
+      return rollingStats.alignment;
+    case 'theta':
+      return rollingStats.theta;
+    case 'omega':
+      return rollingStats.omega;
+    case 'R':
+      return rollingStats.rRatio;
+    case 'kp':
+      return data.map(d => d.kp ?? NaN);
+    case 'ap':
+      return data.map(d => d.ap ?? NaN);
+    default:
+      return undefined;
+  }
+}
+
+function getEphemerisSignalSeries(
+  key: string,
+  timestamps: string[],
+  ephemerisByDate: Record<string, EphemerisRecord['bodies']>
+): number[] | undefined {
+  const [bodyKey, metricKey] = key.split(':');
+  if (!bodyKey || !metricKey) {
+    return undefined;
+  }
+
+  return timestamps.map(timestamp => {
+    const dateKey = timestamp.split('T')[0];
+    return ephemerisByDate[dateKey]?.[bodyKey]?.[metricKey as keyof EphemerisRecord['bodies'][string]] ?? NaN;
   });
 }
 
 export default function OverlayPlot() {
   const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift', 'alignment']);
+  const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});
   const isInternalUpdate = useRef(false);
-  
+
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
   const data = useStore(state => state.data);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    loadEphemerisData()
+      .then((dataset: EphemerisDataset) => {
+        if (!active || !dataset?.records) {
+          return;
+        }
+
+        const nextMap = dataset.records.reduce<Record<string, EphemerisRecord['bodies']>>((acc, record) => {
+          acc[record.t] = record.bodies;
+          return acc;
+        }, {});
+        setEphemerisByDate(nextMap);
+      })
+      .catch(error => {
+        console.error('Failed to load ephemeris data:', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!rollingStats || data.length === 0) {
@@ -50,65 +120,36 @@ export default function OverlayPlot() {
       return;
     }
 
-    const time = data.map(d => d.t);
+    const timestamps = data.map(d => d.t);
+    const filteredIndices = (timeLockEnabled && timeRange)
+      ? timestamps.map((_, i) => i).filter(i => {
+          const t = new Date(timestamps[i]).getTime();
+          return t >= timeRange[0] && t <= timeRange[1];
+        })
+      : timestamps.map((_, i) => i);
+    const filteredTime = filteredIndices.map(i => timestamps[i]);
 
-    let filteredIndices: number[];
-    if (timeLockEnabled && timeRange) {
-      filteredIndices = time.map((_, i) => i).filter(i => {
-        const t = new Date(time[i]).getTime();
-        return t >= timeRange[0] && t <= timeRange[1];
-      });
-    } else {
-      filteredIndices = time.map((_, i) => i);
-    }
+    const nextTraces = selectedSignals.map(signalKey => {
+      const raw = signalKey.includes(':')
+        ? getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate)
+        : getCoreSignalSeries(signalKey, rollingStats, data);
 
-    const filteredTime = filteredIndices.map(i => time[i]);
-
-    const newTraces = selectedSignals.map((key, i) => {
-      let raw: number[] | undefined;
-
-      switch (key) {
-        case 'drift':
-          raw = rollingStats.driftAxis?.map(d =>
-            (Math.atan2(d[1], d[0]) * 180 / Math.PI) + 90
-          );
-          break;
-        case 'alignment':
-          raw = rollingStats.alignment;
-          break;
-        case 'theta':
-          raw = rollingStats.theta;
-          break;
-        case 'omega':
-          raw = rollingStats.omega;
-          break;
-        case 'R':
-          raw = rollingStats.rRatio;
-          break;
-        case 'kp':
-          raw = data.map(d => d.kp).filter((k): k is number => k !== null);
-          break;
-        case 'ap':
-          raw = data.map(d => d.ap).filter((a): a is number => a !== null);
-          break;
+      if (!raw) {
+        return null;
       }
 
-      if (!raw) return null;
-
-      const filtered = filteredIndices.map(i => raw![i]);
-      const norm = normalize(filtered);
-
+      const filtered = filteredIndices.map(i => raw[i] ?? NaN);
       return {
         x: filteredTime,
-        y: norm,
+        y: normalize(filtered),
         mode: 'lines',
-        name: SIGNALS[key as keyof typeof SIGNALS].label,
-        line: { width: 2 }
-      } as any;
-    }).filter(Boolean);
+        name: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey]?.label ?? signalKey,
+        line: { width: 2 },
+      } as Plotly.Data;
+    }).filter(Boolean) as Plotly.Data[];
 
-    setTraces(newTraces);
-  }, [selectedSignals, rollingStats, data, timeRange, timeLockEnabled]);
+    setTraces(nextTraces);
+  }, [data, ephemerisByDate, rollingStats, selectedSignals, timeLockEnabled, timeRange]);
 
   const handleRelayout = (event: any) => {
     if (isInternalUpdate.current || !timeLockEnabled) return;
@@ -121,52 +162,95 @@ export default function OverlayPlot() {
 
   const overlayLayout = useMemo(() => ({
     template: 'plotly_dark',
-    xaxis: { 
+    xaxis: {
       title: { text: 'Date', standoff: 20 },
       gridcolor: '#374151',
-      zerolinecolor: '#4b5563'
+      zerolinecolor: '#4b5563',
     },
-    yaxis: { 
+    yaxis: {
       title: { text: 'Normalized Value (z-score)', standoff: 20 },
       gridcolor: '#374151',
-      zerolinecolor: '#4b5563'
+      zerolinecolor: '#4b5563',
     },
-    legend: { 
+    legend: {
       orientation: 'h' as const,
       yanchor: 'top' as const,
       y: -0.2,
       xanchor: 'center' as const,
-      x: 0.5
+      x: 0.5,
     },
     margin: { l: 60, r: 20, t: 40, b: 60 },
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     height: 500,
-    autosize: true
+    autosize: true,
   }), []);
+
+  const toggleSignal = (signalKey: string) => {
+    setSelectedSignals(prev => (
+      prev.includes(signalKey)
+        ? prev.filter(entry => entry !== signalKey)
+        : [...prev, signalKey]
+    ));
+  };
 
   return (
     <div className="p-4 bg-[#0b1220] h-full w-full min-w-0">
-      <div className="flex flex-wrap gap-4 items-center mb-4">
-        {(Object.keys(SIGNALS) as Array<keyof typeof SIGNALS>).map(key => (
-          <label key={key} className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selectedSignals.includes(key)}
-              onChange={() => {
-                if (selectedSignals.includes(key)) {
-                  setSelectedSignals(prev => prev.filter(s => s !== key));
-                } else {
-                  setSelectedSignals(prev => [...prev, key]);
-                }
-              }}
-              className="w-4 h-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
-            />
-            <span className="text-sm text-[#e5e7eb]">{SIGNALS[key].label}</span>
-          </label>
-        ))}
+      <div className="mb-4 space-y-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          {(Object.keys(CORE_SIGNALS) as Array<keyof typeof CORE_SIGNALS>).map(key => (
+            <label key={key} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedSignals.includes(key)}
+                onChange={() => toggleSignal(key)}
+                className="w-4 h-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
+              />
+              <span className="text-sm text-[#e5e7eb]">{CORE_SIGNALS[key].label}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="rounded-lg border border-[#1f2937] bg-[#111827] p-3">
+          <div className="mb-2 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-[#e5e7eb]">DE442 Geocentric Ephemerides</p>
+              <p className="text-xs text-[#9ca3af]">Overlay planetary distance, angular motion, longitude, radial speed, and a torque-screening proxy.</p>
+            </div>
+            <p className="text-xs text-[#6b7280]">Observer: Earth geocenter</p>
+          </div>
+          <div className="max-h-40 overflow-y-auto">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {EPHEMERIS_METRIC_CONFIG.map(metric => (
+                <div key={metric.key}>
+                  <p className="mb-2 text-xs uppercase tracking-wide text-[#60a5fa]">{metric.shortLabel}</p>
+                  <div className="space-y-2">
+                    {EPHEMERIS_BODY_CONFIG.map(body => {
+                      const signalKey = `${body.key}:${metric.key}`;
+                      return (
+                        <label key={signalKey} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedSignals.includes(signalKey)}
+                            onChange={() => toggleSignal(signalKey)}
+                            className="w-4 h-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
+                          />
+                          <span className="text-sm text-[#d1d5db]">{body.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-[#9ca3af]">
+            `Torque Proxy` is a heuristic `mass / r^3 * angular speed`, intended for screening correlations rather than physical torque closure.
+          </p>
+        </div>
       </div>
+
       <div className="w-full min-w-0">
         <Plot
           data={traces}
@@ -174,7 +258,7 @@ export default function OverlayPlot() {
             ...overlayLayout,
             uirevision: timeLockEnabled && timeRange
               ? `${new Date(timeRange[0]).toISOString()}-${new Date(timeRange[1]).toISOString()}`
-              : 'overlay-free-zoom'
+              : 'overlay-free-zoom',
           } as any}
           config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
           style={{ width: '100%', height: '500px' }}

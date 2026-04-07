@@ -6,6 +6,17 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
 
+Current release: `v1.3.0`
+
+## Release Notes
+
+### v1.3.0
+
+- Added DE442-backed Earth-geocentric overlay signals for all tracked bodies.
+- Added a slim daily ephemeris cache covering `1973-01-02` through `2050-12-31`.
+- Added overlay-selectable distance, angular velocity, radial velocity, ecliptic longitude, and heuristic torque-proxy series.
+- Removed hidden default ephemeris selections so an unchecked overlay plot is truly empty.
+
 ## Scientific Basis
 
 The dashboard is built around the source paper [Planar Structure and Regime Dynamics in Modern Polar Motion](https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion), which analyzes polar motion with a constraint-first method: start from the geometric structure required by the observations, then interpret cautiously.
@@ -298,6 +309,7 @@ drift/
 4. **Angle and Deviation Metrics** - Compare orientation measures and local anisotropy
 5. **Geomagnetic Context** - Compare dashboard geometry with Kp/ap and related context without assuming causation
 6. **Transition Forecast** - Surface transition-like episodes using lag-conditioned historical structure
+7. **Planetary Overlay Context** - Compare drift/geomagnetic signals against DE442-derived Earth-geocentric planetary observables
 
 ## Data Pipeline
 
@@ -305,6 +317,7 @@ drift/
 - `scripts/build_inertia.py` - Process GRACE ℓ=2 to eigenframe JSON
 - `scripts/build_eop.py` - Parse IERS EOP data
 - `scripts/build_geomag.py` - Combine Kp/Dst/aa indices
+- `scripts/build_ephemeris.py` - Extract slim DE442 overlay series into daily JSON cache
 
 ### Live API (Next.js)
 - `/api/eop` - Fetch latest IERS rapid data

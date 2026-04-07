@@ -19,6 +19,36 @@ export interface TimeSample {
   driftAxis?: [number, number, number];
 }
 
+export interface EphemerisBodySample {
+  distance_au?: number;
+  angular_velocity_deg_per_day?: number;
+  radial_velocity_km_s?: number;
+  ecliptic_longitude_deg?: number;
+  torque_proxy?: number;
+}
+
+export interface EphemerisRecord {
+  t: string;
+  bodies: Record<string, EphemerisBodySample>;
+}
+
+export interface EphemerisDataset {
+  source: {
+    kernel: string;
+    kernel_url: string;
+    leapseconds: string;
+    observer: string;
+    frame: string;
+    aberration_correction: string;
+    start_date?: string;
+    end_date?: string;
+    cadence?: string;
+    bodies: Array<{ key: string; label: string; target: string }>;
+    metrics: string[];
+  };
+  records: EphemerisRecord[];
+}
+
 export interface LagResult {
   lags: number[];
   signal: number[];

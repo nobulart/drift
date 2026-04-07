@@ -28,11 +28,19 @@ const sourceRows = [
     role: 'Mass-distribution context and derived structural products',
     href: 'https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4',
   },
+  {
+    name: 'JPL DE442',
+    cadence: 'Static kernel, pre-extracted to daily cache',
+    latency: 'Local extraction artifact',
+    role: 'Earth-geocentric planetary distance, angular velocity, longitude, and torque-screening overlays',
+    href: 'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/',
+  },
 ];
 
 const pipelineSteps = [
   'Fetch upstream geodetic and geomagnetic source files.',
   'Normalize and cache the source products into local JSON artifacts.',
+  'Extract daily Earth-geocentric DE442 ephemeris overlays for the tracked bodies.',
   'Aggregate GFZ geomagnetic inputs into dashboard-friendly daily records.',
   'Compute drift, rolling diagnostics, lag models, and forecast inputs.',
   'Serve combined artifacts through API routes and prebuilt data files.',
@@ -55,7 +63,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.2
+                Version v1.3
               </span>
               <Link
                 href="/"
@@ -85,6 +93,30 @@ export default function DocsPage() {
               <li>3. Compare the 3D and geomagnetic panels for timing context, but keep causal interpretation conservative.</li>
               <li>4. Read Transition Forecast last as an exploratory summary of whether the present state resembles earlier transition-like episodes.</li>
             </ol>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
+          <h2 className="text-lg font-bold text-white">Release Highlights</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.3 Overlay Expansion</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                The overlay plot now supports DE442-derived Earth-geocentric planetary series alongside the existing drift and geomagnetic signals.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Slim Daily Cache</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Ephemerides are pre-extracted into a daily JSON cache for 1973-01-02 through 2050-12-31 so the UI reads a bounded intermediate store instead of the raw kernel.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Torque Screening</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                A heuristic torque proxy is included for correlation hunting, with the documentation explicitly framing it as a screening tool rather than a physical torque solution.
+              </p>
+            </article>
           </div>
         </section>
 

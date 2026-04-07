@@ -45,6 +45,9 @@ python3 scripts/build_grace.py
 # Build inertia data
 python3 scripts/build_inertia.py
 
+# Build DE442 ephemerides
+python3 scripts/build_ephemeris.py
+
 # Combine all data
 python3 scripts/combine_data.py
 
@@ -63,6 +66,7 @@ python3 scripts/compute_rolling_stats.py \
 | `geomag_gfz_kp.json` | GFZ-KP Geomagnetic Indices | `data/` |
 | `grace_historic.json` | GRACE LWE Data | `public/data/` |
 | `inertia_timeseries.json` | Inertia Eigenframes | `public/data/` |
+| `ephemeris_historic.json` | DE442 geocentric ephemerides | `data/` |
 | `combined_historic.json` | Merged Dataset | `data/` |
 | `rolling_stats.json` | Advanced Statistics | `data/` |
 
@@ -83,7 +87,7 @@ npm run dev
 
 ### Python dependencies missing
 ```bash
-pip install numpy scipy pandas
+pip install numpy scipy pandas spiceypy
 ```
 
 ### Data files not found

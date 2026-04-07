@@ -15,6 +15,7 @@ python scripts/build_eop.py
 python scripts/build_geomag_gfz.py
 python scripts/build_grace.py  
 python scripts/build_inertia.py
+python scripts/build_ephemeris.py
 python scripts/combine_data.py
 python scripts/compute_rolling_stats.py -i data/eop_historic.json -o data/rolling_stats.json
 ```
@@ -29,6 +30,7 @@ All processed data is saved to `/public/data/`:
 | `grace_historic.json` | GRACE Liquid Water Equivalent |
 | `geomag_gfz_kp.json` | GFZ-KP Geomagnetic Indices |
 | `inertia_timeseries.json` | Inertia Tensor Eigenframes |
+| `ephemeris_historic.json` | DE442 geocentric ephemerides |
 | `combined_historic.json` | Combined dataset |
 | `rolling_stats.json` | Advanced rolling statistics |
 
@@ -43,6 +45,7 @@ All processed data is saved to `/public/data/`:
 - `build_geomag_gfz.py` - Fetch real GFZ-KP data
 - `build_grace.py` - Process GRACE data
 - `build_inertia.py` - Compute inertia frames
+- `build_ephemeris.py` - Download DE442 and derive geocentric body observables
 - `combine_data.py` - Merge all data sources
 
 ### Advanced Analysis
@@ -59,7 +62,7 @@ All processed data is saved to `/public/data/`:
 ## Requirements
 
 ```bash
-pip install numpy scipy pandas
+pip install numpy scipy pandas spiceypy
 ```
 
 Optional:

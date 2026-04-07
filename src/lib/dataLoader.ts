@@ -43,6 +43,12 @@ export async function loadCombinedData(): Promise<any[]> {
   return data;
 }
 
+export async function loadEphemerisData(): Promise<any> {
+  const response = await fetch('/api/ephemeris');
+  const data = await response.json();
+  return data;
+}
+
 // Helper to merge data sources by date
 export function mergeDataSources(
   eopData: any[],
