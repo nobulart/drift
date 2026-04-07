@@ -55,8 +55,6 @@ All processed data is saved to `/public/data/`:
 
 - **SCRIPTS_DOCUMENTATION.md** - Comprehensive documentation
 - **README.md** (in root) - Main project documentation
-- **BUG_FIXES.md** - Bug fixes and improvements
-- **IMPROVEMENTS.md** - Future improvements
 
 ## Requirements
 

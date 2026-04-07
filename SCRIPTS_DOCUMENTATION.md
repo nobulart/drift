@@ -600,4 +600,4 @@ python scripts/compute_rolling_stats.py \
 
 ---
 
-For questions or issues, see `IMPROVEMENTS.md` and `BUG_FIXES.md` in the project root.
+For questions or issues, start with the root `README.md` and this scripts guide.

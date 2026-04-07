@@ -170,8 +170,6 @@ python scripts/compute_rolling_stats.py
 - Full details: `SCRIPTS_DOCUMENTATION.md`
 - Quick start: `scripts/README.md`
 - Main project: `README.md` (root)
-- Bug fixes: `BUG_FIXES.md`
-- Improvements: `IMPROVEMENTS.md`
 
 ---
 
