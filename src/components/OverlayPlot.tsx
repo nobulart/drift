@@ -111,7 +111,7 @@ export default function OverlayPlot() {
   }, [selectedSignals, rollingStats, data, timeRange, timeLockEnabled]);
 
   const handleRelayout = (event: any) => {
-    if (isInternalUpdate.current) return;
+    if (isInternalUpdate.current || !timeLockEnabled) return;
     const range = extractPlotlyDateRange(event);
     if (!range) return;
     isInternalUpdate.current = true;
@@ -170,8 +170,13 @@ export default function OverlayPlot() {
       <div className="w-full min-w-0">
         <Plot
           data={traces}
-          layout={overlayLayout as any}
-          config={{ displayModeBar: true, responsive: true }}
+          layout={{
+            ...overlayLayout,
+            uirevision: timeLockEnabled && timeRange
+              ? `${new Date(timeRange[0]).toISOString()}-${new Date(timeRange[1]).toISOString()}`
+              : 'overlay-free-zoom'
+          } as any}
+          config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
           style={{ width: '100%', height: '500px' }}
           useResizeHandler
           onRelayout={handleRelayout}

@@ -157,7 +157,7 @@ export default function OrthogonalDeviationPlot({
   }, [dates, rRatio, turningPoints, windowSize]);
 
   const handleRelayout = (event: any) => {
-    if (isInternalUpdate.current) return;
+    if (isInternalUpdate.current || !timeLockEnabled) return;
     const range = extractPlotlyDateRange(event);
     if (!range) return;
     isInternalUpdate.current = true;
@@ -198,6 +198,9 @@ export default function OrthogonalDeviationPlot({
 
   const layoutWithRange = {
     ...layout,
+    uirevision: axisRange
+      ? `${axisRange[0].toISOString()}-${axisRange[1].toISOString()}`
+      : 'ortho-free-zoom',
     xaxis: {
       ...layout.xaxis,
       range: axisRange
@@ -218,7 +221,7 @@ export default function OrthogonalDeviationPlot({
         data={traces}
         layout={layoutWithRange}
         onRelayout={handleRelayout}
-        config={{ displayModeBar: true, responsive: true }}
+        config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
         style={{ width: '100%', height: '500px' }}
         useResizeHandler
       />

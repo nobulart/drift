@@ -186,7 +186,7 @@ export default function CouplingPlot({
   }, [dates, smoothedAlignment, smoothedKp, smoothedAp]);
 
   const handleRelayout = (event: any) => {
-    if (isInternalUpdate.current) return;
+    if (isInternalUpdate.current || !timeLockEnabled) return;
     const range = extractPlotlyDateRange(event);
     if (!range) return;
     isInternalUpdate.current = true;
@@ -237,12 +237,15 @@ export default function CouplingPlot({
         ? [new Date(timeRange[0]), new Date(timeRange[1])]
         : undefined;
 
-      return {
-        ...layout,
-        xaxis: {
-          ...layout.xaxis,
-          range: axisRange
-        }
+    return {
+      ...layout,
+      uirevision: axisRange
+        ? `${axisRange[0].toISOString()}-${axisRange[1].toISOString()}`
+        : 'coupling-free-zoom',
+      xaxis: {
+        ...layout.xaxis,
+        range: axisRange
+      }
       };
     }, [layout, timeLockEnabled, timeRange]);
 
@@ -252,7 +255,7 @@ export default function CouplingPlot({
           data={traces}
           layout={layoutWithRange}
           onRelayout={handleRelayout}
-          config={{ displayModeBar: true, responsive: true }}
+          config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
           style={{ width: '100%', height: '500px' }}
           useResizeHandler
         />

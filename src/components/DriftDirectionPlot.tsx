@@ -109,7 +109,7 @@ export default function DriftDirectionPlot({
   }, [dates, driftAngles, e1Angles, e2Angles, windowSize]);
 
   const handleRelayout = (event: any) => {
-    if (isInternalUpdate.current) return;
+    if (isInternalUpdate.current || !timeLockEnabled) return;
     const range = extractPlotlyDateRange(event);
     if (!range) return;
     isInternalUpdate.current = true;
@@ -155,6 +155,9 @@ export default function DriftDirectionPlot({
 
     return {
       ...layout,
+      uirevision: axisRange
+        ? `${axisRange[0].toISOString()}-${axisRange[1].toISOString()}`
+        : 'drift-direction-free-zoom',
       xaxis: {
         ...layout.xaxis,
         range: axisRange
@@ -168,7 +171,7 @@ export default function DriftDirectionPlot({
         data={traces}
         layout={layoutWithRange}
         onRelayout={handleRelayout}
-        config={{ displayModeBar: true, responsive: true }}
+        config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
         style={{ width: '100%', height: '500px' }}
         useResizeHandler
       />

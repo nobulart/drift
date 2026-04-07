@@ -75,7 +75,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
   }, [dates, smoothedTheta3, smoothedTheta12]);
 
   const handleRelayout = (event: any) => {
-    if (isInternalUpdate.current) return;
+    if (isInternalUpdate.current || !timeLockEnabled) return;
     const range = extractPlotlyDateRange(event);
     if (!range) return;
     isInternalUpdate.current = true;
@@ -131,7 +131,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
         data={traces}
         layout={layoutWithRange}
         onRelayout={handleRelayout}
-        config={{ displayModeBar: true, responsive: true }}
+        config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
         style={{ width: '100%', height: '500px' }}
         useResizeHandler
       />
