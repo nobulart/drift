@@ -76,7 +76,9 @@ def fetch_all_geomag_indices(start_date, end_date):
 
     for index in indices:
         print(f"Fetching {index}...")
-        dates, values, status = fetch_kp_index(start_date, end_date, index, "def")
+        # Use all available values so the live dashboard stays current up to the
+        # latest provisional records instead of stopping at the definitive lag.
+        dates, values, status = fetch_kp_index(start_date, end_date, index, "all")
 
         if not dates:
             print(f"  WARNING: No {index} data received")
