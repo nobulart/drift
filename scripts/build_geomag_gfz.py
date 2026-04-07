@@ -8,6 +8,7 @@ Supports multiple indices: Kp, ap, Ap, Cp, C9, SN, F10.7
 
 import os
 import sys
+import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
