@@ -193,6 +193,76 @@ For subsequent updates, the deployment cycle is:
 6. `docker run -d --name drift-dashboard --restart unless-stopped -p 3000:3000 sunbear73/drift-dashboard:latest`
 7. Verify `https://drift.nobulart.com`
 
+### Kamatera Staging Checklist
+
+Use this exact sequence when staging a new build to the live Kamatera VM.
+
+1. Confirm the working tree is clean enough to release:
+
+```bash
+git status --short --branch
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+2. Push the release commit to GitHub:
+
+```bash
+git push origin main
+```
+
+3. Build and publish the Linux image used by Kamatera:
+
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  -t sunbear73/drift-dashboard:latest \
+  --push .
+```
+
+4. SSH to the Kamatera VM as `root` and confirm the currently running container:
+
+```bash
+ssh root@drift.nobulart.com
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+```
+
+5. Pull the freshly published image and replace the container:
+
+```bash
+docker pull sunbear73/drift-dashboard:latest
+docker rm -f drift-dashboard || true
+docker run -d \
+  --name drift-dashboard \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  sunbear73/drift-dashboard:latest
+```
+
+6. Verify on the VM before checking the public URL:
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+docker logs --tail=100 drift-dashboard
+curl -I http://127.0.0.1:3000
+```
+
+7. Verify the public deployment and the visible version from another shell:
+
+```bash
+curl -I https://drift.nobulart.com
+curl -s https://drift.nobulart.com/docs | rg 'Version v'
+```
+
+8. If the public site still appears stale in a browser, hard-refresh first. If the curl checks still show the old version, the Kamatera container was not actually refreshed and steps 4-7 should be repeated.
+
+### Notes From Recent Deploys
+
+- A successful image push does not mean Kamatera is updated. The VM must still `docker pull` and restart `drift-dashboard`.
+- The most reliable user-visible version check is currently the docs badge at `/docs`.
+- If SSH by hostname fails, use the current VM address from the Kamatera console rather than hard-coding server IPs or credentials into the repo.
+
 ## Project Structure
 
 ```
