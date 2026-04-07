@@ -12,18 +12,21 @@ const sourceRows = [
     cadence: 'Daily / rapid updates',
     latency: 'Typically 2-4 days for final values',
     role: 'Polar motion and Earth orientation baseline',
+    href: 'https://datacenter.iers.org/productMetadata.php?id=221',
   },
   {
     name: 'GFZ Kp',
     cadence: 'Sub-daily upstream, normalized daily in cache',
     latency: 'Usually under 1 hour upstream',
     role: 'Geomagnetic activity context and dipole-strength proxy',
+    href: 'https://kp.gfz-potsdam.de/en/data',
   },
   {
     name: 'GRACE / GRACE-FO',
     cadence: 'Monthly',
     latency: 'About 1 month',
     role: 'Mass-distribution context and derived structural products',
+    href: 'https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4',
   },
 ];
 
@@ -52,7 +55,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.1
+                Version v1.2
               </span>
               <Link
                 href="/"
@@ -104,7 +107,14 @@ export default function DocsPage() {
               {sourceRows.map((row) => (
                 <div key={row.name} className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-white">{row.name}</h3>
+                    <a
+                      href={row.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-semibold text-white underline decoration-[#60a5fa]/50 underline-offset-2 transition-colors hover:text-[#93c5fd]"
+                    >
+                      {row.name}
+                    </a>
                     <span className="rounded-full border border-[#374151] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[#9ca3af]">
                       {row.cadence}
                     </span>

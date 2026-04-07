@@ -49,6 +49,29 @@ export default function Controls({
   maxDate,
   dataPointCount,
 }: ControlsProps) {
+  const sourceLinks = [
+    {
+      name: 'IERS EOP',
+      description: 'polar motion and Earth orientation data.',
+      href: 'https://datacenter.iers.org/productMetadata.php?id=221',
+    },
+    {
+      name: 'GFZ Kp',
+      description: 'geomagnetic activity indices and dipole-strength proxy context.',
+      href: 'https://kp.gfz-potsdam.de/en/data',
+    },
+    {
+      name: 'GRACE / GRACE-FO',
+      description: 'mass-distribution context and derived structural products.',
+      href: 'https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4',
+    },
+    {
+      name: 'Framework Paper',
+      description: 'constraint-first interpretation basis for the dashboard.',
+      href: 'https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion',
+    },
+  ];
+
   const windowPresets = [180, 365, 730];
   const refetchData = useStore((state) => state.refetchData);
   const lastUpdated = useStore((state) => state.lastUpdated);
@@ -310,22 +333,22 @@ export default function Controls({
 
       <SidebarSection title="Sources" open={sectionOpen.sources} onToggle={() => toggleSection('sources')} className="pt-4 border-t border-gray-200">
         <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3 text-xs leading-relaxed text-[#9ca3af]">
-          <p>
-            <span className="font-semibold text-white">IERS EOP</span>
-            {' '}polar motion and Earth orientation data.
-          </p>
-          <p>
-            <span className="font-semibold text-white">GFZ Kp</span>
-            {' '}geomagnetic activity indices and dipole-strength proxy context.
-          </p>
-          <p>
-            <span className="font-semibold text-white">GRACE / GRACE-FO</span>
-            {' '}mass-distribution context and derived structural products.
-          </p>
+          <div className="flex flex-col gap-3">
+            {sourceLinks.map((source) => (
+              <p key={source.name}>
+                <a
+                  href={source.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-white underline decoration-[#60a5fa]/50 underline-offset-2 transition-colors hover:text-[#93c5fd]"
+                >
+                  {source.name}
+                </a>
+                {' '}{source.description}
+              </p>
+            ))}
+          </div>
         </div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">
-          Version v1.1
-        </p>
       </SidebarSection>
     </div>
   );

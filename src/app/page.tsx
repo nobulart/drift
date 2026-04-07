@@ -303,6 +303,9 @@ export default function Home() {
               <p className="text-xs text-[#9ca3af] uppercase tracking-widest font-medium">
                 Polar Motion Geometry and Context
               </p>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
+                Version v1.2
+              </p>
             </div>
             <Link
               href="/docs"

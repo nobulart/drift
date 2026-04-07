@@ -9,7 +9,7 @@ export interface TimeState {
 
 export const useTimeStore = create<TimeState>((set, get) => ({
   timeRange: null,
-  timeLockEnabled: false,
+  timeLockEnabled: true,
   setTimeRange: (range) => {
     const current = get().timeRange
     if (current === null && range === null) {
