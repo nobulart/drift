@@ -1,7 +1,13 @@
 .next/
 node_modules/
 tsconfig.tsbuildinfo
+out/
 *.log
 .DS_Store
 public/data/.rolling-stats-cache/
 data/.rolling-stats-cache/
+scripts/__pycache__/
+docs/*.aux
+docs/*.out
+docs/*.log
+docs/*.pdf
