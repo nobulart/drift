@@ -324,7 +324,7 @@ export default function Controls({
           </p>
         </div>
         <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">
-          Version v1.1b
+          Version v1.1
         </p>
       </SidebarSection>
     </div>

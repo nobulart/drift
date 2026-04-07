@@ -573,7 +573,12 @@ export default function SphereView({
   }, [data, currentTimeIndex, driftAxisTimeSeries, isMobileViewport]);
 
   return (
-    <div ref={containerRef} className={`relative w-full bg-gray-900 rounded-lg overflow-hidden shadow-lg group ${isMobileViewport ? 'h-[560px]' : 'h-[768px]'}`}>
+    <div
+      ref={containerRef}
+      className={`relative w-full bg-gray-900 rounded-lg overflow-hidden shadow-lg group ${
+        isMobileViewport ? 'h-[560px]' : 'h-full min-h-[380px]'
+      }`}
+    >
       <button onClick={handleFullscreen} className="absolute top-4 right-4 z-10 p-2 bg-gray-800/50 text-white rounded hover:bg-gray-700 transition-colors opacity-0 group-hover:opacity-100" title="Toggle Fullscreen">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
       </button>

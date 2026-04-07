@@ -64,6 +64,7 @@ export default function Panel({
 }: PanelProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [shouldRenderContent, setShouldRenderContent] = useState(false);
 
   useEffect(() => {
@@ -98,6 +99,43 @@ export default function Panel({
       setShouldRenderContent(true);
     }
   }, [isModalOpen]);
+
+  useEffect(() => {
+    if (!shouldRenderContent || collapsed || typeof window === 'undefined') {
+      return;
+    }
+
+    const node = panelRef.current;
+    const contentNode = contentRef.current;
+
+    if (!node || !contentNode) {
+      return;
+    }
+
+    let animationFrame = 0;
+    let secondAnimationFrame = 0;
+
+    const forceRelayout = () => {
+      void node.offsetHeight;
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    animationFrame = window.requestAnimationFrame(() => {
+      secondAnimationFrame = window.requestAnimationFrame(forceRelayout);
+    });
+
+    const observer = new ResizeObserver(() => {
+      forceRelayout();
+    });
+
+    observer.observe(contentNode);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.cancelAnimationFrame(secondAnimationFrame);
+      observer.disconnect();
+    };
+  }, [collapsed, shouldRenderContent]);
 
   const toggleFullscreen = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -161,7 +199,7 @@ export default function Panel({
           </div>
         )}
         
-        <div className={`flex-1 overflow-hidden ${collapsed ? 'hidden' : ''}`}>
+        <div ref={contentRef} className={`flex-1 overflow-hidden ${collapsed ? 'hidden' : ''}`}>
           {shouldRenderContent || isModalOpen ? (
             children
           ) : (

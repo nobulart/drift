@@ -121,7 +121,7 @@ export default function ResponsiveGrid({
 
   return (
     <div 
-      className={`grid ${gridTemplate} gap-6 content-start w-full`}
+      className={`grid ${gridTemplate} auto-rows-max gap-6 content-start w-full`}
       style={{ 
         width: '100%'
       }}
