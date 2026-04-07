@@ -4,6 +4,8 @@ Constraint-first polar-motion diagnostics dashboard with geomagnetic context
 
 Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion)
 
+![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
+
 ## Scientific Basis
 
 The dashboard is built around the source paper [Planar Structure and Regime Dynamics in Modern Polar Motion](https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion), which analyzes polar motion with a constraint-first method: start from the geometric structure required by the observations, then interpret cautiously.
