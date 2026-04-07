@@ -1,0 +1,40 @@
+{
+  "name": "drift",
+  "version": "1.1.0",
+  "description": "Geodetic-Geomagnetic Coupling Dashboard",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "update-data": "./scripts/run_pipeline.sh --compute-stats"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "next": "^14.2.35",
+    "plotly.js": "^3.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-plotly.js": "^2.6.0",
+    "three": "^0.160.0",
+    "zod": "^3.23.8",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "@types/react": "^18.3.18",
+    "@types/react-plotly.js": "^2.6.4",
+    "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.162.0",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^10.1.0",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^6.0.2"
+  }
+}

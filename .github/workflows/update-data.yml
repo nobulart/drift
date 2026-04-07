@@ -1,0 +1,42 @@
+name: Update Pipeline Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 2 * * *'
+
+jobs:
+  refresh-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install numpy scipy pandas
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Refresh pipeline outputs
+        run: npm run update-data
+
+      - name: Commit updated data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(data): refresh pipeline outputs'
+          file_pattern: 'data/*.json public/data/*.json'

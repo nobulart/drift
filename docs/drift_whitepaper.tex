@@ -1,0 +1,239 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={DRIFT Dashboard White Paper},
+  pdfauthor={OpenAI Codex for Nobulart},
+}
+
+\titleformat{\section}{\large\bfseries}{\thesection}{0.75em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.75em}{}
+
+\title{\textbf{DRIFT Dashboard White Paper}\\[0.35em]
+\large Principles, Data Products, and Diagnostic Outputs}
+\author{Nobulart}
+\date{April 7, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+DRIFT is a constraint-first dashboard for monitoring polar motion as a geometric dynamical system over the observed record. It emphasizes the strongest findings of the underlying paper---low-dimensional confinement, near-planar organization, and robust two-state structure---while treating directional alignment and geomagnetic comparison more cautiously. The system combines automated data retrieval, cache-aware preprocessing, rolling diagnostics, exploratory transition forecasting, and interactive visualization in a single deployable application. This white paper describes the dashboard's guiding principles, its frame of reference, the ingestion and caching pipeline, and the interpretation of the major panels presented to end users.
+\end{abstract}
+
+\section{Purpose}
+DRIFT is built to answer a practical question: how can a user monitor slow structural reorientation, bistable organization, and possible transition behavior in polar motion without manually stitching together multiple data sources, scripts, and plots?
+
+The dashboard therefore emphasizes four design goals:
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Constraint-first interpretation.} The UI should foreground what the data robustly support before presenting more speculative explanatory readings.
+  \item \textbf{Physical anchoring.} Visual outputs should be tied to a stable Earth-referenced frame rather than arbitrary mathematical rotations.
+  \item \textbf{Operational freshness.} Automated retrieval and caching should keep the displayed state aligned with the latest available source data.
+  \item \textbf{Interpretability.} Each panel should report a specific aspect of system state, with concise guides explaining what the viewer should look for.
+  \item \textbf{Cross-panel coherence.} The 2D charts, forecast layer, and 3D view should all describe the same underlying state without conflicting conventions.
+\end{enumerate}
+
+\section{System Overview}
+The DRIFT application is a Next.js dashboard with Python-backed data processing. At a high level, the system performs the following sequence:
+\begin{enumerate}[leftmargin=1.5em]
+  \item Download or refresh upstream geodetic and geomagnetic source files.
+  \item Normalize, aggregate, and cache those inputs into local JSON artifacts.
+  \item Compute rolling diagnostics and derived state variables.
+  \item Serve combined data products through API routes and precomputed files.
+  \item Render synchronized plots and a 3D vector scene in the browser.
+\end{enumerate}
+
+The deployment model packages the application as a Docker image, runs the Next.js standalone server behind Nginx, and exposes the site over HTTPS.
+
+\section{Scientific and Visualization Principles}
+\subsection{Earth-Referenced Frame}
+The dashboard now treats the Earth rotation axis as an invariant constraint. In the 3D vector view, the global coordinate convention is right-handed:
+\begin{itemize}[leftmargin=1.5em]
+  \item $X$ points to longitude $0^\circ$,
+  \item $Y$ points to longitude $90^\circ$E,
+  \item $Z$ points to the North Pole.
+\end{itemize}
+
+This avoids a common ambiguity in eigenvector- or PCA-derived frames, where a mathematically valid basis can rotate freely around the principal axis and remain numerically consistent while becoming physically hard to interpret. DRIFT resolves that ambiguity by anchoring the rotation axis directly and deriving a stable orthogonal basis for comparison against the geomagnetic dipole and drift direction.
+
+\subsection{Comparative Diagnostics Rather Than Single Metrics}
+The dashboard is intentionally multi-panel. No single metric is treated as a complete description of system behavior. Instead, DRIFT compares:
+\begin{itemize}[leftmargin=1.5em]
+  \item raw and interpreted polar motion,
+  \item drift-axis longitude and angular diagnostics,
+  \item orthogonal deviation and phase structure,
+  \item geomagnetic alignment and geomagnetic activity as contextual comparisons,
+  \item short-horizon transition forecasts as exploratory summaries.
+\end{itemize}
+
+This design encourages the user to read persistent changes across panels rather than react to isolated spikes.
+
+\subsection{Hierarchy of Inference}
+The underlying paper distinguishes three levels of confidence, and the dashboard documentation now mirrors that hierarchy:
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Tier 1: Geometric invariants.} Low-dimensional confinement, near-planar structure, and bistability.
+  \item \textbf{Tier 2: Dynamical organization.} Fast-slow behavior, looping phase structure, and intermittent transitions.
+  \item \textbf{Tier 3: Directional features.} Absolute axis stability or anisotropy magnitude, which are more sensitive to null-model choice.
+\end{itemize}
+
+Users should treat Tier 1 conclusions as strongest, Tier 2 as robust but more interpretive, and Tier 3 as comparatively cautious.
+
+\subsection{Geometry-Aware Rendering}
+The 3D path layer is treated as a geometric correctness problem, not a styling problem. Path interpolation respects spherical geometry, discontinuities in longitude are unwrapped before conversion, irregular sampling is resampled, and unrealistic jumps are filtered. This reduces false visual chaos and makes directional histories more faithful to the underlying manifold.
+
+\section{Data Retrieval, Ingestion, and Caching}
+\subsection{Source Families}
+The current dashboard integrates several source families:
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.22\textwidth} >{\raggedright\arraybackslash}p{0.22\textwidth} >{\raggedright\arraybackslash}p{0.17\textwidth} >{\raggedright\arraybackslash}p{0.29\textwidth}}
+\toprule
+\textbf{Family} & \textbf{Example Source} & \textbf{Cadence} & \textbf{Role in Dashboard} \\
+\midrule
+Earth orientation & IERS EOP products & Daily / rapid updates & Polar motion and related orientation time series \\
+Geomagnetic activity & GFZ Kp service and related indices & Sub-daily upstream, normalized daily in cache & Activity forcing context and dipole-strength proxy \\
+Gravity / inertia products & GRACE-derived or processed inertia artifacts & Episodic / batch refresh & Principal frame and orthogonal structure diagnostics \\
+Derived rolling diagnostics & Local Python computation & On rebuild / on demand & Drift axis, angular relations, conditional lag response, and forecast inputs \\
+\bottomrule
+\end{longtable}
+
+\subsection{Pipeline Behavior}
+The ingestion pipeline is designed to keep the UI current without requiring manual file shuffling. Scripts write into the canonical data directory, mirror artifacts into the public data surface used by the app, and allow API routes to serve consistent combined products. Automated update workflows can refresh the sources and rebuild the downstream artifacts on a schedule.
+
+Special attention is paid to geomagnetic ingestion because upstream services may provide higher-frequency samples that must be normalized for dashboard use. In particular, GFZ Kp data are aggregated into daily records for coherent alignment with the rest of the diagnostic stack.
+
+\subsection{Caching Strategy}
+Caching is used for three reasons:
+\begin{enumerate}[leftmargin=1.5em]
+  \item to reduce repeated upstream downloads,
+  \item to preserve reproducible combined artifacts for the UI,
+  \item to support responsive loading of rolling statistics and chart panels.
+\end{enumerate}
+
+The guiding rule is that cache products should be derived, inspectable, and replaceable. They are not meant to become hidden sources of truth separate from the data pipeline.
+
+\section{Derived State and Diagnostic Computation}
+\subsection{Drift Axis}
+The drift axis is a directional summary of evolving structure in the geodetic signal. It is tracked as a time series and displayed in both chart and 3D form. Longitude conventions used in the 3D diagnostics and the Drift Direction panel are unified so that the reported angle and rendered vector agree.
+
+\subsection{Geomagnetic Dipole Orientation and Strength}
+The system tracks geomagnetic dipole orientation as a vector time series. Where a fully physical dipole-moment source is unavailable, the dashboard can fall back to a derived axis and a strength proxy from geomagnetic activity. The dashboard explicitly labels the provenance of the displayed dipole series so the user can distinguish between a direct series and a derived fallback.
+
+These geomagnetic products are included as timing and comparison context. Agreement with the drift axis or other geometric diagnostics is informative, but not by itself evidence of causal coupling.
+
+\subsection{Orthogonal Deviation Ratio}
+The orthogonal deviation ratio $R(t)$ summarizes how balanced or elongated the inferred structure is. Values nearer one indicate a more even distribution across orthogonal directions, while lower values indicate a more anisotropic or elongated state. The panel is intended as a regime-structure indicator rather than a direct event detector.
+
+\subsection{Angle Diagnostics}
+The angle diagnostics panel compares relative angular measures such as out-of-plane tilt and in-plane alignment. These quantities are useful for spotting sustained drifts, abrupt bends, repeated crossings, or changes in coherence between the drift vector and the principal frame.
+
+\subsection{Transition Forecasting}
+Rather than reducing the forecast to a single probability, DRIFT computes a time-resolved forecast curve. This allows the user to inspect:
+\begin{itemize}[leftmargin=1.5em]
+  \item the most likely transition horizon,
+  \item the expected time to transition,
+  \item the cumulative likelihood within a chosen horizon,
+  \item the active state conditioning used by the model.
+\end{itemize}
+
+This early-warning framing is especially useful when probability remains modest but the expected time is contracting. The forecast should be interpreted as a lag-conditioned summary of how the present state compares with earlier transition-like episodes, not as a deterministic event prediction.
+
+\section{Dashboard Outputs}
+The default panel order is tuned to support a top-down reading of system state. The opening sequence places the most decision-oriented outputs first:
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Transition Forecast}
+  \item \textbf{3D Vector View}
+  \item \textbf{Polar Motion}
+\end{enumerate}
+
+Other panels expand the interpretation space around these primary views.
+
+\subsection{Transition Forecast}
+This panel reports the forward probability curve for a state transition. The key summary cards are:
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Peak Time:} the horizon of highest forecast density,
+  \item \textbf{Expected Time:} the mean forecast delay, now also shown as a projected calendar date,
+  \item \textbf{$P(\leq 30d)$ or equivalent windowed probability:} near-term cumulative risk,
+  \item \textbf{Alert Level:} a compact severity cue.
+\end{itemize}
+
+\subsection{3D Vector View}
+This panel is the geometric synthesis layer. It shows:
+\begin{itemize}[leftmargin=1.5em]
+  \item the drift vector,
+  \item a physically anchored reference triad,
+  \item the geomagnetic dipole,
+  \item recent vector paths with angular-velocity-aware coloring.
+\end{itemize}
+
+Small angular separations suggest closer directional agreement. Rapidly recolored path segments indicate faster reorientation and therefore deserve closer comparison with the chart-based diagnostics. Visual proximity alone should not be taken as proof of coupling.
+
+\subsection{Polar Motion}
+Polar motion remains the core observational context. The panel is useful for identifying long arcs, curvature changes, turning points, and changes in excursion amplitude. It provides the raw temporal substrate on which several derived diagnostics depend.
+
+\subsection{Drift Direction}
+This plot tracks the longitude of the drift axis through time. Persistent slope indicates directional migration, flattening indicates stability, and abrupt reversals or resets may indicate a regime change or a sharp structural transition in the derived state.
+
+\subsection{Conditional Lag Response}
+This panel reports lag-conditioned behavior under user-selected state assumptions. The state selector is intended to alter the underlying data model rather than merely rename the plot, allowing comparison between different conditional regimes.
+
+\subsection{Coupling and Auxiliary Panels}
+Additional panels such as coupling plots, phase portraits, and orthogonal deviation are meant to provide context and cross-validation. A meaningful interpretation typically emerges when multiple panels tell the same story: for example, geometric confinement, coherent loop structure, drift-axis migration, and then only secondarily any matching geomagnetic change.
+
+\section{User Interaction Model}
+The dashboard interface is designed to support exploratory interpretation without manual reconfiguration overhead:
+\begin{itemize}[leftmargin=1.5em]
+  \item the layout is responsive rather than manually column-switched,
+  \item the sidebar controls the active date range and panel visibility,
+  \item plot zoom interactions synchronize with the global range selector,
+  \item users can reorder active panels and persist a preferred default arrangement,
+  \item interpretation guides are embedded directly in the panels.
+\end{itemize}
+
+This interaction model treats the dashboard as a working analytical instrument rather than a static report page.
+
+\section{Operational Deployment}
+The application is packaged as a Docker image and deployed to a Kamatera virtual machine. Nginx handles default web traffic on ports 80 and 443, proxies to the container on port 3000, and uses Let's Encrypt certificates for HTTPS. This deployment model has three advantages:
+\begin{enumerate}[leftmargin=1.5em]
+  \item reproducible rebuilds from a single image,
+  \item clean separation between application and edge web serving,
+  \item straightforward rolling redeployment by pulling the latest image and restarting the container.
+\end{enumerate}
+
+\section{Interpretation Guidance}
+The dashboard is not intended to provide deterministic causal claims from a single view. Instead, it is best used as an evidence-combining environment. A conservative reading strategy is:
+\begin{enumerate}[leftmargin=1.5em]
+  \item begin with Polar Motion, Drift Direction, and Orthogonal Deviation to assess the geometry itself,
+  \item inspect the phase panels for loop structure, bursts, and fast-slow organization,
+  \item use the 3D and geomagnetic panels for contextual comparison,
+  \item read the Transition Forecast as an exploratory summary of transition-like risk in the current state.
+\end{enumerate}
+
+\section{Current Limitations}
+Several limits are important:
+\begin{itemize}[leftmargin=1.5em]
+  \item some geomagnetic strength reporting remains proxy-based rather than a full physical dipole-moment estimate,
+  \item forecast outputs depend on the quality and stability of the rolling diagnostic layer,
+  \item directional alignment and apparent axis stability are weaker claims than the geometric structure itself,
+  \item geomagnetic comparisons provide context rather than standalone evidence of causation,
+  \item daily normalization of some source products improves coherence but can suppress higher-frequency detail,
+  \item automated freshness still depends on upstream source availability and stable endpoint behavior,
+  \item conclusions are tied to the observational window represented in the available record.
+\end{itemize}
+
+\section{Conclusion}
+DRIFT is best understood as a physically anchored, continuously updated diagnostic environment for monitoring geodetic--geomagnetic structure and transition behavior. Its value lies not only in any single derived metric, but in the coherence between automated ingestion, derived state estimation, responsive visualization, and synchronized interpretation across panels. By emphasizing frame consistency, data freshness, and multi-panel corroboration, the dashboard turns a fragmented analysis problem into a readable operational instrument.
+
+\end{document}

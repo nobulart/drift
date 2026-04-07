@@ -1,0 +1,7 @@
+.next/
+node_modules/
+tsconfig.tsbuildinfo
+*.log
+.DS_Store
+public/data/.rolling-stats-cache/
+data/.rolling-stats-cache/
