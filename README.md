@@ -4,7 +4,7 @@ Constraint-first polar-motion diagnostics dashboard with geomagnetic context
 
 Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion)
 
-![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
+![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.4.png)
 
 Current release: `v1.4.4`
 
