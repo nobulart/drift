@@ -126,7 +126,7 @@ const useStore = create<AppState>((set, get) => ({
   turnThreshold: 0.05,
   alignment: null,
   collapsedPanels: new Set(),
-  hiddenPanels: new Set(),
+  hiddenPanels: new Set(['lagModel', 'conditionalLag']),
   panelOrder: [...DEFAULT_PANEL_ORDER],
   lastUpdated: null,
   setData: (data) => {
@@ -199,7 +199,7 @@ const useStore = create<AppState>((set, get) => ({
     set({ panelOrder });
   },
   resetPanelPreferences: () => set({
-    hiddenPanels: new Set(),
+    hiddenPanels: new Set(['lagModel', 'conditionalLag']),
     collapsedPanels: new Set(),
     panelOrder: [...DEFAULT_PANEL_ORDER],
   }),

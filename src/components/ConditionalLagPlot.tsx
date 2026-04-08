@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { ConditionalLagResult } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { useStore } from '@/store/useStore';
 
 type StateOption = 'Stable' | 'Pre' | 'Transition' | 'Post';
 const STATE_TO_INDEX: Record<StateOption, number> = {
@@ -22,13 +23,20 @@ export default function ConditionalLagPlot() {
   const [error, setError] = useState<string | null>(null);
   const heatmapHeight = usePlotDisplayHeight(400, 620);
   const sliceHeight = usePlotDisplayHeight(300, 420);
+  const windowSize = useStore((state) => state.windowSize);
+  const turnThreshold = useStore((state) => state.turnThreshold);
 
   useEffect(() => {
     const loadConditionalLag = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/rolling-stats?conditionalTargetState=${STATE_TO_INDEX[targetState]}`);
+        const params = new URLSearchParams({
+          conditionalTargetState: String(STATE_TO_INDEX[targetState]),
+          windowSize: String(windowSize),
+          turnThreshold: String(turnThreshold),
+        });
+        const response = await fetch(`/api/rolling-stats?${params.toString()}`);
         if (!response.ok) {
           throw new Error(`Failed to load conditional lag data for ${targetState}`);
         }
@@ -43,7 +51,18 @@ export default function ConditionalLagPlot() {
     };
 
     loadConditionalLag();
-  }, [targetState]);
+  }, [targetState, turnThreshold, windowSize]);
+
+  const populatedPhaseIndices = useMemo(() => {
+    if (!conditionalLagResult?.signal?.length) {
+      return [];
+    }
+
+    const columnCount = conditionalLagResult.signal[0]?.length ?? 0;
+    return Array.from({ length: columnCount }, (_, columnIndex) => columnIndex).filter((columnIndex) =>
+      conditionalLagResult.signal.some((row) => Number.isFinite(row[columnIndex]))
+    );
+  }, [conditionalLagResult]);
 
   const phaseLabels = useMemo(() => {
     if (!conditionalLagResult?.phase_bins) return [];
@@ -99,7 +118,11 @@ export default function ConditionalLagPlot() {
 
   const sliceData = useMemo(() => {
     if (!conditionalLagResult) return [];
-    
+
+    if (!populatedPhaseIndices.includes(selectedPhase)) {
+      return [];
+    }
+
     const signalValues = conditionalLagResult.signal.map(row => row[selectedPhase]);
     const baselineValues = conditionalLagResult.baseline.map(row => row[selectedPhase]);
     
@@ -117,7 +140,7 @@ export default function ConditionalLagPlot() {
         line: { color: 'gray', dash: 'dot', width: 2 }
       }
     ];
-  }, [conditionalLagResult, selectedPhase]);
+  }, [conditionalLagResult, populatedPhaseIndices, selectedPhase]);
 
   const sliceLayout = useMemo(() => {
     if (!conditionalLagResult) return null;
@@ -154,8 +177,15 @@ export default function ConditionalLagPlot() {
   }, [conditionalLagResult, phaseLabels, selectedPhase, sliceHeight]);
 
   useEffect(() => {
-    setSelectedPhase(0);
-  }, [targetState]);
+    if (populatedPhaseIndices.length === 0) {
+      setSelectedPhase(0);
+      return;
+    }
+
+    if (!populatedPhaseIndices.includes(selectedPhase)) {
+      setSelectedPhase(populatedPhaseIndices[0]);
+    }
+  }, [populatedPhaseIndices, selectedPhase, targetState]);
 
   const stateOptions: StateOption[] = ['Stable', 'Pre', 'Transition', 'Post'];
 
@@ -203,7 +233,9 @@ export default function ConditionalLagPlot() {
             >
               {conditionalLagResult?.phase_bins 
                 ? Array.from({ length: conditionalLagResult.phase_bins.length - 1 }, (_, i) => (
-                    <option key={i} value={i}>Bin {i}</option>
+                    <option key={i} value={i} disabled={!populatedPhaseIndices.includes(i)}>
+                      {`Bin ${i}${populatedPhaseIndices.includes(i) ? '' : ' (no data)'}`}
+                    </option>
                   ))
                 : null}
             </select>
@@ -253,7 +285,7 @@ export default function ConditionalLagPlot() {
             />
           ) : (
             <div className="h-30 flex items-center justify-center">
-              <p className="text-[#9ca3af]">No data for selected phase</p>
+              <p className="text-[#9ca3af]">No conditional lag signal is available for the selected phase bin.</p>
             </div>
           )}
         </div>
