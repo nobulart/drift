@@ -7,6 +7,57 @@ import { loadEOPData, loadGeomagGFZData, loadGRACEData, loadInertiaData, mergeDa
 import { computeLagModel } from '@/lib/lagModel';
 import { DEFAULT_PANEL_ORDER } from '@/lib/panels';
 
+const DEFAULT_BASIS = {
+  e1: [1, 0, 0] as [number, number, number],
+  e2: [0, 1, 0] as [number, number, number],
+  e3: [0, 0, 1] as [number, number, number],
+};
+
+function getBasis(sample: Pick<TimeSample, 'e1' | 'e2' | 'e3'>) {
+  return {
+    e1: sample.e1 ?? DEFAULT_BASIS.e1,
+    e2: sample.e2 ?? DEFAULT_BASIS.e2,
+    e3: sample.e3 ?? DEFAULT_BASIS.e3,
+  };
+}
+
+function stabilizePlanarBasis(
+  e1Series?: [number, number][],
+  e2Series?: [number, number][]
+): { e1: [number, number][]; e2: [number, number][] } {
+  const stabilizedE1: [number, number][] = [];
+  const stabilizedE2: [number, number][] = [];
+
+  const count = Math.max(e1Series?.length ?? 0, e2Series?.length ?? 0);
+  for (let index = 0; index < count; index++) {
+    const rawE1 = e1Series?.[index];
+    const rawE2 = e2Series?.[index];
+
+    if (!rawE1 || rawE1.length !== 2 || !rawE2 || rawE2.length !== 2) {
+      stabilizedE1.push(stabilizedE1[index - 1] ?? [1, 0]);
+      stabilizedE2.push(stabilizedE2[index - 1] ?? [0, 1]);
+      continue;
+    }
+
+    let nextE1: [number, number] = [rawE1[0], rawE1[1]];
+    let nextE2: [number, number] = [rawE2[0], rawE2[1]];
+    const prevE1 = stabilizedE1[index - 1];
+
+    if (prevE1) {
+      const continuity = prevE1[0] * nextE1[0] + prevE1[1] * nextE1[1];
+      if (continuity < 0) {
+        nextE1 = [-nextE1[0], -nextE1[1]];
+        nextE2 = [-nextE2[0], -nextE2[1]];
+      }
+    }
+
+    stabilizedE1.push(nextE1);
+    stabilizedE2.push(nextE2);
+  }
+
+  return { e1: stabilizedE1, e2: stabilizedE2 };
+}
+
 function isPlausibleGeomagneticAxis(axis?: [number, number, number] | null): axis is [number, number, number] {
   if (!axis || axis.length !== 3) {
     return false;
@@ -81,9 +132,7 @@ const useStore = create<AppState>((set, get) => ({
   setData: (data) => {
     const transformedData = data.map(item => {
       const pos: [number, number, number] = [item.xp, item.yp, 0];
-      const e1 = item.e1;
-      const e2 = item.e2;
-      const e3 = item.e3;
+      const { e1, e2, e3 } = getBasis(item);
       
       const xpPrincipal = dot(pos, e1);
       const ypPrincipal = dot(pos, e2);
@@ -196,12 +245,11 @@ const useStore = create<AppState>((set, get) => ({
 
     for (let i = 0; i < data.length; i++) {
       const sample = data[i];
-      const e3 = sample.e3;
+      const { e1, e3 } = getBasis(sample);
       const angleToE3 = signed_angle(drift, e3);
       theta3.push(angleToE3);
 
       const dPerp = projectToPlane(drift, e3);
-      const e1 = sample.e1;
       const angleToE1 = signed_angle(dPerp, e1);
       theta12.push(angleToE1);
     }
@@ -217,11 +265,21 @@ const useStore = create<AppState>((set, get) => ({
         `/api/rolling-stats?windowSize=${windowSize}&turnThreshold=${turnThreshold}`
       );
       const stats = await response.json();
+      const stabilizedBasis = stabilizePlanarBasis(stats.e1, stats.e2);
       
-      const lagModel = computeLagModel(stats, 30, 180);
-      const enrichedStats = { ...stats, lagModel };
+      const lagModel = computeLagModel({ ...stats, e1: stabilizedBasis.e1, e2: stabilizedBasis.e2 }, 30, 180);
+      const enrichedStats = { ...stats, e1: stabilizedBasis.e1, e2: stabilizedBasis.e2, lagModel };
       const enrichedData = data.map((sample, index) => ({
         ...sample,
+        e1:
+          Array.isArray(stabilizedBasis.e1?.[index]) && stabilizedBasis.e1[index].length === 2
+            ? [stabilizedBasis.e1[index][0], stabilizedBasis.e1[index][1], 0] as [number, number, number]
+            : sample.e1,
+        e2:
+          Array.isArray(stabilizedBasis.e2?.[index]) && stabilizedBasis.e2[index].length === 2
+            ? [stabilizedBasis.e2[index][0], stabilizedBasis.e2[index][1], 0] as [number, number, number]
+            : sample.e2,
+        e3: sample.e3 ?? DEFAULT_BASIS.e3,
         driftAxis: (stats.driftAxis?.[index] as [number, number, number] | undefined) ?? sample.driftAxis,
         geomagnetic_axis:
           (isPlausibleGeomagneticAxis(sample.geomagnetic_axis) && sample.geomagnetic_axis)
@@ -239,7 +297,7 @@ const useStore = create<AppState>((set, get) => ({
         
     for (let i = 0; i < enrichedData.length; i++) {
       const sample = enrichedData[i];
-      const e3 = sample.e3;
+      const { e1, e3 } = getBasis(sample);
       
       if (stats.driftAxis && i < stats.driftAxis.length) {
         const drift = stats.driftAxis[i] as [number, number, number];
@@ -247,7 +305,6 @@ const useStore = create<AppState>((set, get) => ({
         theta3.push(angleToE3);
         
         const dPerp = projectToPlane(drift, e3);
-        const e1 = sample.e1;
         const angleToE1 = signed_angle(dPerp, e1);
         theta12.push(angleToE1);
         
@@ -295,9 +352,7 @@ const useStore = create<AppState>((set, get) => ({
       
       const transformedData = mergedData.map(item => {
         const pos: [number, number, number] = [item.xp, item.yp, 0];
-        const e1 = item.e1;
-        const e2 = item.e2;
-        const e3 = item.e3;
+        const { e1, e2, e3 } = getBasis(item);
         
         const xpPrincipal = dot(pos, e1);
         const ypPrincipal = dot(pos, e2);

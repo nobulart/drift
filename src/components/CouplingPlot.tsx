@@ -27,14 +27,24 @@ export default function CouplingPlot({
   const [smoothedAlignment, setSmoothedAlignment] = useState<number[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
 
+  const hasMeaningfulAlignment = useMemo(() => {
+    const finite = smoothedAlignment.filter((value) => Number.isFinite(value));
+    if (finite.length === 0) {
+      return false;
+    }
+
+    const min = Math.min(...finite);
+    const max = Math.max(...finite);
+    return Math.abs(max - min) > 1e-3;
+  }, [smoothedAlignment]);
+
   useEffect(() => {
     // Smooth alignment
     if (alignment && alignment.length > 0) {
-      const alignmentDeg = alignment.map(a => (a * 180) / Math.PI);
-      const smoothed = alignmentDeg.map((v, i) => {
+      const smoothed = alignment.map((v, i) => {
         const start = Math.max(0, i - 25);
-        const end = Math.min(alignmentDeg.length, i + 26);
-        const window = alignmentDeg.slice(start, end);
+        const end = Math.min(alignment.length, i + 26);
+        const window = alignment.slice(start, end);
         const sum = window.reduce((acc, val) => acc + val, 0);
         return window.length > 0 ? sum / window.length : v;
       });
@@ -251,8 +261,13 @@ export default function CouplingPlot({
       };
     }, [layout, timeLockEnabled, timeRange]);
 
-    return (
-      <div className="h-full w-full min-w-0">
+  return (
+    <div className="h-full w-full min-w-0">
+      {!hasMeaningfulAlignment ? (
+        <div className="flex items-center justify-center h-full w-full bg-[#111827] rounded-lg border border-[#374151]">
+          <p className="text-[#9ca3af]">No geomagnetic alignment series is available from the current real-data inputs.</p>
+        </div>
+      ) : (
         <Plot
           data={traces}
           layout={layoutWithRange}
@@ -261,6 +276,7 @@ export default function CouplingPlot({
           style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
         />
-      </div>
-    );
+      )}
+    </div>
+  );
 }

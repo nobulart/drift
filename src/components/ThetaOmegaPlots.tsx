@@ -5,6 +5,7 @@ import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { computeDisplayOmega } from '@/lib/phase';
 
 interface ThetaOmegaPlotsProps {
   dates: string[];
@@ -30,6 +31,8 @@ export default function ThetaOmegaPlots({
       return;
     }
 
+    const displayOmega = computeDisplayOmega(theta, omega, dates);
+
     const thetaTrace: Plotly.Data = {
       x: dates,
       y: theta,
@@ -43,7 +46,7 @@ export default function ThetaOmegaPlots({
 
     const omegaTrace: Plotly.Data = {
       x: dates,
-      y: omega,
+      y: displayOmega,
       mode: 'lines+markers',
       type: 'scatter',
       name: 'ω(t) - Angular Velocity',
@@ -56,7 +59,7 @@ export default function ThetaOmegaPlots({
 
     if (turningPoints.length > 0) {
       const turningDates = turningPoints.map(i => dates[i]);
-      const turningOmega = turningPoints.map(i => omega[i]);
+      const turningOmega = turningPoints.map(i => displayOmega[i]);
 
       const turningTrace: Plotly.Data = {
         x: turningDates,

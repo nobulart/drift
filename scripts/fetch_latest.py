@@ -102,7 +102,7 @@ def fetch_latest_eop():
 
 
 def fetch_latest_grace():
-    """Fetch latest GRACE manifest and time series."""
+    """Fetch latest GRACE manifest metadata only; do not emit placeholder values."""
     print("Fetching latest GRACE data...")
 
     manifest_url = "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-public/virtual_collections/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4_virtual_https.json"
@@ -145,22 +145,8 @@ def fetch_latest_grace():
                 if days >= 0
             ]
 
-            # Create time series
-            time_series = []
-            for date in dates:
-                time_series.append(
-                    {
-                        "t": date.strftime("%Y-%m-%d"),
-                        "lwe_mean": 0.0,  # Placeholder
-                        "lwe_std": 0.0,
-                        "lwe_min": 0.0,
-                        "lwe_max": 0.0,
-                        "valid_pixels": 259200,
-                        "note": "GRACE LWE thickness data - requires chunk downloads for actual values",
-                    }
-                )
-
-            return time_series
+            print(f"  GRACE manifest covers {len(dates)} timestamps, but no real LWE values are retrieved by this script.")
+            return []
 
         return []
     except Exception as e:
@@ -229,13 +215,13 @@ def main():
     # Fetch EOP
     print("\n1. EOP Data (IERS)")
     eop_data = fetch_latest_eop()
-    if eop_data:
+    if eop_data is not None:
         save_json(os.path.join(output_dir, "eop_latest.json"), eop_data)
 
     # Fetch GRACE
     print("\n2. GRACE Data")
     grace_data = fetch_latest_grace()
-    if grace_data:
+    if grace_data is not None:
         save_json(os.path.join(output_dir, "grace_latest.json"), grace_data)
 
     # Fetch GFZ-KP
@@ -245,7 +231,7 @@ def main():
     start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
 
     kp_data = fetch_latest_kp(start_date, end_date)
-    if kp_data:
+    if kp_data is not None:
         save_json(os.path.join(output_dir, "geomag_gfz_latest.json"), kp_data)
 
     # Combine data
@@ -256,7 +242,11 @@ def main():
         geomag_full = normalize_geomag_records(read_json("geomag_gfz_kp.json"))
 
         eop_map = {d["t"]: {"xp": d["xp"], "yp": d["yp"]} for d in eop_full}
-        grace_map = {d["t"]: {"lwe_mean": d["lwe_mean"]} for d in grace_full}
+        grace_map = {
+            d["t"]: {"lwe_mean": d["lwe_mean"]}
+            for d in grace_full
+            if d.get("lwe_mean") is not None
+        }
         geomag_map = {d["t"]: d for d in geomag_full}
 
         combined = []

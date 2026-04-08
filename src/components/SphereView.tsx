@@ -609,12 +609,12 @@ export default function SphereView({
           ? rotateZ(driftVector as [number, number, number], 90) as [number, number, number]
           : [1, 0, 0],
       });
-      series.geomagnetic.push({
-        t: sampleTime,
-        vector: sample.geomagnetic_axis && sample.geomagnetic_axis.length === 3
-          ? sample.geomagnetic_axis as [number, number, number]
-          : [0, 0, 1],
-      });
+      if (sample.geomagnetic_axis && sample.geomagnetic_axis.length === 3) {
+        series.geomagnetic.push({
+          t: sampleTime,
+          vector: sample.geomagnetic_axis as [number, number, number],
+        });
+      }
 
       return series;
     }, {
@@ -666,7 +666,7 @@ export default function SphereView({
           <span className="text-gray-400">Strength Proxy</span>
           <span>{geomagneticStrength.toFixed(2)}</span>
           <span className="text-gray-400">Source</span>
-          <span>{currentSample?.geomagnetic_axis ? 'Geomagnetic series' : 'Derived fallback'}</span>
+          <span>{currentSample?.geomagnetic_axis ? 'Geomagnetic series' : 'Unavailable'}</span>
         </div>
       </div>
       <div className={`absolute z-10 rounded-xl border border-gray-700 bg-gray-900/80 p-4 backdrop-blur-sm ${isMobileViewport ? 'bottom-4 left-4 right-4 flex flex-col gap-3' : 'bottom-6 left-1/2 flex w-3/4 -translate-x-1/2 items-center gap-6'}`}>

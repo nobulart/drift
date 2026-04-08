@@ -13,11 +13,40 @@ interface AngleDiagnosticsProps {
   theta12: number[];
 }
 
+function hasMeaningfulVariation(values: number[]): boolean {
+  const finite = values.filter((value) => Number.isFinite(value));
+  if (finite.length === 0) {
+    return false;
+  }
+
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  return Math.abs(max - min) > 1e-3;
+}
+
+function unwrapContinuous(angle: number[]): number[] {
+  const unwrapped = [...angle];
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    for (let i = 1; i < unwrapped.length; i++) {
+      const diff = unwrapped[i] - unwrapped[i - 1];
+      if (diff > Math.PI) {
+        unwrapped[i] = unwrapped[i - 1] + (diff - 2 * Math.PI);
+        changed = true;
+      } else if (diff < -Math.PI) {
+        unwrapped[i] = unwrapped[i - 1] + (diff + 2 * Math.PI);
+        changed = true;
+      }
+    }
+  }
+
+  return unwrapped;
+}
+
 function smoothAndUnwrap(angle: number[]): number[] {
-  const angleRad = angle.map(a => a * Math.PI / 180);
-  
-  const unwrappedRad = unwrap(angleRad);
-  
+  const unwrappedRad = unwrapContinuous(angle);
   const unwrapped = unwrappedRad.map(r => r * 180 / Math.PI);
   
   const windowSize = 31;
@@ -59,21 +88,32 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
   }, [theta3, theta12]);
 
   const traces = useMemo<Plotly.Data[]>(() => {
-    return [{
-      x: dates,
-      y: smoothedTheta3,
-      mode: 'lines+markers',
-      name: 'θ3 (angle to e3)',
-      line: { color: 'purple', width: 2 },
-      marker: { size: 3 }
-    }, {
-      x: dates,
-      y: smoothedTheta12,
-      mode: 'lines+markers',
-      name: 'θ12 (in-plane alignment)',
-      line: { color: 'orange', width: 2 },
-      marker: { size: 3 }
-    }];
+    const data: Plotly.Data[] = [];
+
+    if (hasMeaningfulVariation(smoothedTheta3)) {
+      data.push({
+        x: dates,
+        y: smoothedTheta3,
+        mode: 'lines+markers',
+        name: 'θ3 (angle to e3)',
+        line: { color: 'purple', width: 2 },
+        marker: { size: 3 }
+      });
+    }
+
+    const finiteTheta12 = smoothedTheta12.filter((value) => Number.isFinite(value));
+    if (finiteTheta12.length > 0) {
+      data.push({
+        x: dates,
+        y: smoothedTheta12,
+        mode: 'lines+markers',
+        name: 'θ12 (in-plane alignment)',
+        line: { color: 'orange', width: 2 },
+        marker: { size: 3 }
+      });
+    }
+
+    return data;
   }, [dates, smoothedTheta3, smoothedTheta12]);
 
   const handleRelayout = (event: any) => {
@@ -129,14 +169,20 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
 
   return (
     <div className="h-full w-full min-w-0">
-      <Plot
-        data={traces}
-        layout={layoutWithRange}
-        onRelayout={handleRelayout}
-        config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
-        style={{ width: '100%', height: `${plotHeight}px` }}
-        useResizeHandler
-      />
+      {traces.length === 0 ? (
+        <div className="flex items-center justify-center h-full w-full bg-[#111827] rounded-lg border border-[#374151]">
+          <p className="text-[#9ca3af]">No angle diagnostics available from the current real-data series.</p>
+        </div>
+      ) : (
+        <Plot
+          data={traces}
+          layout={layoutWithRange}
+          onRelayout={handleRelayout}
+          config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
+          style={{ width: '100%', height: `${plotHeight}px` }}
+          useResizeHandler
+        />
+      )}
     </div>
   );
 }

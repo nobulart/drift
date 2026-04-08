@@ -124,8 +124,6 @@ def compute_theta(cx: np.ndarray, cy: np.ndarray) -> np.ndarray:
     theta = np.arctan2(cy, cx)
     theta = np.unwrap(theta)
     theta = savgol_filter(theta, window_length=31, polyorder=3)
-    # Wrap to -pi to +pi range for conditional analysis
-    theta = (theta + np.pi) % (2 * np.pi) - np.pi
     return theta
 
 
@@ -724,14 +722,17 @@ def compute_rolling_stats(
     # Step 4: Phase angle from loop centers
     theta = compute_theta(cx, cy)
 
-    # Step 5: Angular velocity
+    # Step 5: Angular velocity from continuous phase
     omega = compute_omega(theta, t)
+
+    # Preserve a wrapped view for bounded phase-bin analysis and display.
+    theta_wrapped = (theta + np.pi) % (2 * np.pi) - np.pi
 
     # Step 6: Turning points
     turning_points = detect_turning_points(omega, turn_threshold)
 
     # Step 6b: State detection
-    state = detect_states(omega, theta, turn_threshold)
+    state = detect_states(omega, theta_wrapped, turn_threshold)
 
     # Step 7: Dance segments
     dance_segments = extract_dance_segments(
@@ -777,7 +778,7 @@ def compute_rolling_stats(
     # Step 14: Compute conditional lag model
     conditional_lag_result = compute_conditional_lag_model(
         lon=drift_lon,
-        theta=theta,
+        theta=theta_wrapped,
         omega=omega,
         R=r_ratio,
         t=t,
@@ -796,7 +797,7 @@ def compute_rolling_stats(
         "e1": [e1[i].tolist() for i in range(len(t))],
         "e2": [e2[i].tolist() for i in range(len(t))],
         "centers": [[cx[i], cy[i]] for i in range(len(t))],
-        "theta": theta.tolist(),
+        "theta": theta_wrapped.tolist(),
         "omega": omega.tolist(),
         "turningPoints": turning_points.tolist(),
         "state": state.tolist(),
@@ -816,25 +817,6 @@ def compute_rolling_stats(
 
 def compute_geomagnetic_axis(t: np.ndarray, xp: np.ndarray, yp: np.ndarray):
     """Compute geomagnetic axis using CHAOS model if available."""
-    def synthetic_polar_axis(time_values: np.ndarray) -> np.ndarray:
-        """
-        Build a high-latitude fallback dipole instead of an equatorial placeholder.
-
-        This keeps the synthetic field qualitatively consistent with the real
-        geomagnetic dipole orientation when CHAOS coefficients are unavailable.
-        """
-        angle = 2 * np.pi * time_values / (11 * 365.25)
-        lon = np.deg2rad((72.0 + np.rad2deg(angle)) % 360.0)
-        lat = np.deg2rad(80.0 + 2.0 * np.sin(angle))
-
-        mx = np.cos(lat) * np.cos(lon)
-        my = np.cos(lat) * np.sin(lon)
-        mz = np.sin(lat)
-
-        m = np.vstack([mx, my, mz]).T
-        norm = np.linalg.norm(m, axis=1, keepdims=True)
-        return m / norm
-
     try:
         import chaosmagpy as cp
         import pandas as pd
@@ -857,8 +839,8 @@ def compute_geomagnetic_axis(t: np.ndarray, xp: np.ndarray, yp: np.ndarray):
                     break
 
             if chaos_model_path is None:
-                print("CHAOS model not found, generating synthetic geomagnetic axis")
-                return synthetic_polar_axis(t)
+                print("CHAOS model not found; omitting geomagnetic axis")
+                return None
 
             model = cp.load_CHAOS_matfile(chaos_model_path)
 
@@ -903,8 +885,8 @@ def compute_geomagnetic_axis(t: np.ndarray, xp: np.ndarray, yp: np.ndarray):
             return None
 
     except ImportError:
-        print("chaosmagpy not installed, generating synthetic geomagnetic axis")
-        return synthetic_polar_axis(t)
+        print("chaosmagpy not installed; omitting geomagnetic axis")
+        return None
     except Exception as e:
         print(f"Geomagnetic axis computation failed: {e}")
         return None

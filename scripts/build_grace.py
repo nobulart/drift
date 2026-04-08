@@ -3,7 +3,7 @@
 build_grace.py
 
 Process GRACE MASCON data from Zarr manifest.
-Extracts time series from base64-encoded chunk data.
+Only emits records with real extracted values.
 """
 
 import json
@@ -106,19 +106,9 @@ def main():
     print(f"Found {len(dates)} dates")
     print(f"Date range: {dates[0]} to {dates[-1]}")
 
-    # Create time series
+    print("Manifest dates decoded successfully, but no real LWE values are extracted by this pipeline yet.")
+    print("Writing an empty GRACE series rather than placeholder values.")
     time_series = []
-    for date in dates:
-        time_series.append(
-            {
-                "t": date,
-                "lwe_mean": 0.0,
-                "lwe_std": 0.0,
-                "lwe_min": 0.0,
-                "lwe_max": 0.0,
-                "valid_pixels": 259200,
-            }
-        )
 
     # Save
     output_file = write_json("grace_historic.json", time_series)

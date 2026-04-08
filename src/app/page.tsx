@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, ReactNode } from 'react';
+import { useEffect, useState, useRef, ReactNode, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useStore } from '@/store/useStore';
@@ -12,8 +12,6 @@ import { PANEL_OPTIONS } from '@/lib/panels';
 const Controls = dynamic(() => import('@/components/Controls'), { ssr: false });
 const PolarPlot = dynamic(() => import('@/components/PolarPlot'), { ssr: false });
 const DriftDirectionPlot = dynamic(() => import('@/components/DriftDirectionPlot'), { ssr: false });
-const AngleDiagnostics = dynamic(() => import('@/components/AngleDiagnostics'), { ssr: false });
-const CouplingPlot = dynamic(() => import('@/components/CouplingPlot'), { ssr: false });
 const SphereView = dynamic(() => import('@/components/SphereView'), { ssr: false });
 const PhasePortrait = dynamic(() => import('@/components/PhasePortrait'), { ssr: false });
 const ThetaOmegaPlots = dynamic(() => import('@/components/ThetaOmegaPlots'), { ssr: false });
@@ -56,6 +54,11 @@ function LoadingScreen({ progress }: { progress: number }) {
 }
 
 export default function Home() {
+  const defaultBasis = {
+    e1: [1, 0, 0] as [number, number, number],
+    e2: [0, 1, 0] as [number, number, number],
+    e3: [0, 0, 1] as [number, number, number],
+  };
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(12);
   const [error, setError] = useState<string | null>(null);
@@ -151,9 +154,6 @@ export default function Home() {
   
   const driftAxis = useStore((state) => state.driftAxis);
   const driftAxisTimeSeries = useStore((state) => state.driftAxisTimeSeries);
-  const alignment = useStore((state) => state.alignment);
-  const theta3 = useStore((state) => state.theta3);
-  const theta12 = useStore((state) => state.theta12);
   const currentSample: TimeSample = data[data.length - 1] || {
     t: new Date().toISOString().split('T')[0],
     xp: 0,
@@ -197,9 +197,9 @@ export default function Home() {
       >
         <SphereView
           driftAxis={driftAxis}
-          e1={currentSample.e1}
-          e2={currentSample.e2}
-          e3={currentSample.e3}
+          e1={currentSample.e1 ?? defaultBasis.e1}
+          e2={currentSample.e2 ?? defaultBasis.e2}
+          e3={currentSample.e3 ?? defaultBasis.e3}
           frame={frame}
           showDrift={showDrift}
           showE1={showE1}
@@ -234,33 +234,7 @@ export default function Home() {
         onToggleVisibility={() => togglePanelVisibility('drift')}
         onToggleCollapse={() => togglePanelCollapse('drift')}
       >
-        <DriftDirectionPlot dates={datesStr} driftAxisTimeSeries={driftAxisTimeSeries} e1={currentSample.e1} e2={currentSample.e2} windowSize={windowSize} />
-      </Panel>
-    ),
-    angle: (
-      <Panel
-        panelId="angle"
-        title="Angle Diagnostics"
-        guide={PANEL_GUIDES.angle}
-        visible={!hiddenPanels.has('angle')}
-        collapsed={collapsedPanels.has('angle')}
-        onToggleVisibility={() => togglePanelVisibility('angle')}
-        onToggleCollapse={() => togglePanelCollapse('angle')}
-      >
-        <AngleDiagnostics dates={datesStr} theta3={theta3} theta12={theta12} />
-      </Panel>
-    ),
-    coupling: (
-      <Panel
-        panelId="coupling"
-        title="Alignment: Drift vs Geomagnetic"
-        guide={PANEL_GUIDES.coupling}
-        visible={!hiddenPanels.has('coupling')}
-        collapsed={collapsedPanels.has('coupling')}
-        onToggleVisibility={() => togglePanelVisibility('coupling')}
-        onToggleCollapse={() => togglePanelCollapse('coupling')}
-      >
-        <CouplingPlot dates={datesStr} alignment={alignment || []} kp={data.map((d) => d.kp ?? null)} ap={data.map((d) => d.ap ?? null)} />
+        <DriftDirectionPlot dates={datesStr} driftAxisTimeSeries={driftAxisTimeSeries} e1={currentSample.e1 ?? defaultBasis.e1} e2={currentSample.e2 ?? defaultBasis.e2} windowSize={windowSize} />
       </Panel>
     ),
     phase: rollingStatsLoaded && rollingStats ? (

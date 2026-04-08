@@ -7,13 +7,8 @@ Supports historical and near-real-time data.
 """
 
 import json
-import os
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
-import urllib.request
-import numpy as np
-from scipy.signal import savgol_filter
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -72,70 +67,29 @@ def main():
         print("ERROR: eop_historic.json not found. Run scripts/build_eop.py first.")
         sys.exit(1)
 
-    # Combine data points
-    eop_map = {d["t"]: {"xp": d["xp"], "yp": d["yp"]} for d in eop_data}
-
     # Start with EOP as base
     combined = []
+    grace_map = {d["t"]: d for d in grace_data if d.get("lwe_mean") is not None}
+    kp_map = {d["t"]: d for d in geomag_data}
 
     for eop_point in eop_data:
         date = eop_point["t"]
         record = {"t": date, "xp": eop_point["xp"], "yp": eop_point["yp"]}
 
         # Add GRACE data if available
-        if grace_data:
-            for grace_point in grace_data:
-                if grace_point["t"] == date:
-                    record["grace_lwe_mean"] = grace_point["lwe_mean"]
-                    record["grace_lwe_std"] = grace_point["lwe_std"]
-                    break
+        grace_point = grace_map.get(date)
+        if grace_point:
+            record["grace_lwe_mean"] = grace_point["lwe_mean"]
+            if grace_point.get("lwe_std") is not None:
+                record["grace_lwe_std"] = grace_point["lwe_std"]
+
+        geomag_point = kp_map.get(date)
+        if geomag_point:
+            for field in ("kp", "ap", "cp", "c9", "ap_daily", "kp_count", "ap_count"):
+                if geomag_point.get(field) is not None:
+                    record[field] = geomag_point[field]
 
         combined.append(record)
-
-    # Merge cached GFZ-KP data for overlapping period
-    if combined:
-        print("Merging cached GFZ-KP data from geomag_gfz_kp.json...")
-        kp_map = {d["t"]: d for d in geomag_data}
-
-        for record in combined:
-            date = record["t"]
-            if date in kp_map:
-                if "kp" in kp_map[date]:
-                    record["kp"] = kp_map[date]["kp"]
-                if "ap" in kp_map[date]:
-                    record["ap"] = kp_map[date]["ap"]
-                if "ap_daily" in kp_map[date]:
-                    record["ap_daily"] = kp_map[date]["ap_daily"]
-            else:
-                # Fill missing Kp with NaN for interpolation
-                if "kp" not in record:
-                    record["kp"] = np.nan
-                if "ap" not in record:
-                    record["ap"] = np.nan
-
-        # Interpolate Kp and ap to fill gaps, then smooth
-        kp_values = np.array([d.get("kp", np.nan) for d in combined])
-        ap_values = np.array([d.get("ap", np.nan) for d in combined])
-
-        # Get valid indices for interpolation
-        valid_kp = ~np.isnan(kp_values)
-        valid_ap = ~np.isnan(ap_values)
-
-        if np.any(valid_kp):
-            kp_interp = np.interp(
-                np.arange(len(combined)), np.where(valid_kp)[0], kp_values[valid_kp]
-            )
-            kp_smooth = savgol_filter(kp_interp, 61, 3)
-            for i, record in enumerate(combined):
-                record["kp"] = float(kp_smooth[i])
-
-        if np.any(valid_ap):
-            ap_interp = np.interp(
-                np.arange(len(combined)), np.where(valid_ap)[0], ap_values[valid_ap]
-            )
-            ap_smooth = savgol_filter(ap_interp, 61, 3)
-            for i, record in enumerate(combined):
-                record["ap"] = float(ap_smooth[i])
 
     # Save combined data
     output_file = write_json("combined_historic.json", combined)
@@ -144,8 +98,6 @@ def main():
     print(f"Date range: {combined[0]['t']} to {combined[-1]['t']}")
 
     # Summary statistics
-    print(f"Kp range: {combined[0]['t']} to {combined[-1]['t']}")
-
     kp_values = [d.get("kp") for d in combined if d.get("kp") is not None]
     if kp_values:
         print(f"\nSummary:")

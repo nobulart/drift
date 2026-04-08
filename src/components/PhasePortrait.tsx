@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
 
 interface PhasePortraitProps {
   dates: string[];
@@ -24,8 +25,10 @@ export default function PhasePortrait({
       return [];
     }
 
+    const displayOmega = computeDisplayOmega(theta, omega, dates);
+
     const validIndices = theta.reduce<number[]>((acc, thetaValue, index) => {
-      const omegaValue = omega[index];
+      const omegaValue = displayOmega[index];
       if (Number.isFinite(thetaValue) && Number.isFinite(omegaValue)) {
         acc.push(index);
       }
@@ -36,10 +39,11 @@ export default function PhasePortrait({
       return [];
     }
 
+    const portraitSeries = buildPhasePortraitSeries(theta, displayOmega, dates);
     const portraitTrace: Plotly.Data = {
-      x: validIndices.map((index) => theta[index]),
-      y: validIndices.map((index) => omega[index]),
-      customdata: validIndices.map((index) => dates[index] ?? 'Unknown date'),
+      x: portraitSeries.x,
+      y: portraitSeries.y,
+      customdata: portraitSeries.customdata,
       mode: 'lines+markers',
       type: 'scatter',
       name: 'Phase Portrait',
@@ -64,10 +68,14 @@ export default function PhasePortrait({
         : validIndices.slice(Math.max(0, validIndices.length - 180));
 
     if (recentIndices.length > 1) {
+      const recentTheta = recentIndices.map((index) => theta[index]);
+      const recentOmega = recentIndices.map((index) => displayOmega[index]);
+      const recentDates = recentIndices.map((index) => dates[index] ?? 'Unknown date');
+      const recentSeries = buildPhasePortraitSeries(recentTheta, recentOmega, recentDates);
       data.push({
-        x: recentIndices.map((index) => theta[index]),
-        y: recentIndices.map((index) => omega[index]),
-        customdata: recentIndices.map((index) => dates[index] ?? 'Unknown date'),
+        x: recentSeries.x,
+        y: recentSeries.y,
+        customdata: recentSeries.customdata,
         mode: 'lines',
         type: 'scatter',
         name: 'Recent 180d Trajectory',
@@ -78,7 +86,7 @@ export default function PhasePortrait({
 
     data.push({
       x: [theta[latestIndex]],
-      y: [omega[latestIndex]],
+      y: [displayOmega[latestIndex]],
       mode: 'markers',
       type: 'scatter',
       name: 'Present State',
@@ -93,13 +101,13 @@ export default function PhasePortrait({
 
     if (turningPoints.length > 0) {
       const validTurningPoints = turningPoints.filter((index) =>
-        Number.isFinite(theta[index]) && Number.isFinite(omega[index])
+        Number.isFinite(theta[index]) && Number.isFinite(displayOmega[index])
       );
 
       if (validTurningPoints.length > 0) {
         data.push({
           x: validTurningPoints.map((index) => theta[index]),
-          y: validTurningPoints.map((index) => omega[index]),
+          y: validTurningPoints.map((index) => displayOmega[index]),
           customdata: validTurningPoints.map((index) => dates[index] ?? 'Unknown date'),
           mode: 'markers',
           type: 'scatter',

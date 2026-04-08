@@ -6,9 +6,15 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.4.png)
 
-Current release: `v1.4.4`
+Current release: `v1.4.5`
 
 ## Release Notes
+
+### v1.4.5
+
+- Removed synthetic GRACE, inertia, and fallback geomagnetic-axis data from the ingestion and retrieval pipeline so the dashboard now serves real inputs only.
+- Corrected the phase portrait and phase-diagnostics handling around phase-wrap artifacts to avoid spurious branch-cut spikes in the displayed loop geometry.
+- Temporarily disabled the Angle Diagnostics and Alignment panels in the UI while their real-data-only replacements are being reworked.
 
 ### v1.4.4
 
