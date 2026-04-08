@@ -6,9 +6,13 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
 
-Current release: `v1.4.0`
+Current release: `v1.4.1`
 
 ## Release Notes
+
+### v1.4.1
+
+- Corrected the Transition Forecast expected-date label so it now adds the forecast horizon to the actual current date rather than the cached data timestamp.
 
 ### v1.4.0
 

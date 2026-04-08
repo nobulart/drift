@@ -69,16 +69,12 @@ export default function TransitionForecastPanel() {
 
   const stateLabels = ['Stable', 'Pre', 'Transition', 'Post'];
   const expectedDateLabel = useMemo(() => {
-    if (!forecast || !Number.isFinite(forecast.expected_time) || data.length === 0) {
+    if (!forecast || !Number.isFinite(forecast.expected_time)) {
       return null;
     }
 
-    const anchorSample = data[presentTimeIndex] || data[data.length - 1];
-    if (!anchorSample?.t) {
-      return null;
-    }
-
-    const anchorDate = new Date(anchorSample.t);
+    const anchorDate = new Date();
+    anchorDate.setHours(0, 0, 0, 0);
     if (Number.isNaN(anchorDate.getTime())) {
       return null;
     }
@@ -91,7 +87,7 @@ export default function TransitionForecastPanel() {
       month: 'short',
       day: 'numeric',
     });
-  }, [presentTimeIndex, data, forecast]);
+  }, [forecast]);
 
   const probabilityData = useMemo(() => {
     if (!forecast || !forecast.lags || forecast.lags.length === 0) return [];

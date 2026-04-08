@@ -355,7 +355,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4
+                Version v1.41
               </p>
             </div>
             <Link
