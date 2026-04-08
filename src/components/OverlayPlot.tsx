@@ -10,6 +10,7 @@ import {
 } from '@/lib/ephemeris';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { EphemerisDataset, EphemerisRecord } from '@/lib/types';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
 
@@ -84,6 +85,7 @@ export default function OverlayPlot() {
   const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift', 'alignment']);
   const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});
   const isInternalUpdate = useRef(false);
+  const plotHeight = usePlotDisplayHeight(500, 860);
 
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
@@ -183,9 +185,9 @@ export default function OverlayPlot() {
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
-    height: 500,
+    height: plotHeight,
     autosize: true,
-  }), []);
+  }), [plotHeight]);
 
   const toggleSignal = (signalKey: string) => {
     setSelectedSignals(prev => (
@@ -261,7 +263,7 @@ export default function OverlayPlot() {
               : 'overlay-free-zoom',
           } as any}
           config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
-          style={{ width: '100%', height: '500px' }}
+          style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
           onRelayout={handleRelayout}
         />

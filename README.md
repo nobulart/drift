@@ -6,9 +6,15 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
 
-Current release: `v1.4.2`
+Current release: `v1.4.3`
 
 ## Release Notes
+
+### v1.4.3
+
+- Added a highlighted present-state marker and recent trajectory overlay to the Phase Portrait, now focused on the last 180 days.
+- Enlarged fullscreen popup charts to use roughly 85% of browser width and a taller plotting area, with responsive plot resizing inside the modal.
+- Added shared fullscreen-aware plot sizing so expanded charts across the dashboard actually use the larger popup dimensions.
 
 ### v1.4.2
 

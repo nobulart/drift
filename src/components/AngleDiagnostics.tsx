@@ -5,6 +5,7 @@ import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { unwrap } from '@/lib/math';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 interface AngleDiagnosticsProps {
   dates: string[];
@@ -50,6 +51,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
   const isInternalUpdate = useRef(false);
   const [smoothedTheta3, setSmoothedTheta3] = useState<number[]>([]);
   const [smoothedTheta12, setSmoothedTheta12] = useState<number[]>([]);
+  const plotHeight = usePlotDisplayHeight(500, 860);
 
   useEffect(() => {
     setSmoothedTheta3(smoothAndUnwrap(theta3));
@@ -95,7 +97,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
       gridcolor: '#374151',
       zerolinecolor: '#4b5563'
     },
-    height: 500,
+    height: plotHeight,
     showlegend: true,
     legend: {
       orientation: 'h' as const,
@@ -108,7 +110,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-  }), []);
+  }), [plotHeight]);
 
   const layoutWithRange = useMemo(() => {
     const axisRange = timeLockEnabled && timeRange
@@ -132,7 +134,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
         layout={layoutWithRange}
         onRelayout={handleRelayout}
         config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
-        style={{ width: '100%', height: '500px' }}
+        style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
     </div>

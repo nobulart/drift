@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { ConditionalLagResult } from '@/lib/types';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 type StateOption = 'Stable' | 'Pre' | 'Transition' | 'Post';
 const STATE_TO_INDEX: Record<StateOption, number> = {
@@ -19,6 +20,8 @@ export default function ConditionalLagPlot() {
   const [selectedPhase, setSelectedPhase] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const heatmapHeight = usePlotDisplayHeight(400, 620);
+  const sliceHeight = usePlotDisplayHeight(300, 420);
 
   useEffect(() => {
     const loadConditionalLag = async () => {
@@ -89,10 +92,10 @@ export default function ConditionalLagPlot() {
       plot_bgcolor: '#111827',
       paper_bgcolor: '#0b1220',
       font: { color: '#e5e7eb' },
-      height: 400,
+      height: heatmapHeight,
       autosize: true
     };
-  }, [conditionalLagResult, targetState]);
+  }, [conditionalLagResult, heatmapHeight, targetState]);
 
   const sliceData = useMemo(() => {
     if (!conditionalLagResult) return [];
@@ -145,10 +148,10 @@ export default function ConditionalLagPlot() {
       plot_bgcolor: '#111827',
       paper_bgcolor: '#0b1220',
       font: { color: '#e5e7eb' },
-      height: 300,
+      height: sliceHeight,
       autosize: true
     };
-  }, [conditionalLagResult, selectedPhase, phaseLabels]);
+  }, [conditionalLagResult, phaseLabels, selectedPhase, sliceHeight]);
 
   useEffect(() => {
     setSelectedPhase(0);
@@ -228,7 +231,7 @@ export default function ConditionalLagPlot() {
               data={[heatmapData]}
               layout={heatmapLayout}
               config={{ displayModeBar: true, responsive: true }}
-              style={{ width: '100%', height: '400px' }}
+              style={{ width: '100%', height: `${heatmapHeight}px` }}
               useResizeHandler
             />
           ) : (
@@ -245,7 +248,7 @@ export default function ConditionalLagPlot() {
               data={sliceData}
               layout={sliceLayout}
               config={{ displayModeBar: false, responsive: true }}
-              style={{ width: '100%', height: '300px' }}
+              style={{ width: '100%', height: `${sliceHeight}px` }}
               useResizeHandler
             />
           ) : (

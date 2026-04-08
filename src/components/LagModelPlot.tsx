@@ -5,10 +5,12 @@ import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
 import { LagResult } from '@/lib/types';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 export default function LagModelPlot() {
   const [lagResult, setLagResult] = useState<LagResult | null>(null);
   const isInternalUpdate = useRef(false);
+  const plotHeight = usePlotDisplayHeight(500, 860);
   
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
@@ -75,9 +77,9 @@ export default function LagModelPlot() {
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
-    height: 500,
+    height: plotHeight,
     autosize: true
-  }), []);
+  }), [plotHeight]);
 
   return (
     <div className="p-4 bg-[#0b1220] h-full w-full min-w-0">
@@ -86,7 +88,7 @@ export default function LagModelPlot() {
           data={lagTraces}
           layout={lagLayout}
           config={{ displayModeBar: true, responsive: true }}
-          style={{ width: '100%', height: '500px' }}
+          style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
         />
       </div>

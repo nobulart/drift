@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { useStore } from '@/store/useStore';
 import { LagKernel, TransitionForecast } from '@/lib/types';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 export default function TransitionForecastPanel() {
   const [lagKernel, setLagKernel] = useState<LagKernel | null>(null);
@@ -12,6 +13,7 @@ export default function TransitionForecastPanel() {
   const [baseProb, setBaseProb] = useState<number>(0.5);
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number | undefined>(undefined);
+  const plotHeight = usePlotDisplayHeight(400, 720);
 
   const rollingStats = useStore(state => state.rollingStats);
   const theta3 = useStore(state => state.theta3);
@@ -159,10 +161,10 @@ export default function TransitionForecastPanel() {
       paper_bgcolor: '#0b1220',
       font: { color: '#e5e7eb' },
       width: width || 800,
-      height: 400,
+      height: plotHeight,
       autosize: true
     };
-  }, [forecast, lagKernel, width]);
+  }, [forecast, lagKernel, plotHeight, width]);
 
   const stateColors = ['#10b981', '#f59e0b', '#ef4444', '#6b7280'];  // emerald, amber, red, gray
 
@@ -219,7 +221,7 @@ export default function TransitionForecastPanel() {
         data={plotData as any}
         layout={forecastLayout as any}
         config={{ displayModeBar: true, responsive: true }}
-        style={{ width: '100%', height: '400px' }}
+        style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
     ) : (

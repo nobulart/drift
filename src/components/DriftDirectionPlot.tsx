@@ -5,6 +5,7 @@ import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { driftAxisLongitude } from '@/lib/transforms';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 interface DriftDirectionPlotProps {
   dates: string[];
@@ -27,6 +28,7 @@ export default function DriftDirectionPlot({
   const [driftAngles, setDriftAngles] = useState<number[]>([]);
   const [e1Angles, setE1Angles] = useState<number[]>([]);
   const [e2Angles, setE2Angles] = useState<number[]>([]);
+  const plotHeight = usePlotDisplayHeight(500, 860);
 
    useEffect(() => {
      const angleOffset = 90;
@@ -133,7 +135,7 @@ export default function DriftDirectionPlot({
       gridcolor: '#374151',
       zerolinecolor: '#4b5563'
     },
-    height: 500,
+    height: plotHeight,
     showlegend: true,
     legend: {
       orientation: 'h' as const,
@@ -146,7 +148,7 @@ export default function DriftDirectionPlot({
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-  }), [driftLon]);
+  }), [driftLon, plotHeight]);
 
   const layoutWithRange = useMemo(() => {
     const axisRange = timeLockEnabled && timeRange
@@ -172,7 +174,7 @@ export default function DriftDirectionPlot({
         layout={layoutWithRange}
         onRelayout={handleRelayout}
         config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
-        style={{ width: '100%', height: '500px' }}
+        style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
     </div>

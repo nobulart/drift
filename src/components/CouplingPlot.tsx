@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 interface CouplingPlotProps {
   dates: string[];
@@ -24,6 +25,7 @@ export default function CouplingPlot({
   const [smoothedKp, setSmoothedKp] = useState<number[]>([]);
   const [smoothedAp, setSmoothedAp] = useState<number[]>([]);
   const [smoothedAlignment, setSmoothedAlignment] = useState<number[]>([]);
+  const plotHeight = usePlotDisplayHeight(500, 860);
 
   useEffect(() => {
     // Smooth alignment
@@ -217,7 +219,7 @@ export default function CouplingPlot({
       gridcolor: '#374151',
       zerolinecolor: '#4b5563'
     },
-    height: 500,
+    height: plotHeight,
     showlegend: true,
     legend: {
       orientation: 'h' as const,
@@ -230,7 +232,7 @@ export default function CouplingPlot({
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-    }), []);
+    }), [plotHeight]);
 
     const layoutWithRange = useMemo(() => {
       const axisRange = timeLockEnabled && timeRange
@@ -256,7 +258,7 @@ export default function CouplingPlot({
           layout={layoutWithRange}
           onRelayout={handleRelayout}
           config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
-          style={{ width: '100%', height: '500px' }}
+          style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
         />
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 interface OrthogonalDeviationPlotProps {
   dates: string[];
@@ -75,6 +76,7 @@ export default function OrthogonalDeviationPlot({
   const isInternalUpdate = useRef(false);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const [rollingMean, setRollingMean] = useState<number[]>([]);
+  const plotHeight = usePlotDisplayHeight(500, 860);
 
   useEffect(() => {
     if (rRatio.length === 0) {
@@ -176,7 +178,7 @@ export default function OrthogonalDeviationPlot({
       range: [0, 1],
       gridcolor: '#374151'
     },
-    height: 500,
+    height: plotHeight,
     showlegend: true,
     legend: {
       orientation: 'h' as const,
@@ -190,7 +192,7 @@ export default function OrthogonalDeviationPlot({
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-  }), []);
+  }), [plotHeight]);
 
   const axisRange = timeLockEnabled && timeRange
     ? [new Date(timeRange[0]), new Date(timeRange[1])]
@@ -222,7 +224,7 @@ export default function OrthogonalDeviationPlot({
         layout={layoutWithRange}
         onRelayout={handleRelayout}
         config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
-        style={{ width: '100%', height: '500px' }}
+        style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
     </div>

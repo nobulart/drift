@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 const EVENT_YEARS = [1978, 1991, 1999, 2003];
 
@@ -19,6 +20,7 @@ export default function AlignmentOmegaPlot({
   turningPoints = []
 }: AlignmentOmegaPlotProps) {
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
+  const plotHeight = usePlotDisplayHeight(400, 720);
 
   useEffect(() => {
     const alignmentSmooth = alignment.map(a => (a * 180) / Math.PI);
@@ -101,8 +103,7 @@ export default function AlignmentOmegaPlot({
       overlaying: 'y',
       side: 'right',
     },
-    width: 800,
-    height: 400,
+    height: plotHeight,
     showlegend: true,
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
@@ -110,5 +111,5 @@ export default function AlignmentOmegaPlot({
     shapes: [], // Event lines will be added dynamically if needed
   } as any;
 
-  return <Plot data={traces} layout={layout} config={{ displayModeBar: false }} />;
+  return <Plot data={traces} layout={layout} config={{ displayModeBar: false, responsive: true }} style={{ width: '100%', height: `${plotHeight}px` }} useResizeHandler />;
 }

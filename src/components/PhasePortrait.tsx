@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import Plot from 'react-plotly.js';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 interface PhasePortraitProps {
   dates: string[];
@@ -16,45 +17,100 @@ export default function PhasePortrait({
   omega,
   turningPoints = []
 }: PhasePortraitProps) {
-  const [traces, setTraces] = useState<Plotly.Data[]>([]);
+  const plotHeight = usePlotDisplayHeight(500, 860);
 
-  useEffect(() => {
+  const traces = useMemo(() => {
     if (theta.length === 0 || omega.length === 0) {
-      setTraces([]);
-      return;
+      return [];
     }
 
-    const trace1: Plotly.Data = {
-      x: theta,
-      y: omega,
+    const validIndices = theta.reduce<number[]>((acc, thetaValue, index) => {
+      const omegaValue = omega[index];
+      if (Number.isFinite(thetaValue) && Number.isFinite(omegaValue)) {
+        acc.push(index);
+      }
+      return acc;
+    }, []);
+
+    if (validIndices.length === 0) {
+      return [];
+    }
+
+    const portraitTrace: Plotly.Data = {
+      x: validIndices.map((index) => theta[index]),
+      y: validIndices.map((index) => omega[index]),
       mode: 'lines+markers',
       type: 'scatter',
       name: 'Phase Portrait',
       line: { color: '#3b82f6', width: 1.5 },
-      marker: { size: 3, color: 'rgba(59, 130, 246, 0.5)' }
+      marker: { size: 3, color: 'rgba(59, 130, 246, 0.45)' },
+      hovertemplate: 'θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
     };
 
-    const data: Plotly.Data[] = [trace1];
+    const data: Plotly.Data[] = [portraitTrace];
 
-    if (turningPoints.length > 0) {
-      const turningTheta = turningPoints.map(i => theta[i]);
-      const turningOmega = turningPoints.map(i => omega[i]);
+    const latestIndex = validIndices[validIndices.length - 1];
+    const latestDate = dates[latestIndex] ? new Date(dates[latestIndex]) : null;
+    const recentIndices =
+      latestDate && !Number.isNaN(latestDate.getTime())
+        ? validIndices.filter((index) => {
+            const pointDate = dates[index] ? new Date(dates[index]) : null;
+            if (!pointDate || Number.isNaN(pointDate.getTime())) {
+              return false;
+            }
+            return latestDate.getTime() - pointDate.getTime() <= 180 * 24 * 60 * 60 * 1000;
+          })
+        : validIndices.slice(Math.max(0, validIndices.length - 180));
 
-      const turningTrace: Plotly.Data = {
-        x: turningTheta,
-        y: turningOmega,
-        mode: 'markers',
+    if (recentIndices.length > 1) {
+      data.push({
+        x: recentIndices.map((index) => theta[index]),
+        y: recentIndices.map((index) => omega[index]),
+        mode: 'lines',
         type: 'scatter',
-        name: 'Turning Points',
-        marker: { color: '#ef4444', size: 8, symbol: 'circle-solid' }
-      };
-      data.push(turningTrace);
+        name: 'Recent 180d Trajectory',
+        line: { color: '#f59e0b', width: 3 },
+        hovertemplate: 'Recent trail<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
+      });
     }
 
-    setTraces(data);
-  }, [theta, omega, turningPoints]);
+    data.push({
+      x: [theta[latestIndex]],
+      y: [omega[latestIndex]],
+      mode: 'markers',
+      type: 'scatter',
+      name: 'Present State',
+      marker: {
+        color: '#f8fafc',
+        size: 13,
+        symbol: 'diamond',
+        line: { color: '#f59e0b', width: 2.5 }
+      },
+      hovertemplate: `${dates[latestIndex] ?? 'Latest sample'}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>`
+    });
 
-   const layout = {
+    if (turningPoints.length > 0) {
+      const validTurningPoints = turningPoints.filter((index) =>
+        Number.isFinite(theta[index]) && Number.isFinite(omega[index])
+      );
+
+      if (validTurningPoints.length > 0) {
+        data.push({
+          x: validTurningPoints.map((index) => theta[index]),
+          y: validTurningPoints.map((index) => omega[index]),
+          mode: 'markers',
+          type: 'scatter',
+          name: 'Turning Points',
+          marker: { color: '#ef4444', size: 8, symbol: 'circle-solid' },
+          hovertemplate: 'Turning point<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
+        });
+      }
+    }
+
+    return data;
+  }, [dates, omega, theta, turningPoints]);
+
+  const layout = {
     title: { text: 'Phase Portrait: θ vs ω' } as any,
     xaxis: { 
       title: { text: 'Phase Angle θ (radians)', standoff: 20 },
@@ -66,7 +122,7 @@ export default function PhasePortrait({
       gridcolor: '#374151',
       zerolinecolor: '#4b5563'
     },
-    height: 500,
+    height: plotHeight,
     showlegend: true,
     legend: {
       orientation: 'h',
@@ -96,7 +152,7 @@ export default function PhasePortrait({
         data={traces}
         layout={layout}
         config={{ displayModeBar: true, responsive: true }}
-        style={{ width: '100%', height: '500px' }}
+        style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
     </div>

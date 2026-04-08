@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useEffect, useRef, useState } from 'react';
+
+export const PanelFullscreenContext = createContext(false);
 
 interface PanelProps {
   title: string;
@@ -26,9 +28,12 @@ function PlotModal({ isOpen, onClose, children }: PlotModalProps) {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-[#0b1220]/95 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-[#0b1220]/95 z-[9999] flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-200">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-6xl max-h-[90vh] flex flex-col bg-[#111827] rounded-xl shadow-2xl border border-[#374151] animate-in zoom-in-95 duration-200">
+      <div
+        className="relative w-full flex flex-col bg-[#111827] rounded-xl shadow-2xl border border-[#374151] animate-in zoom-in-95 duration-200"
+        style={{ width: 'min(85vw, 1920px)', height: 'min(90vh, 1080px)' }}
+      >
         <div className="flex items-center justify-between p-4 border-b border-[#374151]">
           <h3 className="text-lg font-bold text-[#e5e7eb] uppercase tracking-wider">
             Fullscreen View
@@ -42,7 +47,9 @@ function PlotModal({ isOpen, onClose, children }: PlotModalProps) {
           </button>
         </div>
         <div className="flex-1 overflow-auto p-4">
-          {children}
+          <PanelFullscreenContext.Provider value={true}>
+            {children}
+          </PanelFullscreenContext.Provider>
         </div>
       </div>
     </div>
@@ -201,7 +208,9 @@ export default function Panel({
         
         <div ref={contentRef} className={`flex-1 overflow-hidden ${collapsed ? 'hidden' : ''}`}>
           {shouldRenderContent || isModalOpen ? (
-            children
+            <PanelFullscreenContext.Provider value={false}>
+              {children}
+            </PanelFullscreenContext.Provider>
           ) : (
             <div className="flex h-full min-h-[220px] items-center justify-center rounded-lg border border-dashed border-[#243041] bg-[#0b1220]/50 px-4 text-center text-sm text-[#6b7280]">
               Panel content will load as you scroll.

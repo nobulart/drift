@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
+import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 
 interface PolarPlotProps {
   xpData: number[];
@@ -23,6 +24,7 @@ export default function PolarPlot({
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const isInternalUpdate = useRef(false);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
+  const plotHeight = usePlotDisplayHeight(500, 860);
 
   const turningPoints = useMemo(() => rollingStats?.turningPoints || [], [rollingStats]);
 
@@ -130,7 +132,7 @@ export default function PolarPlot({
       overlaying: 'y',
       side: 'right' as const
     },
-    height: 500,
+    height: plotHeight,
     margin: { l: 80, r: 80, t: 60, b: 80 },
     showlegend: true,
     legend: {
@@ -145,7 +147,7 @@ export default function PolarPlot({
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-  } as any), []);
+  } as any), [plotHeight]);
 
   const layoutWithRange = useMemo(() => {
     const axisRange = timeLockEnabled && timeRange
@@ -171,7 +173,7 @@ export default function PolarPlot({
         layout={layoutWithRange}
         onRelayout={handleRelayout}
         config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
-        style={{ width: '100%', height: '500px' }}
+        style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
     </div>
