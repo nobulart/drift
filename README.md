@@ -1,6 +1,6 @@
 # DRIFT Dashboard
 
-Constraint-first polar-motion diagnostics dashboard with geomagnetic context
+Constraint-first polar-motion diagnostics dashboard for geometry, phase structure, and transition risk
 
 Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion)
 
@@ -74,10 +74,9 @@ This repository should therefore be read as a geometry-first monitoring tool. Th
 # Install dependencies
 npm install
 
-# Generate sample data
-python scripts/build_inertia.py
-python scripts/build_eop.py  
-python scripts/build_geomag.py
+# Refresh or rebuild pipeline artifacts as needed
+python scripts/fetch_latest.py
+python scripts/combine_data.py
 
 # Run development server
 npm run dev
@@ -318,14 +317,12 @@ drift/
 │   ├── Controls.tsx     # UI controls
 │   ├── PolarPlot.tsx    # Polar motion visualization
 │   ├── DriftDirectionPlot.tsx  # Drift direction plot (PRIMARY)
-│   ├── AngleDiagnostics.tsx    # θ3 and θ12 diagnostics
-│   ├── CouplingPlot.tsx        # Alignment vs geomagnetic activity
+│   ├── TransitionForecastPanel.tsx  # Lag-conditioned transition forecast
 │   └── SphereView.tsx          # 3D frame visualization
 ├── lib/                 # Core libraries
 │   ├── math.ts          # Vec3 operations
 │   ├── transforms.ts    # Frame transformation utilities
 │   ├── drift.ts         # PCA-based drift extraction
-│   ├── nullModel.ts     # Synthetic polar motion generator
 │   ├── parsing.ts       # Data parsing utilities
 │   └── types.ts         # Shared type definitions
 ├── store/               # Zustand state management
@@ -339,17 +336,17 @@ drift/
 1. **Polar Motion Visualization** - Plot xp/yp from IERS and inspect confinement, loops, and turning points
 2. **Drift Direction** - Track the dominant axis implied by the local geometry
 3. **Phase Diagnostics** - Read looping structure, angular velocity, and intermittency in phase space
-4. **Angle and Deviation Metrics** - Compare orientation measures and local anisotropy
+4. **Orthogonal Deviation and Lag Structure** - Compare local anisotropy, turning-point response, and conditional lag behavior
 5. **Geomagnetic Context** - Compare dashboard geometry with Kp/ap and related context without assuming causation
 6. **Transition Forecast** - Surface transition-like episodes using lag-conditioned historical structure
-7. **Planetary Overlay Context** - Compare drift/geomagnetic signals against DE442-derived Earth-geocentric planetary observables
+7. **Planetary Overlay Context** - Compare drift and related signals against DE442-derived Earth-geocentric planetary observables
 
 ## Data Pipeline
 
 ### Precomputed (offline, Python)
-- `scripts/build_inertia.py` - Process GRACE ℓ=2 to eigenframe JSON
-- `scripts/build_eop.py` - Parse IERS EOP data
-- `scripts/build_geomag.py` - Combine Kp/Dst/aa indices
+- `scripts/fetch_latest.py` - Refresh upstream source caches
+- `scripts/combine_data.py` - Merge observed source products into dashboard-ready JSON
+- `scripts/compute_rolling_stats.py` - Compute rolling diagnostics, lag models, and forecast inputs
 - `scripts/build_ephemeris.py` - Extract slim DE442 overlay series into daily JSON cache
 
 ### Live API (Next.js)
@@ -359,11 +356,11 @@ drift/
 - Primary fields: `t`, `xp`, `yp`.
 
 #### `GET /api/inertia`
-- Returns cached inertia-frame time series from `inertia_timeseries.json`.
+- Returns cached inertia-frame time series from `inertia_timeseries.json` when real upstream inputs are available.
 - Primary fields: `t`, `e1`, `e2`, `e3`.
 
 #### `GET /api/grace`
-- Returns cached GRACE / GRACE-FO mass-context series from `grace_historic.json`.
+- Returns cached GRACE / GRACE-FO mass-context series from `grace_historic.json` when real upstream inputs are available.
 - Primary fields: `t`, `lwe_mean`, `lwe_std`.
 
 #### `GET /api/geomag`
@@ -375,12 +372,12 @@ drift/
 - Use this when you want the underlying cached series without the extra normalization wrapper used by `/api/geomag`.
 
 #### `GET /api/combined`
-- Returns a lightweight merged series combining EOP with GRACE fields where dates overlap.
+- Returns a lightweight merged series combining EOP with any available real auxiliary fields where dates overlap.
 - Primary fields: `t`, `xp`, `yp`, optional `grace_lwe_mean`, `grace_lwe_std`.
 
 #### `GET /api/combined-full`
 - Returns the full combined dashboard dataset from `combined_historic.json`.
-- Primary fields include `t`, `xp`, `yp`, geomagnetic context, GRACE context, and inertia-frame vectors when available.
+- Primary fields include `t`, `xp`, `yp`, geomagnetic context, GRACE context, and inertia-frame vectors when available from real cached products.
 
 #### `GET /api/ephemeris`
 - Returns the cached DE442-derived Earth-geocentric overlay dataset.
@@ -394,10 +391,10 @@ drift/
 - Computes or serves cached rolling diagnostics from `compute_rolling_stats.py`.
 - Supported query params:
   `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, `conditionalTargetState`.
-- Returns rolling geometry and state outputs such as `theta`, `omega`, `rRatio`, `turningPoints`, `alignment`, `lagModel`, and `conditionalLagModel`.
+- Returns rolling geometry and state outputs such as `theta`, `omega`, `rRatio`, `turningPoints`, `lagModel`, and `conditionalLagModel`.
 
 #### `GET /api/transition-forecast`
-- Converts the latest cached conditional lag model into a forward transition probability curve.
+- Converts the requested lag-conditioned state kernel into a forward transition probability curve.
 - Supported query params:
   `currentState`, `theta`, `baseProb`, `smoothSigma`.
 - Returns `lags`, `P_tau`, `expected_time`, `peak_time`, `cumulative`, `alert_level`, and related forecast metadata.
@@ -416,10 +413,10 @@ Use the dashboard in this order when you want the most paper-aligned interpretat
 
 1. Start with `Polar Motion`, `Drift Direction`, and `R(t)` to assess the geometry itself.
 2. Use `Phase Portrait` and `Phase Diagnostics` to inspect fast-slow organization and intermittent behavior.
-3. Check the 3D and geomagnetic panels for timing context and comparative alignment.
+3. Check the 3D panel, overlays, and any available geomagnetic context for timing comparison.
 4. Read `Transition Forecast` as an exploratory summary of whether the current state resembles prior transition-like behavior.
 
-If a conclusion depends mainly on alignment with geomagnetic panels or on a single forecast peak, it is weaker than a conclusion supported by the geometric panels together.
+If a conclusion depends mainly on geomagnetic coincidence or on a single forecast peak, it is weaker than a conclusion supported by the geometric panels together.
 
 ## Tech Stack
 

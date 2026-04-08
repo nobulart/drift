@@ -11,7 +11,7 @@
 \maketitle
 
 \begin{abstract}
-We present the DRIFT (Directional Rotational Inference and Forecasting Toolkit) dashboard, a phase-space–based monitoring system for Earth’s polar motion. Departing from conventional additive forcing models, DRIFT adopts a geometry-first approach, identifying invariant structure directly from observational data. The system reveals a low-dimensional organization of polar motion, characterized by a dominant axis and a two-state regime structure. By embedding this structure into a real-time diagnostic and forecasting framework, DRIFT enables early detection of rotational transitions through phase-space deviations, lag-response structure, and alignment diagnostics. This work formalizes both the theoretical basis and implementation of DRIFT, and provides a panel-by-panel interpretation of its analytical components.
+We present the DRIFT (Directional Rotational Inference and Forecasting Toolkit) dashboard, a phase-space–based monitoring system for Earth’s polar motion. Departing from conventional additive forcing models, DRIFT adopts a geometry-first approach, identifying invariant structure directly from observational data. The system reveals a low-dimensional organization of polar motion, characterized by a dominant axis and a two-state regime structure. By embedding this structure into a real-time diagnostic and forecasting framework, DRIFT enables early detection of rotational transitions through phase-space deviations and lag-response structure. This work formalizes both the theoretical basis and implementation of DRIFT, and provides a panel-by-panel interpretation of its analytical components.
 \end{abstract}
 
 \section{Introduction}
@@ -66,7 +66,6 @@ The dashboard integrates:
 \begin{itemize}
 \item Time-series polar motion data
 \item Derived phase-space variables
-\item Geomagnetic proxies
 \item Lag-response modeling
 \item Real-time state inference
 \end{itemize}
@@ -95,11 +94,10 @@ Displays:
 \begin{itemize}
 \item Drift vector
 \item Principal axes ($e_1, e_2, e_3$)
-\item Geomagnetic dipole orientation
 \end{itemize}
 
 Interpretation:
-Small angular separations indicate coupling; divergence suggests decoupling or reorientation.
+Use this panel to inspect geometric reorientation and reference-frame consistency.
 
 \subsection{3. Polar Motion (XP, YP)}
 
@@ -125,31 +123,7 @@ Tracks longitude of drift axis over time.
 Interpretation:
 Sharp changes indicate structural reorganization.
 
-\subsection{5. Angle Diagnostics}
-
-Tracks relative angular relationships:
-
-\begin{itemize}
-\item $\theta_3$: orientation vs principal axis
-\item $\theta_{12}$: in-plane alignment
-\end{itemize}
-
-Interpretation:
-Spikes and clustering indicate instability or reorientation.
-
-\subsection{6. Alignment: Drift vs Geomagnetic}
-
-Compares drift axis to geomagnetic activity indices.
-
-\begin{itemize}
-\item Lower values = stronger alignment
-\item Overlays with Kp/ap indices
-\end{itemize}
-
-Interpretation:
-Coincident shifts suggest coupling between rotational and geomagnetic systems.
-
-\subsection{7. Phase Portrait ($\theta$ vs $\omega$)}
+\subsection{5. Phase Portrait ($\theta$ vs $\omega$)}
 
 Core diagnostic.
 
@@ -161,7 +135,7 @@ Core diagnostic.
 Interpretation:
 Topology change in loops signals regime shift.
 
-\subsection{8. Phase Diagnostics ($\theta(t), \omega(t)$)}
+\subsection{6. Phase Diagnostics ($\theta(t), \omega(t)$)}
 
 Time evolution of phase variables.
 
@@ -173,7 +147,7 @@ Time evolution of phase variables.
 Interpretation:
 Slowdowns and irregularities precede transitions.
 
-\subsection{9. Orthogonal Deviation Ratio $R(t)$}
+\subsection{7. Orthogonal Deviation Ratio $R(t)$}
 
 Measures anisotropy:
 
@@ -187,14 +161,14 @@ Interpretation:
 \item High $R(t)$: isotropic, unstable state
 \end{itemize}
 
-\subsection{10. Overlay Plot}
+\subsection{8. Overlay Plot}
 
 Normalized signals for comparison.
 
 Interpretation:
 Lead-lag relationships become visually apparent.
 
-\subsection{11. Lag Model}
+\subsection{9. Lag Model}
 
 Impulse-response estimate.
 
@@ -206,7 +180,7 @@ Impulse-response estimate.
 Interpretation:
 Positive excursions indicate structured response, not noise.
 
-\subsection{12. Conditional Lag Response}
+\subsection{10. Conditional Lag Response}
 
 Phase-conditioned lag structure.
 

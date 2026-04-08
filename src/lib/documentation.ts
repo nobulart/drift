@@ -30,8 +30,6 @@ export const DOCS_PANEL_GUIDES = [
   { title: '3D Vector View', guide: PANEL_GUIDES.sphere },
   { title: 'Polar Motion (XP, YP)', guide: PANEL_GUIDES.polar },
   { title: 'Drift Direction', guide: PANEL_GUIDES.drift },
-  { title: 'Angle Diagnostics', guide: PANEL_GUIDES.angle },
-  { title: 'Alignment: Drift vs Geomagnetic', guide: PANEL_GUIDES.coupling },
   { title: 'Phase Portrait', guide: PANEL_GUIDES.phase },
   { title: 'Phase Diagnostics', guide: PANEL_GUIDES.phaseDiag },
   { title: 'Orthogonal Deviation Ratio R(t)', guide: PANEL_GUIDES.ortho },
@@ -77,7 +75,7 @@ export const DOCS_OUTPUTS = [
   {
     title: 'Comparative external context',
     body:
-      'The 3D Vector View, Alignment panel, and overlays place the geometric diagnostics next to geomagnetic context. They are useful for timing comparisons and cross-checks, while keeping causal interpretation conservative.',
+      'The 3D Vector View and overlays place the geometric diagnostics next to any available external context. They are useful for timing comparisons and cross-checks, while keeping causal interpretation conservative.',
   },
   {
     title: 'Exploratory transition monitoring',

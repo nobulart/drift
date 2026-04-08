@@ -25,7 +25,7 @@ const sourceRows = [
     name: 'GRACE / GRACE-FO',
     cadence: 'Monthly',
     latency: 'About 1 month',
-    role: 'Mass-distribution context and derived structural products',
+    role: 'Optional mass-distribution context when current real products are available',
     href: 'https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4',
   },
   {
@@ -55,12 +55,12 @@ const apiRows = [
   },
   {
     route: '/api/inertia',
-    purpose: 'Cached inertia-frame eigenvector time series.',
+    purpose: 'Cached inertia-frame eigenvector time series when real inputs are available.',
     fields: 't, e1, e2, e3',
   },
   {
     route: '/api/grace',
-    purpose: 'Cached GRACE / GRACE-FO mass-context series.',
+    purpose: 'Cached GRACE / GRACE-FO mass-context series when real inputs are available.',
     fields: 't, lwe_mean, lwe_std',
   },
   {
@@ -75,13 +75,13 @@ const apiRows = [
   },
   {
     route: '/api/combined',
-    purpose: 'Lightweight merged EOP + GRACE view.',
+    purpose: 'Lightweight merged EOP view with any currently available real auxiliary series.',
     fields: 't, xp, yp, grace_lwe_mean, grace_lwe_std',
   },
   {
     route: '/api/combined-full',
     purpose: 'Full combined dashboard dataset used by the app.',
-    fields: 't, xp, yp, geomagnetic context, GRACE context, inertia vectors',
+    fields: 't, xp, yp, geomagnetic context, GRACE context, inertia vectors when available',
   },
   {
     route: '/api/ephemeris',
@@ -91,7 +91,7 @@ const apiRows = [
   {
     route: '/api/rolling-stats',
     purpose: 'On-demand or cached rolling diagnostics and lag models.',
-    fields: 'theta, omega, rRatio, turningPoints, alignment, lagModel, conditionalLagModel',
+    fields: 'theta, omega, rRatio, turningPoints, lagModel, conditionalLagModel',
   },
   {
     route: '/api/transition-forecast',
@@ -143,7 +143,7 @@ export default function DocsPage() {
             <ol className="mt-3 space-y-3 text-sm leading-6 text-[#cbd5e1]">
               <li>1. Start with Polar Motion, Drift Direction, and Orthogonal Deviation to judge whether the geometry is narrow, stable, and organized.</li>
               <li>2. Use Phase Portrait and Phase Diagnostics to inspect the fast cyclic structure and any bursts, slowdowns, or loop distortion.</li>
-              <li>3. Compare the 3D and geomagnetic panels for timing context, but keep causal interpretation conservative.</li>
+              <li>3. Compare the 3D view, overlays, and any available geomagnetic context for timing context, but keep causal interpretation conservative.</li>
               <li>4. Read Transition Forecast last as an exploratory summary of whether the present state resembles earlier transition-like episodes.</li>
             </ol>
           </div>
@@ -155,7 +155,7 @@ export default function DocsPage() {
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.5 Real Data Only</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Synthetic fallback series were removed from the active pipeline, and the unstable Angle Diagnostics and Alignment panels were taken out of the UI until their real-data-only replacements are ready.
+                Synthetic fallback series were removed from the active pipeline, the unstable Angle Diagnostics and Alignment panels were taken out of the UI, and the forecast/lag tooling now reads only the current real-data cache.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
@@ -215,8 +215,7 @@ export default function DocsPage() {
             <h2 className="text-lg font-bold text-white">Pipeline and Caching</h2>
             <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
               DRIFT separates source retrieval from UI delivery. Raw or semi-processed source products are normalized into local JSON artifacts,
-              mirrored for frontend access, and combined into cacheable outputs that API routes and panels can read consistently. Geomagnetic data
-              receive extra normalization so higher-frequency inputs become coherent daily records for the dashboard, which improves comparability but can hide some short-timescale detail.
+              mirrored for frontend access, and combined into cacheable outputs that API routes and panels can read consistently. The current app intentionally avoids synthetic fallback values, so missing upstream products remain absent rather than being fabricated in the UI layer.
             </p>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-[#cbd5e1]">
               {pipelineSteps.map((step, index) => (
@@ -318,7 +317,7 @@ export default function DocsPage() {
               peak time, short-horizon cumulative probability, and alert level, but they should be read as model-based summaries of historical structure rather than certified event predictions.
             </p>
             <div className="mt-4 rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4 text-sm leading-7 text-[#cbd5e1]">
-              <p className="font-mono text-[#93c5fd]">P(shift at tau) = P0 x L(tau | phase, state)</p>
+              <p className="font-mono text-[#93c5fd]">P(shift at tau) = P0 x L(tau | current phase, selected state)</p>
               <p className="mt-3">
                 Early peaks suggest the current state resembles earlier short-horizon transition episodes, later peaks imply a longer latent horizon, and flat responses indicate weaker transition-like structure in the recent calibration record.
               </p>

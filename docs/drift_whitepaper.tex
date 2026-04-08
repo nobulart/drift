@@ -129,15 +129,12 @@ The guiding rule is that cache products should be derived, inspectable, and repl
 The drift axis is a directional summary of evolving structure in the geodetic signal. It is tracked as a time series and displayed in both chart and 3D form. Longitude conventions used in the 3D diagnostics and the Drift Direction panel are unified so that the reported angle and rendered vector agree.
 
 \subsection{Geomagnetic Dipole Orientation and Strength}
-The system tracks geomagnetic dipole orientation as a vector time series. Where a fully physical dipole-moment source is unavailable, the dashboard can fall back to a derived axis and a strength proxy from geomagnetic activity. The dashboard explicitly labels the provenance of the displayed dipole series so the user can distinguish between a direct series and a derived fallback.
+The system tracks geomagnetic context when a real upstream series is available. In the current real-data-only configuration, unavailable geomagnetic-orientation products are omitted rather than replaced with derived fallback vectors.
 
 These geomagnetic products are included as timing and comparison context. Agreement with the drift axis or other geometric diagnostics is informative, but not by itself evidence of causal coupling.
 
 \subsection{Orthogonal Deviation Ratio}
 The orthogonal deviation ratio $R(t)$ summarizes how balanced or elongated the inferred structure is. Values nearer one indicate a more even distribution across orthogonal directions, while lower values indicate a more anisotropic or elongated state. The panel is intended as a regime-structure indicator rather than a direct event detector.
-
-\subsection{Angle Diagnostics}
-The angle diagnostics panel compares relative angular measures such as out-of-plane tilt and in-plane alignment. These quantities are useful for spotting sustained drifts, abrupt bends, repeated crossings, or changes in coherence between the drift vector and the principal frame.
 
 \subsection{Transition Forecasting}
 Rather than reducing the forecast to a single probability, DRIFT computes a time-resolved forecast curve. This allows the user to inspect:
@@ -174,11 +171,10 @@ This panel is the geometric synthesis layer. It shows:
 \begin{itemize}[leftmargin=1.5em]
   \item the drift vector,
   \item a physically anchored reference triad,
-  \item the geomagnetic dipole,
   \item recent vector paths with angular-velocity-aware coloring.
 \end{itemize}
 
-Small angular separations suggest closer directional agreement. Rapidly recolored path segments indicate faster reorientation and therefore deserve closer comparison with the chart-based diagnostics. Visual proximity alone should not be taken as proof of coupling.
+Rapidly recolored path segments indicate faster reorientation and therefore deserve closer comparison with the chart-based diagnostics.
 
 \subsection{Polar Motion}
 Polar motion remains the core observational context. The panel is useful for identifying long arcs, curvature changes, turning points, and changes in excursion amplitude. It provides the raw temporal substrate on which several derived diagnostics depend.
@@ -189,8 +185,8 @@ This plot tracks the longitude of the drift axis through time. Persistent slope 
 \subsection{Conditional Lag Response}
 This panel reports lag-conditioned behavior under user-selected state assumptions. The state selector is intended to alter the underlying data model rather than merely rename the plot, allowing comparison between different conditional regimes.
 
-\subsection{Coupling and Auxiliary Panels}
-Additional panels such as coupling plots, phase portraits, and orthogonal deviation are meant to provide context and cross-validation. A meaningful interpretation typically emerges when multiple panels tell the same story: for example, geometric confinement, coherent loop structure, drift-axis migration, and then only secondarily any matching geomagnetic change.
+\subsection{Auxiliary Panels}
+Additional panels such as phase portraits, lag diagnostics, overlays, and orthogonal deviation are meant to provide context and cross-validation. A meaningful interpretation typically emerges when multiple panels tell the same story: for example, geometric confinement, coherent loop structure, drift-axis migration, and then only secondarily any matching external change.
 
 \section{User Interaction Model}
 The dashboard interface is designed to support exploratory interpretation without manual reconfiguration overhead:
@@ -217,17 +213,16 @@ The dashboard is not intended to provide deterministic causal claims from a sing
 \begin{enumerate}[leftmargin=1.5em]
   \item begin with Polar Motion, Drift Direction, and Orthogonal Deviation to assess the geometry itself,
   \item inspect the phase panels for loop structure, bursts, and fast-slow organization,
-  \item use the 3D and geomagnetic panels for contextual comparison,
+  \item use the 3D and overlay panels for contextual comparison,
   \item read the Transition Forecast as an exploratory summary of transition-like risk in the current state.
 \end{enumerate}
 
 \section{Current Limitations}
 Several limits are important:
 \begin{itemize}[leftmargin=1.5em]
-  \item some geomagnetic strength reporting remains proxy-based rather than a full physical dipole-moment estimate,
   \item forecast outputs depend on the quality and stability of the rolling diagnostic layer,
   \item directional alignment and apparent axis stability are weaker claims than the geometric structure itself,
-  \item geomagnetic comparisons provide context rather than standalone evidence of causation,
+  \item auxiliary context panels provide comparison evidence rather than standalone proof of causation,
   \item daily normalization of some source products improves coherence but can suppress higher-frequency detail,
   \item automated freshness still depends on upstream source availability and stable endpoint behavior,
   \item conclusions are tied to the observational window represented in the available record.
