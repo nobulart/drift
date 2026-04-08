@@ -320,9 +320,54 @@ drift/
 - `scripts/build_ephemeris.py` - Extract slim DE442 overlay series into daily JSON cache
 
 ### Live API (Next.js)
-- `/api/eop` - Fetch latest IERS rapid data
-- `/api/geomag` - Fetch NOAA indices
-- `/api/combined` - Merge static + live data
+
+#### `GET /api/eop`
+- Returns cached historical Earth Orientation Parameters from `eop_historic.json`.
+- Primary fields: `t`, `xp`, `yp`.
+
+#### `GET /api/inertia`
+- Returns cached inertia-frame time series from `inertia_timeseries.json`.
+- Primary fields: `t`, `e1`, `e2`, `e3`.
+
+#### `GET /api/grace`
+- Returns cached GRACE / GRACE-FO mass-context series from `grace_historic.json`.
+- Primary fields: `t`, `lwe_mean`, `lwe_std`.
+
+#### `GET /api/geomag`
+- Returns normalized daily GFZ geomagnetic records derived from `geomag_gfz_kp.json`.
+- Primary fields: `t`, `kp`, `ap`, `cp`, `c9`.
+
+#### `GET /api/geomag-gfz`
+- Returns the raw cached GFZ geomagnetic history from `geomag_gfz_kp.json`.
+- Use this when you want the underlying cached series without the extra normalization wrapper used by `/api/geomag`.
+
+#### `GET /api/combined`
+- Returns a lightweight merged series combining EOP with GRACE fields where dates overlap.
+- Primary fields: `t`, `xp`, `yp`, optional `grace_lwe_mean`, `grace_lwe_std`.
+
+#### `GET /api/combined-full`
+- Returns the full combined dashboard dataset from `combined_historic.json`.
+- Primary fields include `t`, `xp`, `yp`, geomagnetic context, GRACE context, and inertia-frame vectors when available.
+
+#### `GET /api/ephemeris`
+- Returns the cached DE442-derived Earth-geocentric overlay dataset.
+- Current cache window: `1973-01-02` through `2050-12-31`.
+- Primary payload shape:
+  `source` metadata plus `records[]`, where each record has `t` and `bodies`.
+- Per-body overlay metrics currently exposed:
+  `distance_au`, `angular_velocity_deg_per_day`, `radial_velocity_km_s`, `ecliptic_longitude_deg`, `torque_proxy`.
+
+#### `GET /api/rolling-stats`
+- Computes or serves cached rolling diagnostics from `compute_rolling_stats.py`.
+- Supported query params:
+  `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, `conditionalTargetState`.
+- Returns rolling geometry and state outputs such as `theta`, `omega`, `rRatio`, `turningPoints`, `alignment`, `lagModel`, and `conditionalLagModel`.
+
+#### `GET /api/transition-forecast`
+- Converts the latest cached conditional lag model into a forward transition probability curve.
+- Supported query params:
+  `currentState`, `theta`, `baseProb`, `smoothSigma`.
+- Returns `lags`, `P_tau`, `expected_time`, `peak_time`, `cumulative`, `alert_level`, and related forecast metadata.
 
 ## Math Overview
 

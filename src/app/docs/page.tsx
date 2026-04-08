@@ -47,6 +47,59 @@ const pipelineSteps = [
   'Render synchronized interactive panels in the browser.',
 ];
 
+const apiRows = [
+  {
+    route: '/api/eop',
+    purpose: 'Historical Earth Orientation Parameters cache.',
+    fields: 't, xp, yp',
+  },
+  {
+    route: '/api/inertia',
+    purpose: 'Cached inertia-frame eigenvector time series.',
+    fields: 't, e1, e2, e3',
+  },
+  {
+    route: '/api/grace',
+    purpose: 'Cached GRACE / GRACE-FO mass-context series.',
+    fields: 't, lwe_mean, lwe_std',
+  },
+  {
+    route: '/api/geomag',
+    purpose: 'Normalized daily GFZ geomagnetic records.',
+    fields: 't, kp, ap, cp, c9',
+  },
+  {
+    route: '/api/geomag-gfz',
+    purpose: 'Raw cached GFZ geomagnetic history.',
+    fields: 't, kp, ap, cp, c9',
+  },
+  {
+    route: '/api/combined',
+    purpose: 'Lightweight merged EOP + GRACE view.',
+    fields: 't, xp, yp, grace_lwe_mean, grace_lwe_std',
+  },
+  {
+    route: '/api/combined-full',
+    purpose: 'Full combined dashboard dataset used by the app.',
+    fields: 't, xp, yp, geomagnetic context, GRACE context, inertia vectors',
+  },
+  {
+    route: '/api/ephemeris',
+    purpose: 'DE442 Earth-geocentric overlay cache for 1973-01-02 through 2050-12-31.',
+    fields: 'source metadata, records[].bodies[bodyKey].distance_au/angular_velocity_deg_per_day/radial_velocity_km_s/ecliptic_longitude_deg/torque_proxy',
+  },
+  {
+    route: '/api/rolling-stats',
+    purpose: 'On-demand or cached rolling diagnostics and lag models.',
+    fields: 'theta, omega, rRatio, turningPoints, alignment, lagModel, conditionalLagModel',
+  },
+  {
+    route: '/api/transition-forecast',
+    purpose: 'Forward transition probability summary derived from conditional lag structure.',
+    fields: 'lags, P_tau, expected_time, peak_time, cumulative, alert_level',
+  },
+];
+
 export default function DocsPage() {
   return (
     <main className="min-h-screen bg-[#0b1220] px-6 py-8 text-[#e5e7eb]">
@@ -175,6 +228,33 @@ export default function DocsPage() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
+          <h2 className="text-lg font-bold text-white">API Endpoints</h2>
+          <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
+            These routes are the app&apos;s local JSON and analysis surface. Most of the data routes serve cached pipeline artifacts, while the analysis routes compute or reuse cached derived products on demand.
+          </p>
+          <div className="mt-4 space-y-4">
+            {apiRows.map((row) => (
+              <article key={row.route} className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <code className="text-sm font-semibold text-[#93c5fd]">{row.route}</code>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">{row.purpose}</p>
+                <p className="mt-2 text-xs leading-5 text-[#9ca3af]">Key fields: {row.fields}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-4 rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4 text-sm leading-6 text-[#cbd5e1]">
+            <p>Analysis query routes accept URL parameters.</p>
+            <p className="mt-2 text-xs text-[#9ca3af]">
+              `/api/rolling-stats` accepts `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, and `conditionalTargetState`.
+            </p>
+            <p className="mt-2 text-xs text-[#9ca3af]">
+              `/api/transition-forecast` accepts `currentState`, `theta`, `baseProb`, and `smoothSigma`.
+            </p>
           </div>
         </section>
 
