@@ -5,18 +5,22 @@ import Plot from 'react-plotly.js';
 import { useStore } from '@/store/useStore';
 import { LagKernel, TransitionForecast } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { computeTransitionForecast } from '@/lib/transitionForecast';
 
 export default function TransitionForecastPanel() {
   const [lagKernel, setLagKernel] = useState<LagKernel | null>(null);
-  const [forecast, setForecast] = useState<TransitionForecast | null>(null);
+  const [conditionalLagModel, setConditionalLagModel] = useState<any | null>(null);
   const [currentState, setCurrentState] = useState<number>(1);
   const [baseProb, setBaseProb] = useState<number>(0.5);
+  const [loadingKernel, setLoadingKernel] = useState(false);
+  const [kernelError, setKernelError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number | undefined>(undefined);
   const plotHeight = usePlotDisplayHeight(400, 720);
 
   const rollingStats = useStore(state => state.rollingStats);
-  const theta3 = useStore(state => state.theta3);
+  const windowSize = useStore(state => state.windowSize);
+  const turnThreshold = useStore(state => state.turnThreshold);
   const data = useStore(state => state.data);
   const presentTimeIndex = useMemo(() => {
     return data.length > 0 ? data.length - 1 : -1;
@@ -39,35 +43,66 @@ export default function TransitionForecastPanel() {
   }, []);
 
   useEffect(() => {
-    if (rollingStats?.conditionalLagModel) {
-      const kernel = convertToLagKernel(rollingStats.conditionalLagModel);
-      setLagKernel(kernel);
+    const latestState = rollingStats?.state?.[rollingStats.state.length - 1];
+    if (typeof latestState === 'number' && Number.isFinite(latestState)) {
+      setCurrentState(latestState);
     }
   }, [rollingStats]);
 
   useEffect(() => {
-    if (lagKernel && theta3.length > 0) {
-      const currentTheta = theta3[presentTimeIndex] || 0;
-      fetchForecast(currentTheta, currentState, baseProb);
-    }
-  }, [lagKernel, theta3, presentTimeIndex, currentState, baseProb]);
+    const loadConditionalLag = async () => {
+      setLoadingKernel(true);
+      setKernelError(null);
+      try {
+        const params = new URLSearchParams({
+          conditionalTargetState: String(currentState),
+          windowSize: String(windowSize),
+          turnThreshold: String(turnThreshold),
+        });
+        const response = await fetch(`/api/rolling-stats?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`Failed to load lag kernel for state ${currentState}`);
+        }
 
-  const fetchForecast = async (theta: number, state: number, baseP: number) => {
-    try {
-      const url = new URL('/api/transition-forecast', window.location.origin);
-      url.searchParams.set('currentState', state.toString());
-      url.searchParams.set('theta', theta.toString());
-      url.searchParams.set('baseProb', baseP.toString());
-      
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        setForecast(data);
+        const stats = await response.json();
+        setConditionalLagModel(stats.conditionalLagModel || null);
+      } catch (err) {
+        setConditionalLagModel(null);
+        setKernelError(err instanceof Error ? err.message : 'Failed to load lag kernel');
+      } finally {
+        setLoadingKernel(false);
       }
-    } catch (err) {
-      console.error('Failed to fetch forecast:', err);
+    };
+
+    loadConditionalLag();
+  }, [currentState, turnThreshold, windowSize]);
+
+  useEffect(() => {
+    if (!conditionalLagModel) {
+      setLagKernel(null);
+      return;
     }
-  };
+
+    setLagKernel(convertToLagKernel(conditionalLagModel));
+  }, [conditionalLagModel]);
+
+  const currentTheta = useMemo(() => {
+    const thetaSeries = rollingStats?.theta;
+    if (!thetaSeries || thetaSeries.length === 0) {
+      return 0;
+    }
+
+    const candidateIndex = presentTimeIndex >= 0 ? Math.min(presentTimeIndex, thetaSeries.length - 1) : thetaSeries.length - 1;
+    return thetaSeries[candidateIndex] ?? thetaSeries[thetaSeries.length - 1] ?? 0;
+  }, [presentTimeIndex, rollingStats]);
+
+  const forecast = useMemo<TransitionForecast | null>(() => {
+    if (!lagKernel) {
+      return null;
+    }
+
+    return computeTransitionForecast(currentTheta, currentState, lagKernel, baseProb);
+  }, [baseProb, currentState, currentTheta, lagKernel]);
 
   const stateLabels = ['Stable', 'Pre', 'Transition', 'Post'];
   const expectedDateLabel = useMemo(() => {
@@ -168,10 +203,26 @@ export default function TransitionForecastPanel() {
 
   const stateColors = ['#10b981', '#f59e0b', '#ef4444', '#6b7280'];  // emerald, amber, red, gray
 
-  if (!rollingStats || !lagKernel) {
+  if (!rollingStats || loadingKernel) {
     return (
       <div className="p-4 bg-[#0b1220]">
-        <p className="text-[#9ca3af]">Waiting for rolling statistics...</p>
+        <p className="text-[#9ca3af]">Loading transition forecast...</p>
+      </div>
+    );
+  }
+
+  if (kernelError) {
+    return (
+      <div className="p-4 bg-[#0b1220]">
+        <p className="text-red-400">{kernelError}</p>
+      </div>
+    );
+  }
+
+  if (!lagKernel || !forecast) {
+    return (
+      <div className="p-4 bg-[#0b1220]">
+        <p className="text-[#9ca3af]">No transition forecast is available from the current lag model.</p>
       </div>
     );
   }

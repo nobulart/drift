@@ -43,10 +43,10 @@ export function predictTransitionCurve(
     };
   }
   
-  // Map state to phase bin
-  // States 0-3 map to phase bins representing dynamical regimes
   const n_phases = Math.max(lagKernel.n_phases, phase_bins.length - 1);
-  const phase_idx = Math.min(state_now, n_phases - 1);
+  const phase_idx = phase_bins.length > 1
+    ? getPhaseBin(theta_now, phase_bins)
+    : Math.min(state_now, n_phases - 1);
   
   // Get lag distribution for this phase
   const L: number[] = [];

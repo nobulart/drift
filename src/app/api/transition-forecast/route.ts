@@ -120,7 +120,9 @@ export async function GET(request: NextRequest) {
     }
     
     // Compute transition forecast
-    const phase_idx = Math.min(params.currentState, n_phases - 1);
+    const phase_idx = phase_bins.length > 1
+      ? getPhaseBin(params.theta, phase_bins)
+      : Math.min(params.currentState, n_phases - 1);
     const L = lagKernel.map(row => row[phase_idx] || 0);
     
     // Combine with base probability
@@ -203,6 +205,12 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function getPhaseBin(theta: number, phaseBins: number[]): number {
+  let idx = phaseBins.findIndex((bin) => theta < bin) - 1;
+  idx = Math.max(0, Math.min(idx, phaseBins.length - 2));
+  return idx;
 }
 
 /**
