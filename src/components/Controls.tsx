@@ -176,9 +176,6 @@ export default function Controls({
             <p className="mt-1 text-sm font-semibold text-white">{maxDate}</p>
           </div>
         </div>
-        <p className="rounded-lg border border-[#374151] bg-[#0b1220]/60 px-3 py-2 text-xs leading-relaxed text-[#9ca3af]">
-          Time lock is <span className="font-semibold text-white">{timeLockEnabled ? 'enabled' : 'disabled'}</span>. Use this area as a quick read of the active analysis scope before diving into individual panels.
-        </p>
       </SidebarSection>
 
       <SidebarSection title="Data Settings" open={sectionOpen.dataSettings} onToggle={() => toggleSection('dataSettings')}>

@@ -2,7 +2,7 @@ export const PANEL_GUIDES: Record<string, string> = {
   forecast:
     'Exploratory transition-risk view derived from lag-conditioned historical structure. Rising probability or earlier peaks suggest the current state resembles past transition episodes, but this is not a deterministic forecast.',
   sphere:
-    'Compare the drift axis, principal frame, and geomagnetic reference in one Earth-fixed view. Use it to inspect geometry and reorientation, not to assume causal coupling from visual proximity alone.',
+    'Compare the drift axis and principal frame in one Earth-fixed view. Use it to inspect geometry and reorientation across the observed record.',
   polar:
     'Observed polar-motion trajectory in xp-yp space. Look for narrow-band confinement, turning points, loop structure, and changes in clustering or excursion shape.',
   drift:

@@ -442,10 +442,10 @@ const Arrow = memo(function Arrow({ vector, color }: { vector: [number, number, 
 });
 
 const Scene = memo(function Scene({
-  driftAxis, driftDisplayAxis, e1, e2, e3, geomagneticAxis, geomagneticDisplayAxis, geomagneticStrength = 1, showDrift, showE1, showE2, showE3, autoRotate, rotationSpeed = 0.5, paths = {},
+  driftAxis, driftDisplayAxis, e1, e2, e3, showDrift, showE1, showE2, showE3, autoRotate, rotationSpeed = 0.5, paths = {},
 }: {
   driftAxis: [number, number, number]; driftDisplayAxis: [number, number, number]; e1: [number, number, number]; e2: [number, number, number]; e3: [number, number, number];
-  geomagneticAxis?: [number, number, number] | null; geomagneticDisplayAxis?: [number, number, number] | null; geomagneticStrength?: number; showDrift: boolean; showE1: boolean; showE2: boolean; showE3: boolean; autoRotate: boolean; rotationSpeed?: number; paths?: Partial<PathMap>;
+  showDrift: boolean; showE1: boolean; showE2: boolean; showE3: boolean; autoRotate: boolean; rotationSpeed?: number; paths?: Partial<PathMap>;
 }) {
   const isPlaying = useStore((state) => state.isPlaying);
 
@@ -466,17 +466,6 @@ const Scene = memo(function Scene({
       <VectorArrow vector={e2} color="#55ff55" label="e2" visible={showE2} pathData={paths['e2']} isAnimating={isPlaying} />
       <VectorArrow vector={e3} color="#5555ff" label="e3 (Rotation)" visible={showE3} pathData={paths['e3']} isAnimating={isPlaying} />
       <VectorArrow vector={driftDisplayAxis} color="#ffaa00" label="Drift" visible={showDrift} pathData={paths['drift']} isAnimating={isPlaying} />
-      {/* Geomagnetic axis (cyan) */}
-      {geomagneticDisplayAxis && (
-        <VectorArrow
-          vector={geomagneticDisplayAxis.map((component) => component * geomagneticStrength) as [number, number, number]}
-          color="#00ffff"
-          label="Geomagnetic Dipole"
-          visible={true}
-          pathData={paths['geomagnetic']}
-          isAnimating={isPlaying}
-        />
-      )}
     </>
   );
 });
@@ -661,12 +650,6 @@ export default function SphereView({
           <span>{timestamp}</span>
           <span className="text-gray-400">Drift Lon / Lat</span>
           <span>{driftLongitude.toFixed(1)}° / {driftSpherical.lat.toFixed(1)}°</span>
-          <span className="text-gray-400">Dipole Lon / Lat</span>
-          <span>{geomagneticSpherical && geomagneticLongitude !== null ? `${geomagneticLongitude.toFixed(1)}° / ${geomagneticSpherical.lat.toFixed(1)}°` : 'Unavailable'}</span>
-          <span className="text-gray-400">Strength Proxy</span>
-          <span>{geomagneticStrength.toFixed(2)}</span>
-          <span className="text-gray-400">Source</span>
-          <span>{currentSample?.geomagnetic_axis ? 'Geomagnetic series' : 'Unavailable'}</span>
         </div>
       </div>
       <div className={`absolute z-10 rounded-xl border border-gray-700 bg-gray-900/80 p-4 backdrop-blur-sm ${isMobileViewport ? 'bottom-4 left-4 right-4 flex flex-col gap-3' : 'bottom-6 left-1/2 flex w-3/4 -translate-x-1/2 items-center gap-6'}`}>
@@ -714,7 +697,7 @@ export default function SphereView({
         performance={{ min: 0.5 }}
         camera={{ position: [0, 0, 3], fov: 50 }}
       >
-        <Scene driftAxis={displayDriftAxis} driftDisplayAxis={driftDisplayAxis} e1={physicalBasis.e1} e2={physicalBasis.e2} e3={physicalBasis.e3} geomagneticAxis={geomagneticAxis} geomagneticDisplayAxis={geomagneticDisplayAxis} geomagneticStrength={geomagneticStrength} showDrift={showDrift} showE1={showE1} showE2={showE2} showE3={showE3} autoRotate={autoRotate} paths={paths} />
+        <Scene driftAxis={displayDriftAxis} driftDisplayAxis={driftDisplayAxis} e1={physicalBasis.e1} e2={physicalBasis.e2} e3={physicalBasis.e3} showDrift={showDrift} showE1={showE1} showE2={showE2} showE3={showE3} autoRotate={autoRotate} paths={paths} />
       </Canvas>
     </div>
   );
