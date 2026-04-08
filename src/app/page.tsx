@@ -25,8 +25,39 @@ const TransitionForecastPanel = dynamic(() => import('@/components/TransitionFor
 const ResponsiveGrid = dynamic(() => import('@/components/ResponsiveGrid'), { ssr: false });
 const Panel = dynamic(() => import('@/components/LayoutPanel'), { ssr: false });
 
+function LoadingScreen({ progress }: { progress: number }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center overflow-hidden bg-black px-6">
+      <div className="relative w-full max-w-md rounded-3xl border border-cyan-500/20 bg-slate-950/90 p-8 shadow-[0_0_60px_rgba(34,211,238,0.08)]">
+        <div className="pointer-events-none absolute inset-0 rounded-3xl bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.16),transparent_55%)]" />
+        <div className="relative">
+          <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.34em] text-cyan-300/80">
+            <span>Initializing Drift</span>
+            <span>{progress}%</span>
+          </div>
+          <div className="mb-4 h-2 overflow-hidden rounded-full bg-slate-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-sky-400 to-blue-500 transition-[width] duration-300 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="mb-5 flex items-center justify-center gap-2">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-400" />
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sky-400 [animation-delay:180ms]" />
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-blue-400 [animation-delay:360ms]" />
+          </div>
+          <p className="text-center text-sm text-slate-300">
+            Loading observational series, merging frames, and preparing diagnostics.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(12);
   const [error, setError] = useState<string | null>(null);
   const sidebarOpen = true;
   const [rollingStatsLoaded, setRollingStatsLoaded] = useState(false);
@@ -81,6 +112,26 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!loading) {
+      setLoadingProgress(100);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setLoadingProgress((current) => {
+        if (current >= 92) {
+          return current;
+        }
+
+        const next = current + Math.max(1, Math.round((96 - current) / 7));
+        return Math.min(next, 92);
+      });
+    }, 180);
+
+    return () => window.clearInterval(interval);
+  }, [loading]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
@@ -115,7 +166,7 @@ export default function Home() {
 
   const datesStr = data.map((d) => d.t.slice(0, 10));
 
-  if (loading) return <div className="p-4">Loading data...</div>;
+  if (loading) return <LoadingScreen progress={loadingProgress} />;
   if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
   if (data.length === 0) return <div className="p-4">No data available</div>;
 
@@ -304,7 +355,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.3
+                Version v1.4
               </p>
             </div>
             <Link

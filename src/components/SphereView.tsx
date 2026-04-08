@@ -2,7 +2,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Text, PerspectiveCamera } from "@react-three/drei";
-import { memo, useState, useMemo, useRef, useEffect } from "react";
+import { memo, useState, useMemo, useRef, useEffect, useDeferredValue } from "react";
 import * as THREE from "three";
 import { useStore } from '@/store/useStore';
 import { computePhysicalBasis, driftAxisLongitude, rotateZ, toSpherical, vectorLongitudeChart } from '@/lib/transforms';
@@ -75,6 +75,14 @@ type Vec3 = [number, number, number];
 type PathSample = {
   t: number;
   vector: Vec3;
+};
+
+type PathMap = {
+  e1: PathSample[];
+  e2: PathSample[];
+  e3: PathSample[];
+  drift: PathSample[];
+  geomagnetic: PathSample[];
 };
 
 function toThreeVector(vector: Vec3): THREE.Vector3 {
@@ -277,7 +285,14 @@ function angularVelocity(a: THREE.Vector3, b: THREE.Vector3, dt: number) {
 
 function buildDiagnosticPath(
   samples: PathSample[],
-  options?: { allowFlip?: boolean; maxAngleDeg?: number; targetPoints?: number; lift?: number }
+  options?: {
+    allowFlip?: boolean;
+    maxAngleDeg?: number;
+    targetPoints?: number;
+    lift?: number;
+    slerpSteps?: number;
+    smoothPoints?: number;
+  }
 ) {
   if (samples.length <= 1) {
     return null;
@@ -289,7 +304,7 @@ function buildDiagnosticPath(
   const filtered = filterJumps(resampled, options?.maxAngleDeg ?? 20);
   const greatCircle = buildSlerpPath(
     filtered.map((sample) => toThreeVector(sample.vector).normalize()),
-    6
+    options?.slerpSteps ?? 6
   ).map((point) => point.multiplyScalar(options?.lift ?? 1.015));
 
   if (greatCircle.length <= 1) {
@@ -297,7 +312,7 @@ function buildDiagnosticPath(
   }
 
   const curve = new THREE.CatmullRomCurve3(greatCircle, false, 'centripetal', 0.5);
-  const smooth = curve.getPoints(Math.max(greatCircle.length * 4, 64));
+  const smooth = curve.getPoints(Math.max(greatCircle.length * 4, options?.smoothPoints ?? 64));
   const geometry = new THREE.BufferGeometry().setFromPoints(smooth);
   const colors: number[] = [];
   const totalDuration = Math.max(filtered[filtered.length - 1].t - filtered[0].t, 1e-6);
@@ -325,7 +340,15 @@ function buildDiagnosticPath(
   return geometry;
 }
 
-const VectorArrow = memo(function VectorArrow({ vector, color, label, visible, positionOffset = [0, 0, 0], pathData = [] }: VectorArrowProps) {
+const VectorArrow = memo(function VectorArrow({
+  vector,
+  color,
+  label,
+  visible,
+  positionOffset = [0, 0, 0],
+  pathData = [],
+  isAnimating = false,
+}: VectorArrowProps & { isAnimating?: boolean }) {
   const [hovered, setHovered] = useState(false);
   const vecArray = vector as number[];
   const offset = positionOffset as [number, number, number];
@@ -337,12 +360,14 @@ const VectorArrow = memo(function VectorArrow({ vector, color, label, visible, p
     const geometry = buildDiagnosticPath(pathData, {
       allowFlip: label === 'e1' || label === 'e2',
       maxAngleDeg: label === 'Geomagnetic Dipole' ? 14 : 22,
-      targetPoints: 30,
+      targetPoints: isAnimating ? 18 : 30,
       lift: label === 'Geomagnetic Dipole' ? 1.025 : 1.015,
+      slerpSteps: isAnimating ? 4 : 6,
+      smoothPoints: isAnimating ? 40 : 64,
     });
 
     return geometry;
-  }, [label, pathData]);
+  }, [isAnimating, label, pathData]);
 
   if (!visible) return null;
 
@@ -420,8 +445,10 @@ const Scene = memo(function Scene({
   driftAxis, driftDisplayAxis, e1, e2, e3, geomagneticAxis, geomagneticDisplayAxis, geomagneticStrength = 1, showDrift, showE1, showE2, showE3, autoRotate, rotationSpeed = 0.5, paths = {},
 }: {
   driftAxis: [number, number, number]; driftDisplayAxis: [number, number, number]; e1: [number, number, number]; e2: [number, number, number]; e3: [number, number, number];
-  geomagneticAxis?: [number, number, number] | null; geomagneticDisplayAxis?: [number, number, number] | null; geomagneticStrength?: number; showDrift: boolean; showE1: boolean; showE2: boolean; showE3: boolean; autoRotate: boolean; rotationSpeed?: number; paths?: { [key: string]: PathSample[] };
+  geomagneticAxis?: [number, number, number] | null; geomagneticDisplayAxis?: [number, number, number] | null; geomagneticStrength?: number; showDrift: boolean; showE1: boolean; showE2: boolean; showE3: boolean; autoRotate: boolean; rotationSpeed?: number; paths?: Partial<PathMap>;
 }) {
+  const isPlaying = useStore((state) => state.isPlaying);
+
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 0, 3]} fov={50} />
@@ -435,10 +462,10 @@ const Scene = memo(function Scene({
         <sphereGeometry args={[0.5, 32, 32]} />
         <meshStandardMaterial color="#1a365d" roughness={0.3} metalness={0.1} wireframe />
       </mesh>
-      <VectorArrow vector={e1} color="#ff5555" label="e1" visible={showE1} pathData={paths['e1']} />
-      <VectorArrow vector={e2} color="#55ff55" label="e2" visible={showE2} pathData={paths['e2']} />
-      <VectorArrow vector={e3} color="#5555ff" label="e3 (Rotation)" visible={showE3} pathData={paths['e3']} />
-      <VectorArrow vector={driftDisplayAxis} color="#ffaa00" label="Drift" visible={showDrift} pathData={paths['drift']} />
+      <VectorArrow vector={e1} color="#ff5555" label="e1" visible={showE1} pathData={paths['e1']} isAnimating={isPlaying} />
+      <VectorArrow vector={e2} color="#55ff55" label="e2" visible={showE2} pathData={paths['e2']} isAnimating={isPlaying} />
+      <VectorArrow vector={e3} color="#5555ff" label="e3 (Rotation)" visible={showE3} pathData={paths['e3']} isAnimating={isPlaying} />
+      <VectorArrow vector={driftDisplayAxis} color="#ffaa00" label="Drift" visible={showDrift} pathData={paths['drift']} isAnimating={isPlaying} />
       {/* Geomagnetic axis (cyan) */}
       {geomagneticDisplayAxis && (
         <VectorArrow
@@ -447,6 +474,7 @@ const Scene = memo(function Scene({
           label="Geomagnetic Dipole"
           visible={true}
           pathData={paths['geomagnetic']}
+          isAnimating={isPlaying}
         />
       )}
     </>
@@ -462,20 +490,38 @@ export default function SphereView({
   const containerRef = useRef<HTMLDivElement>(null);
   const { data, currentTimeIndex, setCurrentTimeIndex, isPlaying, setIsPlaying, playbackSpeed, setPlaybackSpeed, driftAxisTimeSeries } = useStore();
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const deferredTimeIndex = useDeferredValue(currentTimeIndex);
   
   useEffect(() => {
     if (!isPlaying) return;
-    const interval = setInterval(() => {
-      setCurrentTimeIndex((prev: number) => {
-        const next = prev + Math.round(playbackSpeed);
-        return next >= data.length ? 0 : next;
-      });
-    }, 100);
-    return () => clearInterval(interval);
-  }, [isPlaying, data.length, setCurrentTimeIndex, playbackSpeed]);
+    if (data.length <= 1) return;
 
-  // Actually, playback speed should probably control the interval or the step.
-  // Let's re-implement the effect properly in a second a bit more carefully.
+    let animationFrame = 0;
+    let previousTime: number | null = null;
+    let accumulatedSteps = 0;
+    const samplesPerSecond = 10 * playbackSpeed;
+
+    const tick = (time: number) => {
+      if (previousTime === null) {
+        previousTime = time;
+      }
+
+      const deltaSeconds = Math.min((time - previousTime) / 1000, 0.25);
+      previousTime = time;
+      accumulatedSteps += deltaSeconds * samplesPerSecond;
+
+      const wholeSteps = Math.floor(accumulatedSteps);
+      if (wholeSteps > 0) {
+        accumulatedSteps -= wholeSteps;
+        setCurrentTimeIndex((prev: number) => (prev + wholeSteps) % data.length);
+      }
+
+      animationFrame = window.requestAnimationFrame(tick);
+    };
+
+    animationFrame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isPlaying, data.length, setCurrentTimeIndex, playbackSpeed]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -508,6 +554,22 @@ export default function SphereView({
   const driftSpherical = toSpherical(displayDriftAxis);
   const driftLongitude = driftAxisLongitude(displayDriftAxis);
   const geomagneticLongitude = geomagneticAxis ? vectorLongitudeChart(geomagneticAxis) : null;
+  const stepBy = (delta: number) => {
+    if (data.length === 0) {
+      return;
+    }
+
+    setCurrentTimeIndex((prev: number) => THREE.MathUtils.clamp(prev + delta, 0, data.length - 1));
+  };
+
+  const jumpTo = (index: number) => {
+    if (data.length === 0) {
+      return;
+    }
+
+    setCurrentTimeIndex(THREE.MathUtils.clamp(index, 0, data.length - 1));
+  };
+
   const physicalBasis = useMemo(() => {
     if (!geomagneticSpherical) {
       return {
@@ -523,54 +585,64 @@ export default function SphereView({
   const driftDisplayAxis = rotateZ(displayDriftAxis, 90) as [number, number, number];
   const geomagneticDisplayAxis = geomagneticAxis;
 
-  const paths = useMemo(() => {
+  const pathSeries = useMemo<PathMap | null>(() => {
     if (isMobileViewport) {
+      return null;
+    }
+
+    const toTimeValue = (value: string) => new Date(value).getTime() / 86400000;
+
+    return data.reduce((series, sample, index) => {
+      const sampleTime = toTimeValue(sample.t);
+      const spherical = sample.geomagnetic_axis
+        ? toSpherical(sample.geomagnetic_axis as [number, number, number])
+        : null;
+      const basis = spherical ? computePhysicalBasis(spherical.lat, spherical.lon) : null;
+      const driftVector = driftAxisTimeSeries[index] || sample.driftAxis;
+
+      series.e1.push({ t: sampleTime, vector: basis ? basis.e1 : [0, 1, 0] });
+      series.e2.push({ t: sampleTime, vector: basis ? basis.e2 : [1, 0, 0] });
+      series.e3.push({ t: sampleTime, vector: [0, 0, 1] });
+      series.drift.push({
+        t: sampleTime,
+        vector: driftVector && driftVector.length === 3
+          ? rotateZ(driftVector as [number, number, number], 90) as [number, number, number]
+          : [1, 0, 0],
+      });
+      series.geomagnetic.push({
+        t: sampleTime,
+        vector: sample.geomagnetic_axis && sample.geomagnetic_axis.length === 3
+          ? sample.geomagnetic_axis as [number, number, number]
+          : [0, 0, 1],
+      });
+
+      return series;
+    }, {
+      e1: [] as PathSample[],
+      e2: [] as PathSample[],
+      e3: [] as PathSample[],
+      drift: [] as PathSample[],
+      geomagnetic: [] as PathSample[],
+    });
+  }, [data, driftAxisTimeSeries, isMobileViewport]);
+
+  const paths = useMemo<Partial<PathMap>>(() => {
+    if (!pathSeries) {
       return {};
     }
 
     const trailLength = 40;
-    const start = Math.max(0, currentTimeIndex - trailLength);
-    const slice = data.slice(start, currentTimeIndex + 1);
-    const toTimeValue = (value: string) => new Date(value).getTime() / 86400000;
-    const createPathSample = (sampleTime: string, vector: Vec3): PathSample => ({
-      t: toTimeValue(sampleTime),
-      vector,
-    });
-    
-    const pathsObj: { [key: string]: PathSample[] } = {
-      e1: slice.map((s) => {
-        const spherical = s.geomagnetic_axis ? toSpherical(s.geomagnetic_axis as [number, number, number]) : null;
-        return createPathSample(s.t, spherical ? computePhysicalBasis(spherical.lat, spherical.lon).e1 : [0, 1, 0]);
-      }),
-      e2: slice.map((s) => {
-        const spherical = s.geomagnetic_axis ? toSpherical(s.geomagnetic_axis as [number, number, number]) : null;
-        return createPathSample(s.t, spherical ? computePhysicalBasis(spherical.lat, spherical.lon).e2 : [1, 0, 0]);
-      }),
-      e3: slice.map((s) => createPathSample(s.t, [0, 0, 1])),
+    const start = Math.max(0, deferredTimeIndex - trailLength);
+    const end = deferredTimeIndex + 1;
+
+    return {
+      e1: pathSeries.e1.slice(start, end),
+      e2: pathSeries.e2.slice(start, end),
+      e3: pathSeries.e3.slice(start, end),
+      drift: pathSeries.drift.slice(start, end),
+      geomagnetic: pathSeries.geomagnetic.slice(start, end),
     };
-    
-    // Add drift axis path (yellow/orange)
-    const driftPath: PathSample[] = slice.map((s, idx) => {
-      const sourceIndex = start + idx;
-      const driftVector = driftAxisTimeSeries[sourceIndex] || s.driftAxis;
-      if (driftVector && driftVector.length === 3) {
-        return createPathSample(s.t, rotateZ(driftVector as [number, number, number], 90) as [number, number, number]);
-      }
-      return createPathSample(s.t, [1, 0, 0]);
-    });
-    pathsObj['drift'] = driftPath;
-    
-    // Add geomagnetic axis path (cyan)
-    const geomagPath: PathSample[] = slice.map((s) => {
-      if (s.geomagnetic_axis && s.geomagnetic_axis.length === 3) {
-        return createPathSample(s.t, s.geomagnetic_axis as [number, number, number]);
-      }
-      return createPathSample(s.t, [0, 0, 1]);
-    });
-    pathsObj['geomagnetic'] = geomagPath;
-    
-    return pathsObj;
-  }, [data, currentTimeIndex, driftAxisTimeSeries, isMobileViewport]);
+  }, [deferredTimeIndex, pathSeries]);
 
   return (
     <div
@@ -599,10 +671,25 @@ export default function SphereView({
       </div>
       <div className={`absolute z-10 rounded-xl border border-gray-700 bg-gray-900/80 p-4 backdrop-blur-sm ${isMobileViewport ? 'bottom-4 left-4 right-4 flex flex-col gap-3' : 'bottom-6 left-1/2 flex w-3/4 -translate-x-1/2 items-center gap-6'}`}>
         <div className={`flex items-center gap-4 ${isMobileViewport ? 'justify-between' : 'mr-4'}`}>
-          <button onClick={() => setCurrentTimeIndex(0)} className="text-xs text-gray-400 hover:text-white transition-colors">Reset</button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => jumpTo(0)} className="rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-300 transition-colors hover:border-gray-500 hover:text-white" title="Jump to start">
+              Start
+            </button>
+            <button onClick={() => stepBy(-1)} className="rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-300 transition-colors hover:border-gray-500 hover:text-white" title="Step backward">
+              Back
+            </button>
+          </div>
           <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 transition-colors shadow-lg">
             {isPlaying ? <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h4v16H6z"/><path d="M10 4h4v16H10z"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>}
           </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => stepBy(1)} className="rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-300 transition-colors hover:border-gray-500 hover:text-white" title="Step forward">
+              Forward
+            </button>
+            <button onClick={() => jumpTo(data.length - 1)} className="rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-300 transition-colors hover:border-gray-500 hover:text-white" title="Jump to end">
+              Finish
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-gray-400 font-mono">Speed</span>
             <select value={playbackSpeed} onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))} className="bg-gray-800 text-white text-[10px] rounded px-1 py-0.5 border border-gray-700 focus:outline-none">

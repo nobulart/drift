@@ -116,7 +116,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.3
+                Version v1.4
               </span>
               <Link
                 href="/"
@@ -153,21 +153,21 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.3 Overlay Expansion</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4 Playback Controls</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                The overlay plot now supports DE442-derived Earth-geocentric planetary series alongside the existing drift and geomagnetic signals.
+                The 3D Vector View now includes start, back, forward, and finish controls so the timeline can be stepped deliberately without dragging the scrubber.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Slim Daily Cache</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Stable Forecast Anchoring</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Ephemerides are pre-extracted into a daily JSON cache for 1973-01-02 through 2050-12-31 so the UI reads a bounded intermediate store instead of the raw kernel.
+                Transition Forecast expected dates are now pinned to the latest live sample instead of following the 3D timeline cursor, keeping the forecast horizon tied to the present state.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Torque Screening</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Launch and Playback Polish</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                A heuristic torque proxy is included for correlation hunting, with the documentation explicitly framing it as a screening tool rather than a physical torque solution.
+                Startup now presents a centered animated loading widget, and the 3D playback loop uses time-based stepping with lighter trail work during animation to improve responsiveness.
               </p>
             </article>
           </div>

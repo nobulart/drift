@@ -15,8 +15,10 @@ export default function TransitionForecastPanel() {
 
   const rollingStats = useStore(state => state.rollingStats);
   const theta3 = useStore(state => state.theta3);
-  const currentTimeIndex = useStore(state => state.currentTimeIndex);
   const data = useStore(state => state.data);
+  const presentTimeIndex = useMemo(() => {
+    return data.length > 0 ? data.length - 1 : -1;
+  }, [data]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -43,10 +45,10 @@ export default function TransitionForecastPanel() {
 
   useEffect(() => {
     if (lagKernel && theta3.length > 0) {
-      const currentTheta = theta3[currentTimeIndex] || 0;
+      const currentTheta = theta3[presentTimeIndex] || 0;
       fetchForecast(currentTheta, currentState, baseProb);
     }
-  }, [lagKernel, theta3, currentTimeIndex, currentState, baseProb]);
+  }, [lagKernel, theta3, presentTimeIndex, currentState, baseProb]);
 
   const fetchForecast = async (theta: number, state: number, baseP: number) => {
     try {
@@ -71,7 +73,7 @@ export default function TransitionForecastPanel() {
       return null;
     }
 
-    const anchorSample = data[currentTimeIndex] || data[data.length - 1];
+    const anchorSample = data[presentTimeIndex] || data[data.length - 1];
     if (!anchorSample?.t) {
       return null;
     }
@@ -89,7 +91,7 @@ export default function TransitionForecastPanel() {
       month: 'short',
       day: 'numeric',
     });
-  }, [currentTimeIndex, data, forecast]);
+  }, [presentTimeIndex, data, forecast]);
 
   const probabilityData = useMemo(() => {
     if (!forecast || !forecast.lags || forecast.lags.length === 0) return [];

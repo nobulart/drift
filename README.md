@@ -6,9 +6,16 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
 
-Current release: `v1.3.0`
+Current release: `v1.4.0`
 
 ## Release Notes
+
+### v1.4.0
+
+- Added start, back, forward, and finish controls to the 3D Vector View timeline for direct frame stepping.
+- Reworked 3D playback timing to use elapsed time rather than rounded interval steps, improving low-speed behavior and realtime smoothness.
+- Anchored Transition Forecast expected dates to the latest available sample so 3D timeline scrubbing no longer shifts the forecast horizon.
+- Replaced the plain startup loading text with a centered animated progress widget for a cleaner initial launch experience.
 
 ### v1.3.0
 
