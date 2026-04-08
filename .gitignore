@@ -7,6 +7,8 @@ out/
 public/data/.rolling-stats-cache/
 data/.rolling-stats-cache/
 data/kernels/
+data/ephemeris_historic.json
+public/data/ephemeris_historic.json
 scripts/__pycache__/
 docs/*.aux
 docs/*.out
