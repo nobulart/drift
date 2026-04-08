@@ -116,7 +116,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.43
+                Version v1.44
               </span>
               <Link
                 href="/"
@@ -153,21 +153,21 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.4 Date Hover</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Phase Portrait hover popups now include the corresponding date, making it much easier to interrogate loops and identify when specific features occurred.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.3 Phase Overlay</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Phase Portrait now highlights the current state directly on the loop and overlays a focused 180-day trajectory trail for recent motion context.
+                Phase Portrait highlights the current state directly on the loop and overlays a focused 180-day trajectory trail for recent motion context.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Larger Fullscreen Charts</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Expanded charts now open at about 85% of browser width with a much taller popup layout, capped to stay within a sensible desktop maximum.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Responsive Plot Resizing</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Plot panels now switch to fullscreen-aware heights inside popup mode so the charts themselves, not just the modal shell, use the extra space.
+                Expanded charts open at about 85% of browser width with a much taller popup layout, while the plots themselves resize to use the extra space.
               </p>
             </article>
           </div>

@@ -6,9 +6,13 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
 
-Current release: `v1.4.3`
+Current release: `v1.4.4`
 
 ## Release Notes
+
+### v1.4.4
+
+- Added date information to the Phase Portrait hover popup so users can identify when specific phase-space features, loops, and turning points occurred.
 
 ### v1.4.3
 

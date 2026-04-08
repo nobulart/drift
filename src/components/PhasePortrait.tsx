@@ -39,12 +39,13 @@ export default function PhasePortrait({
     const portraitTrace: Plotly.Data = {
       x: validIndices.map((index) => theta[index]),
       y: validIndices.map((index) => omega[index]),
+      customdata: validIndices.map((index) => dates[index] ?? 'Unknown date'),
       mode: 'lines+markers',
       type: 'scatter',
       name: 'Phase Portrait',
       line: { color: '#3b82f6', width: 1.5 },
       marker: { size: 3, color: 'rgba(59, 130, 246, 0.45)' },
-      hovertemplate: 'θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
+      hovertemplate: '%{customdata}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
     };
 
     const data: Plotly.Data[] = [portraitTrace];
@@ -66,11 +67,12 @@ export default function PhasePortrait({
       data.push({
         x: recentIndices.map((index) => theta[index]),
         y: recentIndices.map((index) => omega[index]),
+        customdata: recentIndices.map((index) => dates[index] ?? 'Unknown date'),
         mode: 'lines',
         type: 'scatter',
         name: 'Recent 180d Trajectory',
         line: { color: '#f59e0b', width: 3 },
-        hovertemplate: 'Recent trail<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
+        hovertemplate: 'Recent trail<br>%{customdata}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
       });
     }
 
@@ -98,11 +100,12 @@ export default function PhasePortrait({
         data.push({
           x: validTurningPoints.map((index) => theta[index]),
           y: validTurningPoints.map((index) => omega[index]),
+          customdata: validTurningPoints.map((index) => dates[index] ?? 'Unknown date'),
           mode: 'markers',
           type: 'scatter',
           name: 'Turning Points',
           marker: { color: '#ef4444', size: 8, symbol: 'circle-solid' },
-          hovertemplate: 'Turning point<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
+          hovertemplate: 'Turning point<br>%{customdata}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
         });
       }
     }
