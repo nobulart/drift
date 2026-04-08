@@ -98,6 +98,7 @@ export default function Home() {
         const mergedData = mergeDataSources(eopData, geomagData, graceData, inertiaData);
 
         useStore.getState().setData(mergedData as TimeSample[]);
+        useStore.setState({ lastUpdated: new Date().toISOString() });
         useStore.getState().computeDrift();
         await useStore.getState().computeRollingStats();
         setRollingStatsLoaded(true);
@@ -355,7 +356,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.41
+                Version v1.42
               </p>
             </div>
             <Link
@@ -366,7 +367,7 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <div className="p-6 flex flex-1 min-h-0 flex-col overflow-hidden">
+        <div className="h-full overflow-y-auto p-6">
            <Controls
              windowSize={windowSize}
              onWindowSizeChange={setWindowSize}
@@ -374,7 +375,7 @@ export default function Home() {
              maxDate={datesStr[datesStr.length - 1]}
              dataPointCount={data.length}
            />
-           <div className="mt-6 flex min-h-0 flex-1 flex-col border-t border-[#374151] pt-6">
+           <div className="mt-6 shrink-0 border-t border-[#374151] pt-6">
              <button
                type="button"
                onClick={() => setPanelsOpen((open) => !open)}
@@ -399,11 +400,11 @@ export default function Home() {
                      Reset Defaults
                    </button>
                  </div>
-                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-2">
+                 <div className="space-y-2 pr-2 pb-6">
                    {PANEL_OPTIONS.map((option) => {
                      const orderIndex = panelOrder.indexOf(option.id);
                      return (
-                       <div key={option.id} className="rounded-lg border border-[#1f2937] bg-[#0b1220]/60 p-3">
+                       <div key={option.id} className="rounded-lg border border-[#1f2937] bg-[#0b1220]/60 px-3 py-2">
                          <div className="flex items-center gap-2">
                            <input
                              type="checkbox"
@@ -413,22 +414,24 @@ export default function Home() {
                            />
                            <span className="flex-1 text-sm text-gray-300">{option.label}</span>
                            <span className="text-[10px] text-[#6b7280]">{orderIndex + 1}</span>
-                         </div>
-                         <div className="mt-3 flex gap-2">
+                           <div className="ml-1 flex items-center gap-1">
                            <button
                              onClick={() => movePanel(option.id, 'up')}
                              disabled={orderIndex <= 0}
-                             className="rounded-md bg-[#1f2937] px-2 py-1 text-xs text-[#d1d5db] transition-colors hover:bg-[#374151] disabled:cursor-not-allowed disabled:opacity-40"
+                             className="rounded p-1 text-[#9ca3af] transition-colors hover:bg-[#1f2937] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                             aria-label={`Move ${option.label} up`}
                            >
-                             Move Up
+                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
                            </button>
                            <button
                              onClick={() => movePanel(option.id, 'down')}
                              disabled={orderIndex === -1 || orderIndex >= panelOrder.length - 1}
-                             className="rounded-md bg-[#1f2937] px-2 py-1 text-xs text-[#d1d5db] transition-colors hover:bg-[#374151] disabled:cursor-not-allowed disabled:opacity-40"
+                             className="rounded p-1 text-[#9ca3af] transition-colors hover:bg-[#1f2937] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                             aria-label={`Move ${option.label} down`}
                            >
-                             Move Down
+                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                            </button>
+                           </div>
                          </div>
                        </div>
                      );

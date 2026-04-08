@@ -85,9 +85,6 @@ export default function Controls({
     currentState: true,
     dataSettings: true,
     dateRange: true,
-    dataUpdates: false,
-    timeLock: false,
-    sources: false,
   });
   
   const { timeRange, timeLockEnabled, setTimeLock, setTimeRange } = useTimeStore();
@@ -159,7 +156,7 @@ export default function Controls({
   };
 
   return (
-    <div className="flex flex-col gap-6 text-gray-900">
+    <div className="shrink-0 space-y-5 text-gray-900">
       <SidebarSection title="Current State" open={sectionOpen.currentState} onToggle={() => toggleSection('currentState')}>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3">
@@ -191,7 +188,7 @@ export default function Controls({
             Use shorter windows to make the diagnostics more sensitive to recent directional changes. Use longer windows to smooth short-term noise and emphasize slower structural drift.
           </p>
           
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {windowPresets.map(preset => (
               <button
                 key={preset}
@@ -223,7 +220,7 @@ export default function Controls({
       </SidebarSection>
 
       <SidebarSection title="Date Range" open={sectionOpen.dateRange} onToggle={() => toggleSection('dateRange')} className="pt-4 border-t border-gray-200">
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Start</span>
             <input
@@ -267,9 +264,7 @@ export default function Controls({
         <p className="text-xs text-gray-500">
           Chart zoom updates this range, and enabling time lock synchronizes the selected window across time-based panels.
         </p>
-      </SidebarSection>
 
-      <SidebarSection title="Data Updates" open={sectionOpen.dataUpdates} onToggle={() => toggleSection('dataUpdates')} className="pt-4 border-t border-gray-200">
         <button
           onClick={handleRefetch}
           disabled={isRefetching}
@@ -300,33 +295,32 @@ export default function Controls({
         <p className="text-xs text-gray-500">
           Last updated: {formatLastUpdated()}
         </p>
-      </SidebarSection>
+        <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3">
+          <label className="flex items-center justify-between gap-3 cursor-pointer group">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-white transition-colors">
+                Time Lock
+              </span>
+              <span className="text-xs text-[#9ca3af]">
+                Synchronize zoom across time-based charts
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={timeLockEnabled}
+                onChange={(e) => setTimeLock(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="h-6 w-11 rounded-full bg-gray-200 peer-focus:outline-none peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-['']" />
+            </div>
+          </label>
+        </div>
 
-      <SidebarSection title="Time Lock" open={sectionOpen.timeLock} onToggle={() => toggleSection('timeLock')} className="pt-4 border-t border-gray-200">
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <div className="relative">
-            <input
-              type="checkbox"
-              checked={timeLockEnabled}
-              onChange={(e) => setTimeLock(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
-              Lock Time Range
-            </span>
-            <span className="text-xs text-gray-500">
-              Synchronize zoom across all time-based charts
-            </span>
-          </div>
-        </label>
-        
         {timeLockEnabled && (
           <button
             onClick={handleResetTimeRange}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-red-600 text-white hover:bg-red-700 shadow-sm"
+            className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-red-700 shadow-sm"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -336,8 +330,9 @@ export default function Controls({
         )}
       </SidebarSection>
 
-      <SidebarSection title="Sources" open={sectionOpen.sources} onToggle={() => toggleSection('sources')} className="pt-4 border-t border-gray-200">
+      <div className="border-t border-gray-200 pt-4">
         <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3 text-xs leading-relaxed text-[#9ca3af]">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Sources</p>
           <div className="flex flex-col gap-3">
             {sourceLinks.map((source) => (
               <p key={source.name}>
@@ -354,7 +349,7 @@ export default function Controls({
             ))}
           </div>
         </div>
-      </SidebarSection>
+      </div>
     </div>
   );
 }

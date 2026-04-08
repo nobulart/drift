@@ -117,8 +117,20 @@ export default function TransitionForecastPanel() {
     };
   }, [forecast]);
 
+  const plotData = useMemo(() => {
+    if (!forecast || probabilityData.length === 0) {
+      return [];
+    }
+
+    return [...probabilityData as Plotly.Data[], cumulativeData as Plotly.Data];
+  }, [cumulativeData, forecast, probabilityData]);
+
   const forecastLayout = useMemo(() => {
-    if (!lagKernel) return null;
+    if (!lagKernel || !forecast) return null;
+
+    const densityMax = forecast.P_tau.length > 0 ? Math.max(...forecast.P_tau) : 0;
+    const cumulativeMax = forecast.cumulative.length > 0 ? Math.max(...forecast.cumulative) : 0;
+    const yMax = Math.max(densityMax, cumulativeMax, 0.05);
     
     return {
       title: { text: 'Transition Probability Curve', standoff: 20 },
@@ -131,7 +143,8 @@ export default function TransitionForecastPanel() {
         title: { text: 'Probability Density', standoff: 20 },
         gridcolor: '#374151',
         zerolinecolor: '#4b5563',
-        range: [0, 0.1]
+        autorange: true,
+        range: [0, Math.min(1.05, yMax * 1.12)]
       },
       legend: {
         orientation: 'h' as const,
@@ -149,7 +162,7 @@ export default function TransitionForecastPanel() {
       height: 400,
       autosize: true
     };
-  }, [lagKernel, width]);
+  }, [forecast, lagKernel, width]);
 
   const stateColors = ['#10b981', '#f59e0b', '#ef4444', '#6b7280'];  // emerald, amber, red, gray
 
@@ -202,10 +215,12 @@ export default function TransitionForecastPanel() {
   <div className="mb-6">
     {forecast && forecast.lags.length > 0 ? (
       <Plot
-        data={[...probabilityData as any, cumulativeData as any]}
+        key={`${currentState}-${baseProb}-${forecast.phase_bin}-${forecast.expected_time.toFixed(3)}`}
+        data={plotData as any}
         layout={forecastLayout as any}
-        config={{ displayModeBar: true }}
+        config={{ displayModeBar: true, responsive: true }}
         style={{ width: '100%', height: '400px' }}
+        useResizeHandler
       />
     ) : (
       <div className="h-40 flex items-center justify-center">

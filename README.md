@@ -6,9 +6,15 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.1.png)
 
-Current release: `v1.4.1`
+Current release: `v1.4.2`
 
 ## Release Notes
+
+### v1.4.2
+
+- Moved stale-data checking and conditional pipeline execution to server startup so the dashboard only launches after required data are current.
+- Fixed Transition Forecast plot redraw and rescaling when State or Base Prob changes.
+- Compacted the sidebar layout, restored clean stacking between Sources and Panels, and improved sidebar scrolling on medium-height displays.
 
 ### v1.4.1
 

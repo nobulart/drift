@@ -116,7 +116,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.41
+                Version v1.42
               </span>
               <Link
                 href="/"
@@ -153,21 +153,21 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.1 Forecast Date Fix</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.2 Startup Refresh</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                The Transition Forecast expected-date label now adds the forecast horizon to the actual current date, matching standard forward-date calculations.
+                The server now checks for stale or missing pipeline outputs during startup and refreshes them before the dashboard begins serving traffic.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Stable Forecast Anchoring</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Forecast Plot Reactivity</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Transition Forecast expected dates are now pinned to the latest live sample instead of following the 3D timeline cursor, keeping the forecast horizon tied to the present state.
+                Transition Forecast now redraws and rescales correctly when Base Prob or State changes, so the plotted curve stays aligned with the displayed metrics.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Launch and Playback Polish</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">Sidebar Compaction</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Startup now presents a centered animated loading widget, and the 3D playback loop uses time-based stepping with lighter trail work during animation to improve responsiveness.
+                Sidebar controls are more compact, scroll reliably on medium displays, and no longer allow Sources and Panels to overlap.
               </p>
             </article>
           </div>
