@@ -15,7 +15,6 @@ import { useStore } from '@/store/useStore';
 
 const CORE_SIGNALS = {
   drift: { label: 'Drift' },
-  alignment: { label: 'Alignment' },
   theta: { label: 'θ (Phase)' },
   omega: { label: 'ω (Angular Velocity)' },
   R: { label: 'R(t)' },
@@ -43,8 +42,6 @@ function getCoreSignalSeries(key: string, rollingStats: any, data: Array<{ kp?: 
       return rollingStats.driftAxis?.map((d: [number, number, number]) =>
         (Math.atan2(d[1], d[0]) * 180 / Math.PI) + 90
       );
-    case 'alignment':
-      return rollingStats.alignment;
     case 'theta':
       return rollingStats.theta;
     case 'omega':
@@ -77,7 +74,7 @@ function getEphemerisSignalSeries(
 }
 
 export default function OverlayPage() {
-  const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift', 'alignment']);
+  const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift']);
   const [showTurningPoints, setShowTurningPoints] = useState(false);
   const [lagResult, setLagResult] = useState<LagResult | null>(null);
   const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});

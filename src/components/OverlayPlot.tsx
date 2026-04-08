@@ -20,7 +20,6 @@ interface CoreSignalConfig {
 
 const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
   drift: { label: 'Drift' },
-  alignment: { label: 'Alignment' },
   theta: { label: 'θ (Phase)' },
   omega: { label: 'ω (Angular Velocity)' },
   R: { label: 'R(t)' },
@@ -48,8 +47,6 @@ function getCoreSignalSeries(key: string, rollingStats: any, data: Array<{ kp?: 
       return rollingStats.driftAxis?.map((d: [number, number, number]) =>
         (Math.atan2(d[1], d[0]) * 180 / Math.PI) + 90
       );
-    case 'alignment':
-      return rollingStats.alignment;
     case 'theta':
       return rollingStats.theta;
     case 'omega':
@@ -82,7 +79,7 @@ function getEphemerisSignalSeries(
 }
 
 export default function OverlayPlot() {
-  const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift', 'alignment']);
+  const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift']);
   const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});
   const isInternalUpdate = useRef(false);
   const plotHeight = usePlotDisplayHeight(500, 860);
