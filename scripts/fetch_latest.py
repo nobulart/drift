@@ -48,19 +48,32 @@ def normalize_geomag_records(records):
 
 
 def fetch_latest_eop():
-    """Fetch latest IERS EOP data from finals.all.json."""
-    print("Fetching latest IERS EOP data...")
+    """Fetch latest IERS EOP data from finals.daily.json (true daily Bulletin A)."""
+    print("Fetching latest IERS EOP data (daily)...")
 
-    url = "https://datacenter.iers.org/data/json/finals.all.json"
+     # finals.daily.json is updated with each Bulletin A cycle and contains
+     # both confirmed (type=final) and predicted entries - we only want confirmed.
+     # We also fetch the full cumulative file and persist it for compatibility with
+     # build_eop.py which reads from it.
+    daily_url = "https://datacenter.iers.org/data/json/finals.daily.json"
+    all_url = "https://datacenter.iers.org/data/json/finals.all.json"
+    all_data = None
 
     try:
-        with urllib.request.urlopen(url) as response:
-            data = json.loads(response.read().decode("utf-8"))
+        with urllib.request.urlopen(daily_url) as response:
+            daily_json = json.loads(response.read().decode("utf-8"))
 
-        eop_data = data.get("EOP", {}).get("data", {}).get("timeSeries", [])
+        # Also fetch the full cumulative file for historical continuity
+        try:
+            with urllib.request.urlopen(all_url) as response:
+                all_data = json.loads(response.read().decode("utf-8"))
+        except Exception as e:
+            print(f"  WARN: Could not fetch cumulative file ({e})")
+
+        daily_data = daily_json.get("EOP", {}).get("data", {}).get("timeSeries", [])
 
         result = []
-        for entry in reversed(eop_data):  # Go backwards to find valid data
+        for entry in reversed(daily_data):   # Go backwards to find confirmed data
             time_info = entry.get("time", {})
             data_eop = entry.get("dataEOP", {})
 
@@ -76,29 +89,125 @@ def fetch_latest_eop():
             pole_data = data_eop.get("pole", [])
             x, y = None, None
             for item in pole_data:
-                if item.get("source") == "BulletinA":
-                    try:
-                        x_str = item.get("X", "")
-                        y_str = item.get("Y", "")
-                        if x_str and x_str.strip() and y_str and y_str.strip():
-                            x = float(x_str)
-                            y = float(y_str)
-                    except:
-                        continue
-                    break
+                 # Only accept confirmed (type=final) data from BulletinA,
+                 # NOT predictions or provisional entries.
+                 if item.get("source") == "BulletinA" and item.get("type") == "final":
+                     try:
+                         x_str = item.get("X", "")
+                         y_str = item.get("Y", "")
+                         if x_str and x_str.strip() and y_str and y_str.strip():
+                             x = float(x_str)
+                             y = float(y_str)
+                     except:
+                         continue
+                     break
 
+            # Only include confirmed entries
             if x is not None and y is not None:
                 result.append({"t": date_str, "xp": x, "yp": y})
 
-                # Limit to last 30 days of valid data
-                if len(result) >= 30:
-                    break
+         # If we got no confirmed data from daily (unusual), fall back to cumulative
+        if not result and all_data is not None:
+            print("  No confirmed daily data; falling back to cumulative (all) data...")
+            all_ts = all_data.get("EOP", {}).get("data", {}).get("timeSeries", [])
+            result = []
+            for entry in reversed(all_ts):
+                time_info = entry.get("time", {})
+                data_eop = entry.get("dataEOP", {})
 
-        return list(reversed(result))  # Return in chronological order
+                date_year = time_info.get("dateYear")
+                date_month = time_info.get("dateMonth")
+                date_day = time_info.get("dateDay")
+
+                if not date_year:
+                    continue
+
+                date_str = f"{date_year}-{date_month}-{date_day}"
+
+                pole_data = data_eop.get("pole", [])
+                xp_val, yp_val = None, None
+                for item in pole_data:
+                    if item.get("source") == "BulletinA":
+                        try:
+                            x_str = item.get("X", "")
+                            y_str = item.get("Y", "")
+                            if x_str and x_str.strip() and y_str and y_str.strip():
+                                xp_val = float(x_str)
+                                yp_val = float(y_str)
+                        except:
+                            continue
+                        break
+
+                if xp_val is not None and yp_val is not None:
+                    result.append({"t": date_str, "xp": xp_val, "yp": yp_val})
+
+            result = list(reversed(result))
+
+        final_list = list(reversed(result))
+
+        # Persist the full cumulative file for build_eop.py compatibility
+        if all_data is not None:
+            write_json("finals.all.json", all_data)
+            print("  Updated data/finals.all.json")
+
+        print(f"  Retrieved {len(final_list)} confirmed entries from finals.daily.json")
+        if final_list:
+            print(f"  Date range: {final_list[0]['t']} to {final_list[-1]['t']}")
+
+        return final_list
 
     except Exception as e:
         print(f"  WARNING: Could not fetch EOP data: {e}")
-        return None
+
+         # Attempt cumulative fallback
+        try:
+            with urllib.request.urlopen(all_url) as response:
+                all_data = json.loads(response.read().decode("utf-8"))
+            write_json("finals.all.json", all_data)
+            print("  Fallback: saved finals.all.json")
+            return fetch_latest_eop_fallback(all_data)
+        except Exception as e2:
+            print(f"  Fallback also failed: {e2}")
+            return None
+
+
+def fetch_latest_eop_fallback(all_data):
+    """Fetch from cumulative finals.all.json as a fallback for when daily JSON is unavailable."""
+    print("  Attempting cumulative data source fallback...")
+    eop_data = all_data.get("EOP", {}).get("data", {}).get("timeSeries", [])
+
+    result = []
+    for entry in reversed(eop_data):
+        time_info = entry.get("time", {})
+        data_eop = entry.get("dataEOP", {})
+
+        date_year = time_info.get("dateYear")
+        date_month = time_info.get("dateMonth")
+        date_day = time_info.get("dateDay")
+
+        if not date_year:
+            continue
+
+        date_str = f"{date_year}-{date_month}-{date_day}"
+
+        pole_data = data_eop.get("pole", [])
+        x, y = None, None
+        for item in pole_data:
+            if item.get("source") == "BulletinA":
+                try:
+                    x_str = item.get("X", "")
+                    y_str = item.get("Y", "")
+                    if x_str and x_str.strip() and y_str and y_str.strip():
+                        x = float(x_str)
+                        y = float(y_str)
+                except:
+                    continue
+                break
+
+        if x is not None and y is not None:
+            result.append({"t": date_str, "xp": x, "yp": y})
+
+    return list(reversed(result))
 
 
 def fetch_latest_grace():
@@ -212,13 +321,35 @@ def main():
     print(f"Timestamp: {datetime.now().isoformat()}")
     print("=" * 60)
 
-    # Fetch EOP
+     # Fetch EOP
+     # 1. eop_historic.json (rebuild from daily + all merged data)
     print("\n1. EOP Data (IERS)")
+
+          # Fetch latest confirmed data from daily JSON
     eop_data = fetch_latest_eop()
     if eop_data is not None:
         save_json(os.path.join(output_dir, "eop_latest.json"), eop_data)
 
-    # Fetch GRACE
+          # Rebuild eop_historic.json by merging daily + full all data
+          # fetch_latest_eop() already updates finals.all.json on disk
+        print("  Rebuilding eop_historic.json from merged daily + all data ...")
+        try:
+            import subprocess
+            build_result = subprocess.run(
+               [sys.executable, str(SCRIPT_DIR / "build_eop.py")],
+              capture_output=True, text=True, timeout=120
+           )
+            if build_result.stdout:
+                for line in build_result.stdout.strip().split("\n"):
+                    print(f"   {line}")
+            if build_result.returncode != 0:
+                print(f"  WARN: build_eop.py failed: {build_result.stderr}")
+            else:
+                print("  eop_historic.json rebuilt successfully.")
+        except Exception as e:
+            print(f"  ERROR: Failed to rebuild eop_historic.json: {e}")
+
+     # Fetch GRACE
     print("\n2. GRACE Data")
     grace_data = fetch_latest_grace()
     if grace_data is not None:
