@@ -1016,19 +1016,16 @@ def compute_rolling_stats(
     # Step 8: Orthogonal deviation ratio
     r_ratio = compute_r_ratio(x_detrended, y_detrended)
 
-    # Step 9: Geomagnetic axis (from CHAOS model if available)
-    geomagnetic_axis = compute_geomagnetic_axis(t, xp, yp)
-
-    # Step 10: Rolling drift axis (CRITICAL - must use rolling window)
+    # Step 9: Rolling drift axis (CRITICAL - must use rolling window)
     drift_axis = compute_drift_axis_rolling(
         x_detrended, y_detrended, t, window_days=1825.0
     )
 
-    # Step 11: Alignment angle between drift and geomagnetic axes
-    if geomagnetic_axis is not None:
-        alignment = compute_alignment_angle(drift_axis, geomagnetic_axis)
-    else:
-        alignment = np.zeros(len(t))
+    # Step 10: Alignment disabled - geomagnetic not currently used
+    alignment = np.zeros(len(t))
+
+    # Geomagnetic axis disabled - not currently used in the pipeline
+    geomagnetic_axis = None
 
     # Step 12: Convert drift axis to longitude (degrees) for lag model
     drift_lon = np.array(
@@ -1099,14 +1096,8 @@ def compute_rolling_stats(
     )
     paths["drift"] = drift_path["points"]
     
-    # Precompute geomagnetic axis path
-    if geomagnetic_axis is not None and len(geomagnetic_axis) > 0:
-        geomag_path = compute_path_samples(
-            geomagnetic_axis, t, target_points=path_points, max_angle_deg=14, allow_flip=True, slerp_steps=6
-        )
-        paths["geomagnetic"] = geomag_path["points"]
-    else:
-        paths["geomagnetic"] = []
+    # Geomagnetic paths disabled - not currently used in the pipeline
+    paths["geomagnetic"] = []
 
     result = {
         "t": t.tolist(),
@@ -1122,10 +1113,10 @@ def compute_rolling_stats(
         "danceSegments": dance_segments,
         "rRatio": r_ratio.tolist(),
         "driftAxis": [drift_axis[i].tolist() for i in range(len(t))],
-        "geomagnetic_axis": geomagnetic_axis.tolist()
-        if geomagnetic_axis is not None
-        else None,
-        "alignment": alignment.tolist(),
+        # geomagnetic_axis disabled - not currently used in the pipeline
+        "geomagnetic_axis": None,
+        # alignment disabled - not currently used in the pipeline
+        "alignment": None,
         "lagModel": lag_result,
         "conditionalLagModel": conditional_lag_result,
         "paths": paths,

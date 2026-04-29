@@ -482,6 +482,12 @@ export default function SphereView({
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const deferredTimeIndex = useDeferredValue(currentTimeIndex);
   
+  // Cache precomputed paths to avoid re-creation on every render
+  const precomputedPathsRef = useRef<Partial<PathMap>>({ e1: [], e2: [], e3: [], drift: [], geomagnetic: [] });
+  if (rollingStats?.paths) {
+    precomputedPathsRef.current = rollingStats.paths;
+  }
+  
   useEffect(() => {
     if (!isPlaying) return;
     if (data.length <= 1) return;
@@ -538,12 +544,9 @@ export default function SphereView({
   const currentSample = data[currentTimeIndex];
   const timestamp = currentSample ? currentSample.t : 'N/A';
   const displayDriftAxis = (driftAxisTimeSeries[currentTimeIndex] || currentSample?.driftAxis || driftAxis) as [number, number, number];
-  const geomagneticAxis = (currentSample?.geomagnetic_axis || null) as [number, number, number] | null;
-  const geomagneticStrength = currentSample?.geomagnetic_strength ?? 1;
-  const geomagneticSpherical = geomagneticAxis ? toSpherical(geomagneticAxis) : null;
   const driftSpherical = toSpherical(displayDriftAxis);
   const driftLongitude = driftAxisLongitude(displayDriftAxis);
-  const geomagneticLongitude = geomagneticAxis ? vectorLongitudeChart(geomagneticAxis) : null;
+  // Geomagnetic calculations disabled - not currently used in the pipeline
   const stepBy = (delta: number) => {
     if (data.length === 0) {
       return;
@@ -560,20 +563,17 @@ export default function SphereView({
     setCurrentTimeIndex(THREE.MathUtils.clamp(index, 0, data.length - 1));
   };
 
+  // Geomagnetic-based physicalBasis disabled - not currently used in the pipeline
+  // Use fixed basis as placeholder
   const physicalBasis = useMemo(() => {
-    if (!geomagneticSpherical) {
-      return {
-        e1: [0, 1, 0] as [number, number, number],
-        e2: [1, 0, 0] as [number, number, number],
-        e3: [0, 0, 1] as [number, number, number],
-      };
-    }
-
-    return computePhysicalBasis(geomagneticSpherical.lat, geomagneticSpherical.lon);
-  }, [geomagneticSpherical]);
+    return {
+      e1: [0, 1, 0] as [number, number, number],
+      e2: [1, 0, 0] as [number, number, number],
+      e3: [0, 0, 1] as [number, number, number],
+    };
+  }, []);
 
   const driftDisplayAxis = rotateZ(displayDriftAxis, 90) as [number, number, number];
-  const geomagneticDisplayAxis = geomagneticAxis;
 
   const precomputedPaths = rollingStats?.paths;
   
@@ -582,10 +582,19 @@ export default function SphereView({
       return null;
     }
 
-    if (precomputedPaths) {
-      return precomputedPaths;
+    // Use cached precomputed paths if available
+    if (precomputedPathsRef.current && precomputedPathsRef.current.e1 && precomputedPathsRef.current.e2 && precomputedPathsRef.current.e3 && precomputedPathsRef.current.drift) {
+      const paths = precomputedPathsRef.current;
+      return {
+        e1: paths.e1 || [],
+        e2: paths.e2 || [],
+        e3: paths.e3 || [],
+        drift: paths.drift || [],
+        geomagnetic: paths.geomagnetic || [],
+      };
     }
 
+    // Fall back to on-demand path computation if needed
     const toTimeValue = (value: string) => new Date(value).getTime() / 86400000;
 
     return data.reduce((series, sample, index) => {
@@ -620,7 +629,7 @@ export default function SphereView({
       drift: [] as PathSample[],
       geomagnetic: [] as PathSample[],
     });
-  }, [data, driftAxisTimeSeries, isMobileViewport, rollingStats]);
+  }, [data, driftAxisTimeSeries, isMobileViewport]);
 
   const paths = useMemo<Partial<PathMap>>(() => {
     if (!pathSeries) {
