@@ -262,13 +262,30 @@ const useStore = create<AppState>((set, get) => ({
     
     try {
       const response = await fetch(
-        `/api/rolling-stats?windowSize=${windowSize}&turnThreshold=${turnThreshold}`
+        `/api/rolling-stats?windowSize=${windowSize}&turnThreshold=${turnThreshold}&pathResolution=medium`
       );
       const stats = await response.json();
       const stabilizedBasis = stabilizePlanarBasis(stats.e1, stats.e2);
       
       const lagModel = computeLagModel({ ...stats, e1: stabilizedBasis.e1, e2: stabilizedBasis.e2 }, 30, 180);
-      const enrichedStats = { ...stats, e1: stabilizedBasis.e1, e2: stabilizedBasis.e2, lagModel };
+      const precomputedPaths = stats.paths
+        ? {
+            e1: stats.paths.e1 || [],
+            e2: stats.paths.e2 || [],
+            e3: stats.paths.e3 || [],
+            drift: stats.paths.drift || [],
+            geomagnetic: stats.paths.geomagnetic || [],
+          }
+        : null;
+      
+      const enrichedStats = { 
+        ...stats, 
+        e1: stabilizedBasis.e1, 
+        e2: stabilizedBasis.e2, 
+        lagModel,
+        paths: precomputedPaths
+      };
+      
       const enrichedData = data.map((sample, index) => ({
         ...sample,
         e1:

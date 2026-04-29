@@ -14,6 +14,7 @@ const ParamsSchema = z.object({
   centerStep: z.number().positive().default(5),
   danceWindow: z.number().positive().default(120),
   conditionalTargetState: z.number().int().min(0).max(3).default(2),
+  pathResolution: z.enum(['low', 'medium', 'high']).default('medium'),
 });
 
 export async function GET(request: NextRequest) {
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
       centerStep: searchParams.get('centerStep') ? parseFloat(searchParams.get('centerStep')!) : 5,
       danceWindow: searchParams.get('danceWindow') ? parseFloat(searchParams.get('danceWindow')!) : 120,
       conditionalTargetState: searchParams.get('conditionalTargetState') ? parseInt(searchParams.get('conditionalTargetState')!, 10) : 2,
+      pathResolution: searchParams.get('pathResolution') || 'medium',
     });
 
     const dataPath = join(process.cwd(), 'public', 'data', 'eop_historic.json');
@@ -37,15 +39,11 @@ export async function GET(request: NextRequest) {
       .update(await fs.readFile(dataPath, 'utf8'))
       .digest('hex');
     
-    const cacheDir = join(process.cwd(), 'public', 'data', '.rolling-stats-cache');
+    const cacheDir = join(process.cwd(), 'public', 'data', '.rolling-stats-cache', params.pathResolution);
     const cachePath = join(cacheDir, `${cacheKey}.json`);
 
     // Ensure cache directory exists
-    try {
-      await fs.mkdir(cacheDir, { recursive: true });
-    } catch (err) {
-      // Directory may already exist
-    }
+    await fs.mkdir(cacheDir, { recursive: true });
 
     // Check cache
     let statsData: any = null;
@@ -72,7 +70,8 @@ export async function GET(request: NextRequest) {
         params.centerWindow,
         params.centerStep,
         params.danceWindow,
-        params.conditionalTargetState
+        params.conditionalTargetState,
+        params.pathResolution
       );
 
       const dataStr = await fs.readFile(cachePath, 'utf8');
@@ -94,7 +93,8 @@ async function runPythonComputation(
   centerWindow: number,
   centerStep: number,
   danceWindow: number,
-  conditionalTargetState: number
+  conditionalTargetState: number,
+  pathResolution: string
 ) {
   return new Promise<void>((resolve, reject) => {
     const scriptPath = join(process.cwd(), 'scripts', 'compute_rolling_stats.py');
@@ -108,7 +108,8 @@ async function runPythonComputation(
       '--center-window', centerWindow.toString(),
       '--center-step', centerStep.toString(),
       '--dance-window', danceWindow.toString(),
-      '--conditional-target-state', conditionalTargetState.toString()
+      '--conditional-target-state', conditionalTargetState.toString(),
+      '--path-resolution', pathResolution.toString()
     ]);
 
     let stderr = '';

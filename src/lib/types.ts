@@ -19,6 +19,19 @@ export interface TimeSample {
   driftAxis?: [number, number, number];
 }
 
+export interface PathSample {
+  t: number;
+  vector: [number, number, number];
+}
+
+export interface PathMap {
+  e1: PathSample[];
+  e2: PathSample[];
+  e3: PathSample[];
+  drift: PathSample[];
+  geomagnetic: PathSample[];
+}
+
 export interface EphemerisBodySample {
   distance_au?: number;
   angular_velocity_deg_per_day?: number;

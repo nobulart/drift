@@ -6,6 +6,7 @@ import { memo, useState, useMemo, useRef, useEffect, useDeferredValue } from "re
 import * as THREE from "three";
 import { useStore } from '@/store/useStore';
 import { computePhysicalBasis, driftAxisLongitude, rotateZ, toSpherical, vectorLongitudeChart } from '@/lib/transforms';
+import { RollingStats } from '@/lib/rollingStats';
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -477,7 +478,7 @@ export default function SphereView({
   frame: "earth" | "principal"; showDrift?: boolean; showE1?: boolean; showE2?: boolean; showE3?: boolean; autoRotate?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { data, currentTimeIndex, setCurrentTimeIndex, isPlaying, setIsPlaying, playbackSpeed, setPlaybackSpeed, driftAxisTimeSeries } = useStore();
+  const { data, currentTimeIndex, setCurrentTimeIndex, isPlaying, setIsPlaying, playbackSpeed, setPlaybackSpeed, driftAxisTimeSeries, rollingStats } = useStore();
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const deferredTimeIndex = useDeferredValue(currentTimeIndex);
   
@@ -574,9 +575,15 @@ export default function SphereView({
   const driftDisplayAxis = rotateZ(displayDriftAxis, 90) as [number, number, number];
   const geomagneticDisplayAxis = geomagneticAxis;
 
+  const precomputedPaths = rollingStats?.paths;
+  
   const pathSeries = useMemo<PathMap | null>(() => {
     if (isMobileViewport) {
       return null;
+    }
+
+    if (precomputedPaths) {
+      return precomputedPaths;
     }
 
     const toTimeValue = (value: string) => new Date(value).getTime() / 86400000;
@@ -613,7 +620,7 @@ export default function SphereView({
       drift: [] as PathSample[],
       geomagnetic: [] as PathSample[],
     });
-  }, [data, driftAxisTimeSeries, isMobileViewport]);
+  }, [data, driftAxisTimeSeries, isMobileViewport, rollingStats]);
 
   const paths = useMemo<Partial<PathMap>>(() => {
     if (!pathSeries) {

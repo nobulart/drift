@@ -673,6 +673,278 @@ def compute_alignment_angle(
     return alignment
 
 
+def stabilize_vectors(vectors: np.ndarray) -> np.ndarray:
+    """
+    Stabilize vector orientations by detecting flip points and ensuring continuity.
+    
+    Args:
+        vectors: Time-varying vectors [n, 3]
+        
+    Returns:
+        stabilized: Stabilized vectors with consistent orientation [n, 3]
+    """
+    if len(vectors) < 2:
+        return vectors.copy()
+    
+    stabilized = vectors.copy()
+    
+    for i in range(1, len(stabilized)):
+        prev = stabilized[i - 1]
+        curr = stabilized[i]
+        
+        if np.dot(prev, curr) < 0:
+            stabilized[i] = -curr
+    
+    return stabilized
+
+
+def unwrap_longitudes(longitudes: np.ndarray) -> np.ndarray:
+    """
+    Unwrap longitude values to remove 360° jumps.
+    
+    Args:
+        longitudes: Longitude values in degrees [n]
+        
+    Returns:
+        unwrapped: Longitude values without jumps [n]
+    """
+    if len(longitudes) < 2:
+        return longitudes.copy()
+    
+    unwrapped = longitudes.copy()
+    
+    for i in range(1, len(unwrapped)):
+        diff = unwrapped[i] - unwrapped[i - 1]
+        
+        if diff > 180:
+            unwrapped[i] -= 360
+        elif diff < -180:
+            unwrapped[i] += 360
+    
+    return unwrapped
+
+
+def build_slerp_path(points: np.ndarray, steps: int = 8) -> np.ndarray:
+    """
+    Build interpolated path using spherical linear interpolation (SLERP).
+    
+    Args:
+        points: Unit vectors [n, 3]
+        steps: Interpolation steps between points
+        
+    Returns:
+        interpolated: SLERP-interpolated path [n * steps, 3]
+    """
+    if len(points) < 2:
+        return points.copy()
+    
+    interpolated = []
+    
+    for i in range(len(points) - 1):
+        a = points[i]
+        b = points[i + 1]
+        
+        dot = np.clip(np.dot(a, b), -1.0, 1.0)
+        omega = np.arccos(dot)
+        
+        if omega < 1e-6:
+            for j in range(steps):
+                t = j / steps
+                interpolated.append(a * (1 - t) + b * t)
+            continue
+        
+        sin_omega = np.sin(omega)
+        
+        for j in range(steps):
+            t = j / steps
+            s1 = np.sin((1 - t) * omega) / sin_omega
+            s2 = np.sin(t * omega) / sin_omega
+            pt = a * s1 + b * s2
+            pt = pt / np.linalg.norm(pt)
+            interpolated.append(pt)
+    
+    interpolated.append(points[-1])
+    
+    return np.array(interpolated)
+
+
+def filter_jumps(vectors: np.ndarray, max_angle_deg: float = 20.0) -> np.ndarray:
+    """
+    Filter out large angular jumps in vector series.
+    
+    Args:
+        vectors: Vector series [n, 3]
+        max_angle_deg: Maximum allowed angle change in degrees
+        
+    Returns:
+        filtered: Vectors with jumps removed or interpolated
+    """
+    if len(vectors) < 2:
+        return vectors.copy()
+    
+    max_angle = np.deg2rad(max_angle_deg)
+    filtered = [vectors[0]]
+    
+    for i in range(1, len(vectors)):
+        prev = filtered[-1] / np.linalg.norm(filtered[-1])
+        curr = vectors[i] / np.linalg.norm(vectors[i])
+        
+        dot = np.clip(np.dot(prev, curr), -1.0, 1.0)
+        angle = np.arccos(dot)
+        
+        if angle <= max_angle:
+            filtered.append(vectors[i])
+        else:
+            interp = prev * 0.5 + curr / np.linalg.norm(curr) * 0.5
+            interp = interp / np.linalg.norm(interp)
+            filtered.append(interp)
+    
+    return np.array(filtered)
+
+
+def resample_path(
+    vectors: np.ndarray, 
+    times: np.ndarray,
+    target_points: int = 30
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Resample path to uniform time spacing.
+    
+    Args:
+        vectors: Vector series [n, 3]
+        times: Time values [n]
+        target_points: Target number of points
+        
+    Returns:
+        resampled_vectors: Resampled vectors
+        resampled_times: Resampled time values
+    """
+    if len(vectors) <= 1:
+        return vectors.copy(), times.copy()
+    
+    start_time = times[0]
+    end_time = times[-1]
+    
+    if not np.isfinite(start_time) or not np.isfinite(end_time) or end_time <= start_time:
+        return vectors.copy(), times.copy()
+    
+    dt = (end_time - start_time) / max(target_points - 1, 1)
+    resampled_times = np.arange(start_time, end_time, dt)
+    resampled_times = np.append(resampled_times, end_time)
+    
+    resampled_vectors = np.zeros((len(resampled_times), 3))
+    
+    for i, t in enumerate(resampled_times):
+        if t <= times[0]:
+            resampled_vectors[i] = vectors[0]
+        elif t >= times[-1]:
+            resampled_vectors[i] = vectors[-1]
+        else:
+            idx = np.searchsorted(times, t)
+            if idx > 0:
+                idx -= 1
+            idx = min(idx, len(vectors) - 2)
+            
+            a = vectors[idx]
+            b = vectors[idx + 1]
+            ta = times[idx]
+            tb = times[idx + 1]
+            
+            span = tb - ta
+            ratio = 0.0 if span < 1e-6 else (t - ta) / span
+            
+            ratio = np.clip(ratio, 0.0, 1.0)
+            
+            a_norm = a / np.linalg.norm(a)
+            b_norm = b / np.linalg.norm(b)
+            
+            dot = np.clip(np.dot(a_norm, b_norm), -1.0, 1.0)
+            omega = np.arccos(dot)
+            
+            if omega < 1e-6:
+                resampled = a_norm * (1 - ratio) + b_norm * ratio
+            else:
+                sin_omega = np.sin(omega)
+                s1 = np.sin((1 - ratio) * omega) / sin_omega
+                s2 = np.sin(ratio * omega) / sin_omega
+                resampled = a_norm * s1 + b_norm * s2
+            
+            resampled_vectors[i] = resampled / np.linalg.norm(resampled)
+    
+    return resampled_vectors, resampled_times
+
+
+def compute_path_samples(
+    vectors: np.ndarray,
+    times: np.ndarray,
+    target_points: int = 30,
+    max_angle_deg: float = 20.0,
+    allow_flip: bool = True,
+    slerp_steps: int = 6
+) -> Dict[str, Any]:
+    """
+    Compute normalized path samples for 3D visualization.
+    
+    Args:
+        vectors: Raw vector series [n, 3]
+        times: Time values [n]
+        target_points: Target resampling resolution
+        max_angle_deg: Maximum allowed angular jump
+        allow_flip: Whether to allow vector orientation flips
+        slerp_steps: SLERP interpolation steps
+        
+    Returns:
+        Dictionary with path data for visualization
+    """
+    if len(vectors) < 2:
+        return {
+            "times": times.tolist() if len(times) > 0 else [],
+            "vectors": [vectors[0].tolist()] if len(vectors) > 0 else [],
+            "points": []
+        }
+    
+    result = {}
+    
+    if allow_flip:
+        stabilized = stabilize_vectors(vectors)
+    else:
+        stabilized = vectors.copy()
+    
+    result["stabilized"] = stabilized
+    
+    if len(stabilized) < 2:
+        result["points"] = [{
+            "t": float(times[i]),
+            "vector": stabilized[i].tolist()
+        } for i in range(len(stabilized))]
+        return result
+    
+    times_arr = np.array(times) if not isinstance(times, np.ndarray) else times
+    vectors_arr = np.array(stabilized) if not isinstance(stabilized, np.ndarray) else stabilized
+    
+    resampled_vectors, resampled_times = resample_path(
+        vectors_arr, times_arr, target_points
+    )
+    
+    filtered_vectors = filter_jumps(resampled_vectors, max_angle_deg)
+    
+    result["resampled_times"] = resampled_times
+    result["resampled_vectors"] = resampled_vectors
+    result["filtered_vectors"] = filtered_vectors
+    
+    slerp_path = build_slerp_path(
+        filtered_vectors / np.linalg.norm(filtered_vectors, axis=1, keepdims=True),
+        slerp_steps
+    )
+    
+    result["points"] = [{
+        "t": float(resampled_times[i]) if i < len(resampled_times) else float(times[-1]),
+        "vector": slerp_path[i].tolist()
+    } for i in range(min(len(slerp_path), len(resampled_times)))]
+    
+    return result
+
+
 def compute_rolling_stats(
     xp: List[float],
     yp: List[float],
@@ -683,6 +955,7 @@ def compute_rolling_stats(
     center_step: float = 5.0,
     dance_window: float = 120.0,
     conditional_target_state: int = 2,
+    path_points: int = 60,
 ) -> Dict[str, Any]:
     """
     Main pipeline: compute all rolling statistics.
@@ -695,6 +968,7 @@ def compute_rolling_stats(
         center_window: Window for loop center computation
         center_step: Step size for center computation
         dance_window: Window for dance segment extraction
+        path_points: Number of points for precomputed vector paths
 
     Returns:
         Dictionary with all computed quantities
@@ -790,6 +1064,50 @@ def compute_rolling_stats(
         target_state=conditional_target_state,
     )
 
+    path_max_angle = 22 if path_points >= 60 else 30
+    
+    # Step 15: Precompute 3D vector paths for visualization
+    paths = {}
+    
+    # Precompute e1 path (3D from 2D)
+    e1_3d = np.zeros((len(t), 3))
+    e1_3d[:, :2] = e1
+    e1_path = compute_path_samples(
+        e1_3d, t, target_points=path_points, max_angle_deg=path_max_angle, allow_flip=True, slerp_steps=6
+    )
+    paths["e1"] = e1_path["points"]
+    
+    # Precompute e2 path (3D from 2D)
+    e2_3d = np.zeros((len(t), 3))
+    e2_3d[:, :2] = e2
+    e2_path = compute_path_samples(
+        e2_3d, t, target_points=path_points, max_angle_deg=path_max_angle, allow_flip=True, slerp_steps=6
+    )
+    paths["e2"] = e2_path["points"]
+    
+    # Precompute e3 path (fixed z-axis)
+    e3_3d = np.zeros((len(t), 3))
+    e3_3d[:, 2] = 1.0
+    e3_path = compute_path_samples(
+        e3_3d, t, target_points=path_points, max_angle_deg=path_max_angle, allow_flip=False, slerp_steps=6
+    )
+    paths["e3"] = e3_path["points"]
+    
+    # Precompute drift axis path
+    drift_path = compute_path_samples(
+        drift_axis, t, target_points=path_points, max_angle_deg=path_max_angle, allow_flip=True, slerp_steps=6
+    )
+    paths["drift"] = drift_path["points"]
+    
+    # Precompute geomagnetic axis path
+    if geomagnetic_axis is not None and len(geomagnetic_axis) > 0:
+        geomag_path = compute_path_samples(
+            geomagnetic_axis, t, target_points=path_points, max_angle_deg=14, allow_flip=True, slerp_steps=6
+        )
+        paths["geomagnetic"] = geomag_path["points"]
+    else:
+        paths["geomagnetic"] = []
+
     result = {
         "t": t.tolist(),
         "x_detrended": x_detrended.tolist(),
@@ -810,6 +1128,7 @@ def compute_rolling_stats(
         "alignment": alignment.tolist(),
         "lagModel": lag_result,
         "conditionalLagModel": conditional_lag_result,
+        "paths": paths,
     }
 
     return nan_to_none(result)
@@ -922,6 +1241,13 @@ def main():
         default=2,
         help="State used for conditional lag model (0=Stable, 1=Pre, 2=Transition, 3=Post)",
     )
+    parser.add_argument(
+        "--path-resolution",
+        type=str,
+        default="medium",
+        choices=["low", "medium", "high"],
+        help="Path resolution for 3D vector trails (low=30, medium=60, high=120 points)",
+    )
 
     args = parser.parse_args()
 
@@ -956,6 +1282,13 @@ def main():
     t = np.array(t_days)
 
     # Compute statistics
+    path_resolution_map = {
+        "low": 30,
+        "medium": 60,
+        "high": 120,
+    }
+    path_points = path_resolution_map[args.path_resolution]
+
     stats = compute_rolling_stats(
         xp,
         yp,
@@ -966,6 +1299,7 @@ def main():
         center_step=args.center_step,
         dance_window=args.dance_window,
         conditional_target_state=args.conditional_target_state,
+        path_points=path_points,
     )
 
     # Add metadata
@@ -979,6 +1313,8 @@ def main():
         "n_points": len(xp),
         "date_range": [dates[0], dates[-1]],
     }
+
+    stats["metadata"]["path_points"] = path_points
 
     # Save output
     with open(args.output, "w") as f:
