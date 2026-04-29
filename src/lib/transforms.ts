@@ -27,7 +27,7 @@ export function driftAxisLongitude(v: Vec3): number {
 }
 
 export function vectorLongitudeChart(v: Vec3): number {
-  return (Math.atan2(v[1], v[0]) * 180 / Math.PI) + 90;
+  return 180 - (Math.atan2(v[1], v[0]) * 180 / Math.PI);
 }
 
 export function unwrapLon(lon: number[]): number[] {

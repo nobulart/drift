@@ -31,12 +31,12 @@ export default function DriftDirectionPlot({
   const plotHeight = usePlotDisplayHeight(500, 860);
 
    useEffect(() => {
-     const angleOffset = 90;
-     
-     // Compute drift longitude in radians
-     let driftLonRad = driftAxisTimeSeries.map((drift) => {
-       return (driftAxisLongitude(drift) - 90) * Math.PI / 180;
-     });
+      const angleOffset = 90;
+      
+      // Compute drift longitude in radians
+      let driftLonRad = driftAxisTimeSeries.map((drift) => {
+        return driftAxisLongitude(drift) * Math.PI / 180;
+      });
      
      // Apply numpy-style unwrap to handle 2π phase jumps
      // This iteratively applies corrections until no more 2π jumps remain
