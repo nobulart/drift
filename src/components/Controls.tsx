@@ -80,7 +80,9 @@ export default function Controls({
   const windowPresets = [180, 365, 730];
   const refetchData = useStore((state) => state.refetchData);
   const lastUpdated = useStore((state) => state.lastUpdated);
-  const [isRefetching, setIsRefetching] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [sectionOpen, setSectionOpen] = useState({
     currentState: true,
     dataSettings: true,
@@ -124,10 +126,29 @@ export default function Controls({
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
-  const handleRefetch = async () => {
-    setIsRefetching(true);
-    await refetchData();
-    setIsRefetching(false);
+  const handleUpdateData = async () => {
+    setIsUpdating(true);
+    setUpdateMessage(null);
+    setUpdateError(null);
+
+    try {
+      const response = await fetch('/api/update-data', {
+        method: 'POST',
+        cache: 'no-store',
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Data update failed.');
+      }
+
+      await refetchData();
+      setUpdateMessage('Data files updated and dashboard reloaded.');
+    } catch (error) {
+      setUpdateError(error instanceof Error ? error.message : 'Data update failed.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleResetTimeRange = () => {
@@ -261,23 +282,26 @@ export default function Controls({
         <p className="text-xs text-gray-500">
           Chart zoom updates this range, and enabling time lock synchronizes the selected window across time-based panels.
         </p>
+        <p className="text-xs text-gray-500">
+          Update Data runs the local refresh pipeline and skips upstream retrievals while cached source files are still fresh.
+        </p>
 
         <button
-          onClick={handleRefetch}
-          disabled={isRefetching}
+          onClick={handleUpdateData}
+          disabled={isUpdating}
           className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            isRefetching
+            isUpdating
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
           }`}
         >
-          {isRefetching ? (
+          {isUpdating ? (
             <>
               <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Refetching...
+              Updating...
             </>
           ) : (
             <>
@@ -292,6 +316,11 @@ export default function Controls({
         <p className="text-xs text-gray-500">
           Last updated: {formatLastUpdated()}
         </p>
+        {(updateMessage || updateError) && (
+          <p className={`text-xs ${updateError ? 'text-red-400' : 'text-green-400'}`}>
+            {updateError || updateMessage}
+          </p>
+        )}
         <div className="rounded-xl border border-[#374151] bg-[#0b1220]/60 px-3 py-3">
           <label className="flex items-center justify-between gap-3 cursor-pointer group">
             <div className="flex flex-col">

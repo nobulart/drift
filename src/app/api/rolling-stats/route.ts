@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
@@ -16,6 +16,37 @@ const ParamsSchema = z.object({
   conditionalTargetState: z.number().int().min(0).max(3).default(2),
   pathResolution: z.enum(['low', 'medium', 'high']).default('medium'),
 });
+
+let pythonCommand: string | null = null;
+
+function getPythonCommand() {
+  if (pythonCommand) {
+    return pythonCommand;
+  }
+
+  const candidates = [
+    process.env.DRIFT_PYTHON,
+    process.env.PYTHON,
+    process.env.PYTHON3,
+    join(process.cwd(), '.venv', 'bin', 'python'),
+    join(process.env.HOME || '', '.pyenv', 'versions', '3.12.7', 'bin', 'python'),
+    'python3',
+    'python',
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    const check = spawnSync(candidate, ['-c', 'import numpy, scipy, pandas'], {
+      stdio: 'ignore',
+    });
+
+    if (check.status === 0) {
+      pythonCommand = candidate;
+      return pythonCommand;
+    }
+  }
+
+  throw new Error('No Python interpreter with numpy, scipy, and pandas is available. Set DRIFT_PYTHON to a compatible interpreter.');
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,7 +130,15 @@ async function runPythonComputation(
   return new Promise<void>((resolve, reject) => {
     const scriptPath = join(process.cwd(), 'scripts', 'compute_rolling_stats.py');
     
-    const python = spawn('python3', [
+    let command: string;
+    try {
+      command = getPythonCommand();
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const python = spawn(command, [
       scriptPath,
       '--input', inputPath,
       '--output', outputPath,

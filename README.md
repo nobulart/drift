@@ -6,9 +6,15 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.4.png)
 
-Current release: `v1.4.5`
+Current release: `v1.4.6`
 
 ## Release Notes
+
+### v1.4.6
+
+- Added a sidebar-driven Update Data workflow that runs `scripts/fetch_latest.py` through a local API route, with spinner feedback and post-update dashboard reload.
+- Added timestamp-aware freshness checks to `scripts/fetch_latest.py` so EOP, GFZ-KP, GRACE, and combined outputs are skipped while local files are still fresh; use `--force` for a full manual refresh.
+- Reworked panel fullscreen behavior so the existing panel instance expands in place, preserving selected traces, ranges, controls, and guide/info content across panel and fullscreen views.
 
 ### v1.4.5
 
@@ -74,8 +80,9 @@ This repository should therefore be read as a geometry-first monitoring tool. Th
 # Install dependencies
 npm install
 
-# Refresh or rebuild pipeline artifacts as needed
+# Refresh pipeline artifacts as needed; fresh local source files are skipped
 python scripts/fetch_latest.py
+python scripts/fetch_latest.py --force
 python scripts/combine_data.py
 
 # Run development server

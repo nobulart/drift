@@ -58,11 +58,12 @@ Combine EOP, GRACE, and GFZ-KP data into unified format.
 ### Fetch Scripts
 
 #### `scripts/fetch_latest.py`
-Automated daily retrieval script that:
+Timestamp-aware retrieval script that:
 1. Fetches latest EOP from IERS JSON API
 2. Fetches latest GRACE manifest
 3. Fetches latest KP data for past 60 days
 4. Creates combined data files
+5. Skips sources whose local cache files are still within their freshness windows, unless `--force` is supplied
 
 ## Data Files
 
@@ -108,6 +109,7 @@ Add to cron or use task scheduler:
 
 ```bash
 python3 scripts/fetch_latest.py
+python3 scripts/fetch_latest.py --force
 ```
 
 ## Data Updates

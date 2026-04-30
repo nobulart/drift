@@ -18,44 +18,6 @@ interface PanelProps {
   onFullscreen?: () => void;
 }
 
-interface PlotModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}
-
-function PlotModal({ isOpen, onClose, children }: PlotModalProps) {
-  if (!isOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 bg-[#0b1220]/95 z-[9999] flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-200">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div
-        className="relative w-full flex flex-col bg-[#111827] rounded-xl shadow-2xl border border-[#374151] animate-in zoom-in-95 duration-200"
-        style={{ width: 'min(85vw, 1920px)', height: 'min(90vh, 1080px)' }}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-[#374151]">
-          <h3 className="text-lg font-bold text-[#e5e7eb] uppercase tracking-wider">
-            Fullscreen View
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-2 text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-[#374151] rounded-lg transition-colors"
-            title="Close"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div className="flex-1 overflow-auto p-4">
-          <PanelFullscreenContext.Provider value={true}>
-            {children}
-          </PanelFullscreenContext.Provider>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Panel({
   title,
   children,
@@ -108,7 +70,31 @@ export default function Panel({
   }, [isModalOpen]);
 
   useEffect(() => {
-    if (!shouldRenderContent || collapsed || typeof window === 'undefined') {
+    if (!isModalOpen || typeof document === 'undefined') {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isModalOpen]);
+
+  const effectiveCollapsed = collapsed && !isModalOpen;
+
+  useEffect(() => {
+    if (!shouldRenderContent || effectiveCollapsed || typeof window === 'undefined') {
       return;
     }
 
@@ -142,32 +128,43 @@ export default function Panel({
       window.cancelAnimationFrame(secondAnimationFrame);
       observer.disconnect();
     };
-  }, [collapsed, shouldRenderContent]);
+  }, [effectiveCollapsed, isModalOpen, shouldRenderContent]);
 
   const toggleFullscreen = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setIsModalOpen(true);
-  };
-
-  const closeFullscreen = () => {
-    setIsModalOpen(false);
+    setIsModalOpen(open => {
+      if (!open) {
+        onFullscreen?.();
+      }
+      return !open;
+    });
   };
 
   if (!visible) return null;
 
   return (
      <>
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-[9998] bg-[#0b1220]/95 animate-in fade-in duration-200"
+          onClick={() => setIsModalOpen(false)}
+        />
+      )}
        <div
          ref={panelRef}
-         className={`bg-[#111827] p-4 rounded-xl shadow-lg border border-[#374151] flex flex-col transition-all duration-300 h-full ${className || ''}`}
-         style={{ minHeight: collapsed ? 'auto' : '500px', ...style }}
+         className={`bg-[#111827] p-4 rounded-xl shadow-lg border border-[#374151] flex flex-col transition-all duration-300 ${
+           isModalOpen
+             ? 'fixed left-1/2 top-1/2 z-[9999] max-h-[90vh] w-[min(85vw,1920px)] -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 duration-200'
+             : 'h-full'
+         } ${className || ''}`}
+         style={{ ...(isModalOpen ? {} : { minHeight: effectiveCollapsed ? 'auto' : '500px' }), ...style }}
        >
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <h3 className="text-sm font-bold text-[#e5e7eb] uppercase tracking-wider truncate pr-2">
-            {title}
+            {isModalOpen ? `${title} Fullscreen` : title}
           </h3>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {onToggleCollapse && (
+            {onToggleCollapse && !isModalOpen && (
               <button
                 onClick={onToggleCollapse}
                 className="p-1.5 text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-[#374151] rounded transition-colors"
@@ -192,23 +189,27 @@ export default function Panel({
             <button
               onClick={toggleFullscreen}
               className="p-1.5 text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-[#374151] rounded transition-colors"
-              title="View Fullscreen"
+              title={isModalOpen ? 'Close Fullscreen' : 'View Fullscreen'}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              {isModalOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              )}
             </button>
           </div>
         </div>
 
-        {!collapsed && guide && (
+        {!effectiveCollapsed && guide && (
           <div className="mb-4 rounded-lg border border-[#243041] bg-[#0b1220] px-3 py-2 text-xs leading-5 text-[#9fb0c6]">
             <span className="mr-2 font-semibold uppercase tracking-[0.18em] text-[#60a5fa]">Guide</span>
             {guide}
           </div>
         )}
         
-        <div ref={contentRef} className={`flex-1 overflow-hidden ${collapsed ? 'hidden' : ''}`}>
+        <div ref={contentRef} className={`flex-1 min-h-0 ${isModalOpen ? 'overflow-auto' : 'overflow-hidden'} ${effectiveCollapsed ? 'hidden' : ''}`}>
           {shouldRenderContent || isModalOpen ? (
-            <PanelFullscreenContext.Provider value={false}>
+            <PanelFullscreenContext.Provider value={isModalOpen}>
               {children}
             </PanelFullscreenContext.Provider>
           ) : (
@@ -218,9 +219,6 @@ export default function Panel({
           )}
         </div>
       </div>
-      <PlotModal isOpen={isModalOpen} onClose={closeFullscreen}>
-        {children}
-      </PlotModal>
     </>
   );
 }

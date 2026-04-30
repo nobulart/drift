@@ -96,13 +96,14 @@ Fetch GFZ-KP data via web service API.
 - Each record: `{"t": "YYYY-MM-DD", "kp": 1.234, "ap": 7, "ap_daily": 12, ...}`
 
 #### `scripts/fetch_latest.py`
-Automated daily retrieval script.
+Timestamp-aware retrieval script.
 
 **Functions**:
-1. Fetch latest EOP from IERS API
-2. Fetch latest GRACE manifest
-3. Fetch latest KP data (past 60 days)
-4. Create combined data files
+1. Fetch latest EOP from IERS API when the local EOP cache may be stale
+2. Fetch latest GRACE manifest when the local GRACE cache may be stale
+3. Fetch latest KP data for the past 60 days when the local GFZ-KP cache may be stale
+4. Create combined data files only when source artifacts changed
+5. Accept `--force` to bypass freshness windows
 
 **Output**: `data/eop_latest.json`, `data/grace_latest.json`, `data/geomag_gfz_latest.json`, `data/combined_latest.json`
 
@@ -176,8 +177,9 @@ python3 scripts/build_geomag_gfz.py
 # Combine data sources
 python3 scripts/combine_data.py
 
-# Or use combined script
+# Or use timestamp-aware combined script
 python3 scripts/fetch_latest.py
+python3 scripts/fetch_latest.py --force
 ```
 
 ### Running Development Server
@@ -192,8 +194,9 @@ npm run dev
 # Add to crontab (daily at 01:00 UTC)
 0 1 * * * cd /path/to/drift && python3 scripts/fetch_latest.py
 
-# Or run manually
+# Or run manually; fresh local files are skipped
 python3 scripts/fetch_latest.py
+python3 scripts/fetch_latest.py --force
 ```
 
 ## Data Quality Notes

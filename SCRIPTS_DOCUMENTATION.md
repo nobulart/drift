@@ -20,22 +20,23 @@ All processed data is stored in `/public/data/` for the Next.js frontend to cons
 ### 1. Data Fetching Scripts
 
 #### `fetch_latest.py`
-**Purpose**: Automated daily retrieval of latest data from all sources
+**Purpose**: Timestamp-aware retrieval of latest data from sources whose local caches may be stale
 
 **Description**: 
-- Fetches latest IERS EOP data from finals.all.json
-- Downloads latest GRACE manifest and decodes time data
-- Retrieves GFZ-KP geomagnetic indices for recent period
-- Generates combined data file
+- Fetches latest IERS EOP data when the local EOP cache may be stale
+- Downloads latest GRACE manifest metadata when the local GRACE cache may be stale
+- Retrieves GFZ-KP geomagnetic indices for recent period when the local GFZ-KP cache may be stale
+- Generates combined data file when source artifacts changed
 
 **Usage**:
 ```bash
 python scripts/fetch_latest.py
+python scripts/fetch_latest.py --force
 ```
 
 **Outputs**:
 - `data/eop_latest.json` - Latest EOP data (last 30 days)
-- `data/grace_latest.json` - Latest GRACE data
+- `data/grace_latest.json` - Latest GRACE manifest metadata
 - `data/geomag_gfz_latest.json` - Latest GFZ-KP data
 - `data/combined_latest.json` - Combined data
 
@@ -458,7 +459,7 @@ The easiest way to run the entire pipeline is using the wrapper script:
 
 ### Daily Data Refresh
 ```bash
-# Fetch latest data
+# Fetch latest stale data
 python scripts/fetch_latest.py
 
 # Process combined data

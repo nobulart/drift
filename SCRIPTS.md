@@ -9,8 +9,9 @@ python3 scripts/build_grace.py
 python3 scripts/build_geomag_gfz.py
 python3 scripts/combine_data.py
 
-# Or fetch_latest to update everything
+# Or fetch_latest to update stale source artifacts
 python3 scripts/fetch_latest.py
+python3 scripts/fetch_latest.py --force
 ```
 
 ## Available Scripts
@@ -33,7 +34,7 @@ Extract GRACE MASCON data from Zarr manifest
 **Features**:
 - Parses Zarr-over-HTTP manifest
 - Extracts time coordinates (245 monthly records)
-- Time series with LWE thickness placeholder values
+- Extracts monthly time coordinates; real mass fields require additional source processing
 - Full chunk data requires additional processing
 
 ### `scripts/build_geomag_gfz.py`
@@ -56,18 +57,19 @@ Combine EOP, GRACE, and GFZ-KP data
 - All data normalized to daily resolution
 
 ### `scripts/fetch_latest.py`
-Automated daily data retrieval
+Timestamp-aware data retrieval
 
 **Output**: 
 - `data/eop_latest.json` (last 30 EOP records)
-- `data/grace_latest.json` (latest GRACE data)
+- `data/grace_latest.json` (latest GRACE manifest metadata)
 - `data/geomag_gfz_latest.json` (past month's KP)
 - `data/combined_latest.json` (combined data)
 
 **Features**:
-- Fetches latest data from all sources
+- Skips EOP, GFZ-KP, and GRACE retrievals while local files are still fresh
 - Falls back to cached data if online sources unavailable
 - Updates all "latest" files
+- Use `--force` to bypass freshness windows
 
 ## Usage
 
@@ -86,6 +88,9 @@ python3 combine_data.py
 ```bash
 # Run automated fetch
 python3 fetch_latest.py
+
+# Force all upstream retrievals
+python3 fetch_latest.py --force
 ```
 
 ### Scheduling Daily Updates
@@ -133,10 +138,10 @@ For GFZ-KP:
 
 ## Notes
 
-1. **GRACE LWE values**: Currently set to 0.0 (placeholder). Full data requires downloading NetCDF chunks from the Zarr repository.
+1. **GRACE LWE values**: Synthetic placeholders are not used in the active dashboard pipeline. Full mass-field values require additional source processing beyond the manifest metadata.
 
 2. **EOP data**: Uses IERS 'finals.all.json' which contains both Bulletin A (final+prediction) and Bulletin B (final only) data. We extract Bulletin A final values.
 
 3. **KP data**: Contains 3-hourly Kp values. Daily means are also available via ap_daily field.
 
-4. **Automation**: The `fetch_latest.py` script handles data source selection intelligently, falling back to cached data if online sources are unavailable.
+4. **Automation**: The `fetch_latest.py` script handles data source selection intelligently, skips fresh local caches, and falls back to cached data if online sources are unavailable.

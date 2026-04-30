@@ -38,7 +38,7 @@ const sourceRows = [
 ];
 
 const pipelineSteps = [
-  'Fetch upstream geodetic and geomagnetic source files.',
+  'Fetch upstream geodetic and geomagnetic source files only when local caches may be stale.',
   'Normalize and cache the source products into local JSON artifacts.',
   'Extract daily Earth-geocentric DE442 ephemeris overlays for the tracked bodies.',
   'Aggregate GFZ geomagnetic inputs into dashboard-friendly daily records.',
@@ -98,6 +98,11 @@ const apiRows = [
     purpose: 'Forward transition probability summary derived from conditional lag structure.',
     fields: 'lags, P_tau, expected_time, peak_time, cumulative, alert_level',
   },
+  {
+    route: '/api/update-data',
+    purpose: 'Runs the timestamp-aware source refresh pipeline used by the sidebar Update Data button.',
+    fields: 'ok, completedAt, stdout, stderr, error',
+  },
 ];
 
 export default function DocsPage() {
@@ -116,7 +121,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.5
+                Version v1.4.6
               </span>
               <Link
                 href="/"
@@ -153,6 +158,12 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.6 Live Refresh</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                The sidebar Update Data control now runs the source refresh pipeline from the app, skips upstream retrievals while local files are fresh, and keeps fullscreen panel state consistent with panel state.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.5 Real Data Only</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Synthetic fallback series were removed from the active pipeline, the unstable Angle Diagnostics and Alignment panels were taken out of the UI, and the forecast/lag tooling now reads only the current real-data cache.
@@ -162,12 +173,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.4 Date Hover</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Phase Portrait hover popups now include the corresponding date, making it much easier to interrogate loops and identify when specific features occurred.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.3 Phase Overlay</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Phase Portrait highlights the current state directly on the loop and overlays a focused 180-day trajectory trail for recent motion context.
               </p>
             </article>
           </div>
@@ -215,7 +220,7 @@ export default function DocsPage() {
             <h2 className="text-lg font-bold text-white">Pipeline and Caching</h2>
             <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
               DRIFT separates source retrieval from UI delivery. Raw or semi-processed source products are normalized into local JSON artifacts,
-              mirrored for frontend access, and combined into cacheable outputs that API routes and panels can read consistently. The current app intentionally avoids synthetic fallback values, so missing upstream products remain absent rather than being fabricated in the UI layer.
+              mirrored for frontend access, and combined into cacheable outputs that API routes and panels can read consistently. The sidebar Update Data button runs the same retrieval script through a local API route; the script uses local file timestamps to avoid refetching sources that are still fresh. The current app intentionally avoids synthetic fallback values, so missing upstream products remain absent rather than being fabricated in the UI layer.
             </p>
             <ol className="mt-4 space-y-3 text-sm leading-6 text-[#cbd5e1]">
               {pipelineSteps.map((step, index) => (

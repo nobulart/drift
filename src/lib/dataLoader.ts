@@ -2,49 +2,49 @@
 import { deriveGeomagneticStrength } from './geomagnetic';
 
 export async function loadInertiaData(): Promise<any[]> {
-  const response = await fetch('/api/inertia');
+  const response = await fetch('/api/inertia', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
 export async function loadEOPData(): Promise<any[]> {
-  const response = await fetch('/api/eop');
+  const response = await fetch('/api/eop', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
 export async function loadEOPLatestData(): Promise<any[]> {
-  const response = await fetch('/api/eop');
+  const response = await fetch('/api/eop', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
 export async function loadGeomagData(): Promise<any[]> {
-  const response = await fetch('/api/geomag');
+  const response = await fetch('/api/geomag', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
 export async function loadGeomagGFZData(): Promise<any[]> {
-  const response = await fetch('/api/geomag-gfz');
+  const response = await fetch('/api/geomag-gfz', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
 export async function loadGRACEData(): Promise<any[]> {
-  const response = await fetch('/api/grace');
+  const response = await fetch('/api/grace', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
 export async function loadCombinedData(): Promise<any[]> {
-  const response = await fetch('/api/combined-full');
+  const response = await fetch('/api/combined-full', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
 export async function loadEphemerisData(): Promise<any> {
-  const response = await fetch('/api/ephemeris');
+  const response = await fetch('/api/ephemeris', { cache: 'no-store' });
   const data = await response.json();
   return data;
 }

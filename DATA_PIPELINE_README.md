@@ -30,8 +30,9 @@ cd /Users/craig/src/drift
 ### Individual Scripts
 
 ```bash
-# Fetch latest data
+# Fetch latest stale data; use --force for a full upstream refresh
 python3 scripts/fetch_latest.py
+python3 scripts/fetch_latest.py --force
 
 # Build EOP data
 python3 scripts/build_eop.py

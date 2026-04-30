@@ -63,11 +63,16 @@ If using this data in research, please cite:
 - **GRACE**: Wiese, D. et al. (2026). JPL GRACE and GRACE-FO MASCON RL06.3Mv04 CRI.
 - **KP**: Matzka, J. et al. (2021). The geomagnetic Kp index. Space Weather.
 
-### Automated Retrival
+### Automated Retrieval
 
-Update data daily with:
+Update stale local data with:
 ```bash
 python3 scripts/fetch_latest.py
+```
+
+Force upstream retrievals with:
+```bash
+python3 scripts/fetch_latest.py --force
 ```
 
 Add to crontab:

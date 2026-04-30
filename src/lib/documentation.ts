@@ -75,7 +75,7 @@ export const DOCS_OUTPUTS = [
   {
     title: 'Comparative external context',
     body:
-      'The 3D Vector View and overlays place the geometric diagnostics next to any available external context. They are useful for timing comparisons and cross-checks, while keeping causal interpretation conservative.',
+      'The 3D Vector View and overlays place the geometric diagnostics next to any available external context. Fullscreen views preserve the same controls, selected traces, ranges, and guide text as their dashboard panels, which keeps timing comparisons and cross-checks consistent while causal interpretation remains conservative.',
   },
   {
     title: 'Exploratory transition monitoring',
@@ -89,5 +89,5 @@ export const DOCS_LIMITATIONS = [
   'The dashboard’s geomagnetic comparisons are contextual; they should not be read as standalone evidence of coupling or causation.',
   'Forecast outputs depend on rolling diagnostics and conditional lag structure, so they are exploratory indicators rather than validated predictive guarantees.',
   'All conclusions are tied to the observational window represented in the available data and may not generalize outside that interval.',
-  'Source freshness is still bounded by upstream publication cadence, service availability, and the daily normalization used for some inputs.',
+  'Source freshness is bounded by upstream publication cadence, service availability, local timestamp-based refresh windows, and the daily normalization used for some inputs.',
 ];
