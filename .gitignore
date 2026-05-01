@@ -6,6 +6,8 @@ out/
 .DS_Store
 public/data/.rolling-stats-cache/
 data/.rolling-stats-cache/
+public/data/.phase-escape-cache/
+data/.phase-escape-cache/
 data/kernels/
 data/ephemeris_historic.json
 public/data/ephemeris_historic.json

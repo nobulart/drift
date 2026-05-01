@@ -142,7 +142,11 @@ function normalizePanelOrder(value: unknown): string[] {
   const uniqueOrderedPanels = Array.from(new Set(orderedKnownPanels));
   const missingPanels = DEFAULT_PANEL_ORDER.filter((panelId) => !uniqueOrderedPanels.includes(panelId));
 
-  return [...uniqueOrderedPanels, ...missingPanels];
+  const mergedOrder = [...uniqueOrderedPanels, ...missingPanels];
+  return [
+    'phaseEscape',
+    ...mergedOrder.filter((panelId) => panelId !== 'phaseEscape'),
+  ];
 }
 
 function readPanelPreferences(): Pick<AppState, 'collapsedPanels' | 'hiddenPanels' | 'panelOrder'> | null {

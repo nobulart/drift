@@ -6,9 +6,16 @@ Source paper: [Planar Structure and Regime Dynamics in Modern Polar Motion](http
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.4.png)
 
-Current release: `v1.4.6`
+Current release: `v1.4.7`
 
 ## Release Notes
+
+### v1.4.7
+
+- Added the Phase-Locked Escape Model as the first full-width dashboard panel, using internal DRIFT state plus DE442-derived phase composites rather than exploratory CSV exports.
+- Added phase drift, local linear time-to-alignment, oscillatory regime detection, phase acceleration, curvature signal, and phase stability diagnostics.
+- Added the escape-energy diagnostic: phase kinetic energy, phase potential energy, total phase energy, barrier ratio, energy-state classification, and a Kramers-like comparative risk index using `R(t)` as a noise proxy.
+- Added energy overlays and optional time-series traces for phase potential energy, total phase energy, and barrier ratio.
 
 ### v1.4.6
 
@@ -347,6 +354,7 @@ drift/
 5. **Geomagnetic Context** - Compare dashboard geometry with Kp/ap and related context without assuming causation
 6. **Transition Forecast** - Surface transition-like episodes using lag-conditioned historical structure
 7. **Planetary Overlay Context** - Compare drift and related signals against DE442-derived Earth-geocentric planetary observables
+8. **Phase-Locked Escape Model** - Inspect phase-dependent escape probability, phase drift, curvature, escape-energy diagnostics, barrier ratio, and residual phase misalignment from internal DRIFT state plus DE442
 
 ## Data Pipeline
 
@@ -355,6 +363,7 @@ drift/
 - `scripts/combine_data.py` - Merge observed source products into dashboard-ready JSON
 - `scripts/compute_rolling_stats.py` - Compute rolling diagnostics, lag models, and forecast inputs
 - `scripts/build_ephemeris.py` - Extract slim DE442 overlay series into daily JSON cache
+- `scripts/compute_phase_escape.py` - Build phase-escape state inputs from internal EOP and DE442 caches
 
 ### Live API (Next.js)
 
@@ -406,6 +415,12 @@ drift/
   `currentState`, `theta`, `baseProb`, `smoothSigma`.
 - Returns `lags`, `P_tau`, `expected_time`, `peak_time`, `cumulative`, `alert_level`, and related forecast metadata.
 
+#### `GET /api/phase-escape`
+- Builds the Phase-Locked Escape Model inputs from the internal DRIFT EOP state and the cached DE442 ephemeris series.
+- Computes solar-residual DRIFT phase, DE442 torque-proxy analytic phases, the registered planetary composites, and residual phase misalignment.
+- Supports the panel's phase-drift, phase-acceleration, escape-energy, barrier-ratio, and Kramers-like comparative risk diagnostics in the frontend model layer.
+- Does not depend on `docs/drift.csv` or any `docs/outputs` exploratory artifacts.
+
 ## Math Overview
 
 - **Drift Axis**: PCA on sliding window of polar motion
@@ -421,9 +436,18 @@ Use the dashboard in this order when you want the most paper-aligned interpretat
 1. Start with `Polar Motion`, `Drift Direction`, and `R(t)` to assess the geometry itself.
 2. Use `Phase Portrait` and `Phase Diagnostics` to inspect fast-slow organization and intermittent behavior.
 3. Check the 3D panel, overlays, and any available geomagnetic context for timing comparison.
-4. Read `Transition Forecast` as an exploratory summary of whether the current state resembles prior transition-like behavior.
+4. Use the `Phase-Locked Escape Model` to inspect phase-conditioned escape probability, drift, curvature, barrier ratio, and comparative escape-energy diagnostics.
+5. Read `Transition Forecast` as an exploratory summary of whether the current state resembles prior transition-like behavior.
 
 If a conclusion depends mainly on geomagnetic coincidence or on a single forecast peak, it is weaker than a conclusion supported by the geometric panels together.
+
+### Phase-Locked Escape Model
+
+The Phase-Locked Escape Model panel uses the production DRIFT database/state and the internal DE442 ephemeris pipeline. `docs/drift.csv` was an exploratory analysis export only; the production panel does not read that CSV and does not require files from `docs/outputs` at runtime.
+
+The model is a phase-conditioned metastable escape-risk diagnostic. It reports residual phase misalignment, phase-dependent escape probability, phase drift, local linear time-to-alignment, phase acceleration, curvature signal, phase stability, the current metastable phase-well state, and high-R escape-risk modulation. It should not be read as deterministic planetary forcing or prediction certainty.
+
+The escape-energy diagnostic treats residual phase motion as movement in a modulated phase potential. Kinetic energy is estimated from phase velocity, potential energy from angular offset relative to the preferred escape phase, and the barrier ratio normalizes the current phase-energy state against the empirical modulation barrier. The Kramers-like index uses `R(t)` as a noise proxy and should be interpreted as a comparative risk index rather than an absolute probability, physical-joule energy, or deterministic transition clock.
 
 ## Tech Stack
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, ReactNode, useMemo } from 'react';
+import { useEffect, useState, useRef, ReactNode, useMemo, isValidElement, cloneElement } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useStore } from '@/store/useStore';
@@ -20,6 +20,7 @@ const OverlayPlot = dynamic(() => import('@/components/OverlayPlot'), { ssr: fal
 const LagModelPlot = dynamic(() => import('@/components/LagModelPlot'), { ssr: false });
 const ConditionalLagPlot = dynamic(() => import('@/components/ConditionalLagPlot'), { ssr: false });
 const TransitionForecastPanel = dynamic(() => import('@/components/TransitionForecastPanel'), { ssr: false });
+const PhaseEscapeModelPanel = dynamic(() => import('@/components/PhaseEscapeModelPanel'), { ssr: false });
 const ResponsiveGrid = dynamic(() => import('@/components/ResponsiveGrid'), { ssr: false });
 const Panel = dynamic(() => import('@/components/LayoutPanel'), { ssr: false });
 
@@ -185,6 +186,19 @@ export default function Home() {
         <TransitionForecastPanel />
       </Panel>
     ),
+    phaseEscape: rollingStatsLoaded && rollingStats ? (
+      <Panel
+        panelId="phaseEscape"
+        title="Phase-Locked Escape Model"
+        guide={PANEL_GUIDES.phaseEscape}
+        visible={!hiddenPanels.has('phaseEscape')}
+        collapsed={collapsedPanels.has('phaseEscape')}
+        onToggleVisibility={() => togglePanelVisibility('phaseEscape')}
+        onToggleCollapse={() => togglePanelCollapse('phaseEscape')}
+      >
+        <PhaseEscapeModelPanel />
+      </Panel>
+    ) : null,
     sphere: (
       <Panel
         panelId="sphere"
@@ -317,7 +331,12 @@ export default function Home() {
     ),
   };
 
-  const orderedPanels = panelOrder.map((id) => panelMap[id]).filter(Boolean);
+  const orderedPanels = panelOrder
+    .map((id) => {
+      const panel = panelMap[id];
+      return isValidElement(panel) ? cloneElement(panel, { key: id }) : panel;
+    })
+    .filter(Boolean);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0b1220] text-[#e5e7eb]">
@@ -330,7 +349,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.6
+                Version v1.4.7
               </p>
             </div>
             <Link

@@ -99,6 +99,11 @@ const apiRows = [
     fields: 'lags, P_tau, expected_time, peak_time, cumulative, alert_level',
   },
   {
+    route: '/api/phase-escape',
+    purpose: 'Phase-Locked Escape Model state built from internal DRIFT EOP state and DE442-derived composite phases.',
+    fields: 'thetaRaw, thetaResidual, rRatio, bodyPhases, composites, misalignment',
+  },
+  {
     route: '/api/update-data',
     purpose: 'Runs the timestamp-aware source refresh pipeline used by the sidebar Update Data button.',
     fields: 'ok, completedAt, stdout, stderr, error',
@@ -121,7 +126,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.6
+                Version v1.4.7
               </span>
               <Link
                 href="/"
@@ -149,7 +154,8 @@ export default function DocsPage() {
               <li>1. Start with Polar Motion, Drift Direction, and Orthogonal Deviation to judge whether the geometry is narrow, stable, and organized.</li>
               <li>2. Use Phase Portrait and Phase Diagnostics to inspect the fast cyclic structure and any bursts, slowdowns, or loop distortion.</li>
               <li>3. Compare the 3D view, overlays, and any available geomagnetic context for timing context, but keep causal interpretation conservative.</li>
-              <li>4. Read Transition Forecast last as an exploratory summary of whether the present state resembles earlier transition-like episodes.</li>
+              <li>4. Use the Phase-Locked Escape Model to inspect phase-conditioned escape probability, drift, curvature, barrier ratio, and comparative escape-energy diagnostics.</li>
+              <li>5. Read Transition Forecast last as an exploratory summary of whether the present state resembles earlier transition-like episodes.</li>
             </ol>
           </div>
         </section>
@@ -157,6 +163,12 @@ export default function DocsPage() {
         <section className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.7 Escape Energy</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                The Phase-Locked Escape Model now includes phase drift, curvature, stability, an escape-energy diagnostic, barrier ratio, and a Kramers-like comparative risk index from internal DRIFT state plus DE442-derived phase composites.
+              </p>
+            </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.6 Live Refresh</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
@@ -167,12 +179,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.5 Real Data Only</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Synthetic fallback series were removed from the active pipeline, the unstable Angle Diagnostics and Alignment panels were taken out of the UI, and the forecast/lag tooling now reads only the current real-data cache.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.4 Date Hover</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Phase Portrait hover popups now include the corresponding date, making it much easier to interrogate loops and identify when specific features occurred.
               </p>
             </article>
           </div>

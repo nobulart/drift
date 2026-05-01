@@ -46,6 +46,7 @@ export default function ResponsiveGrid({
   const panelLayout = useMemo(() => {
     if (isMobile) {
       return {
+        phaseEscape: { colSpan: 1 },
         forecast: { colSpan: 1 },
         sphere: { colSpan: 1 },
         polar: { colSpan: 1 },
@@ -62,6 +63,7 @@ export default function ResponsiveGrid({
     }
     if (isUHD) {
       return {
+        phaseEscape: { colSpan: 3 },
         forecast: { colSpan: 1 },
         sphere: { colSpan: 2 },
         polar: { colSpan: 1 },
@@ -77,6 +79,7 @@ export default function ResponsiveGrid({
       } as PanelLayout;
     }
     return {
+      phaseEscape: { colSpan: 2 },
       forecast: { colSpan: 2 },
       sphere: { colSpan: 2 },
       polar: { colSpan: 1 },

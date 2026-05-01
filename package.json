@@ -1,12 +1,13 @@
 {
   "name": "drift",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "description": "Geodetic-Geomagnetic Coupling Dashboard",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsc --ignoreConfig --target ES2020 --module commonjs --outDir /private/tmp/drift-phase-test --skipLibCheck src/lib/phaseEscapeModel.ts && node --test tests/phaseEscapeModel.test.cjs",
     "update-data": "./scripts/run_pipeline.sh --compute-stats"
   },
   "keywords": [],

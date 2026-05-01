@@ -39,6 +39,17 @@ This document describes the automated data retrieval and integration system for 
 - **Resolution**: 3-hourly (Kp), daily (Ap)
 - **License**: CC BY 4.0 (GFZ)
 
+### 4. JPL DE442 Ephemeris Cache
+- **Source**: JPL DE442 planetary ephemeris kernel
+- **Format**: Pre-extracted daily JSON cache
+- **Content**:
+  - Earth-geocentric body distance and angular state
+  - Ecliptic longitude and angular velocity
+  - Torque-proxy series used for contextual overlays and phase-composite construction
+- **Time Range**: 1973-2050
+- **Resolution**: Daily
+- **Role**: Supports planetary overlay context and the Phase-Locked Escape Model composite phases. This is a phase-conditioned diagnostic input, not a deterministic forcing claim.
+
 ## Data Pipeline
 
 ### Build Scripts
@@ -54,6 +65,12 @@ Fetch and process GFZ-KP geomagnetic indices via web service API.
 
 #### `scripts/combine_data.py`
 Combine EOP, GRACE, and GFZ-KP data into unified format.
+
+#### `scripts/build_ephemeris.py`
+Extract the slim daily DE442 overlay cache used by dashboard ephemeris panels and phase-composite construction.
+
+#### `scripts/compute_phase_escape.py`
+Build Phase-Locked Escape Model inputs from internal EOP/DRIFT state and cached DE442 ephemeris. This production path does not read `docs/drift.csv` or any `docs/outputs` exploratory artifacts.
 
 ### Fetch Scripts
 
@@ -79,6 +96,8 @@ Timestamp-aware retrieval script that:
 | `geomag_gfz_latest.json` | Recent KP data | 25 | Daily |
 | `combined_historic.json` | Combined EOP+KP | 19,449 | Monthly |
 | `combined_latest.json` | Latest combined data | 19,449 | Daily |
+| `ephemeris_historic.json` | Daily DE442 Earth-geocentric overlay cache | 28,000+ | Static / rebuilt as needed |
+| `.phase-escape-cache/*.json` | Cached Phase-Locked Escape Model API outputs | Window-dependent | On demand |
 
 ## API Routes
 
@@ -93,6 +112,36 @@ Returns combined EOP + GRACE data.
 
 ### `/api/combined-full`
 Returns EOP + GRACE + GFZ-KP data.
+
+### `/api/ephemeris`
+Returns the cached DE442-derived Earth-geocentric overlay dataset.
+
+### `/api/rolling-stats`
+Computes or serves cached rolling DRIFT diagnostics, lag models, and transition-state inputs.
+
+### `/api/transition-forecast`
+Returns the exploratory lag-conditioned transition probability summary.
+
+### `/api/phase-escape`
+Returns Phase-Locked Escape Model state derived from internal DRIFT EOP state and DE442 composite phases. The panel computes residual phase misalignment, phase drift, phase acceleration, escape probability, barrier ratio, phase stability, and a Kramers-like comparative risk index from this internal state.
+
+## Phase-Locked Escape Model
+
+The Phase-Locked Escape Model is an operational dashboard diagnostic introduced in v1.4.7. It uses internal DRIFT state and DE442-derived torque-proxy analytic phases to compute residual phase misalignment against registered planetary composites.
+
+Runtime behavior:
+
+- No production code reads `docs/drift.csv`.
+- No production code reads `docs/outputs/*`.
+- The panel consumes `/api/phase-escape`, which is backed by internal EOP/DRIFT state plus DE442 cache data.
+- The model reports phase-dependent escape probability, phase drift, phase acceleration, curvature signal, phase stability, escape-energy diagnostic values, barrier ratio, and a Kramers-like comparative risk index.
+
+Interpretation constraints:
+
+- Treat the output as a phase-conditioned metastable escape-risk diagnostic.
+- Treat `R(t)` as a noise proxy for the Kramers-like index, not as literal thermal noise.
+- Do not interpret energy values as physical joules or deterministic transition timing.
+- Do not interpret DE442 phase composites as planetary triggers.
 
 ## Automation
 
