@@ -126,6 +126,25 @@ function DirectionIndicator({ direction, magnitude }: { direction: string; magni
   );
 }
 
+function ExpandChartButton({ title, onClick }: { title: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-lg border border-[#374151] bg-[#0b1220] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#cbd5e1] transition-colors hover:border-[#60a5fa] hover:text-white"
+      title={title}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 3h6v6" />
+        <path d="M9 21H3v-6" />
+        <path d="m21 3-7 7" />
+        <path d="m3 21 7-7" />
+      </svg>
+      Expand
+    </button>
+  );
+}
+
 export default function PhaseEscapeModelPanel() {
   const [selectedComposite, setSelectedComposite] = useState<PhaseEscapeCompositeKey>('Venus_Mars');
   const [dataset, setDataset] = useState<PhaseEscapeDataset | null>(null);
@@ -136,6 +155,7 @@ export default function PhaseEscapeModelPanel() {
   const [showPhaseAcceleration, setShowPhaseAcceleration] = useState(true);
   const [showEnergySeries, setShowEnergySeries] = useState(true);
   const [showBarrierRatioSeries, setShowBarrierRatioSeries] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<'curve' | 'timeSeries' | null>(null);
 
   const plotHeight = usePlotDisplayHeight(380, 700);
   const rollingStats = useStore(state => state.rollingStats);
@@ -450,7 +470,7 @@ export default function PhaseEscapeModelPanel() {
         type: 'scatter',
         mode: 'lines',
         name: 'Total phase energy',
-        yaxis: 'y3',
+        yaxis: 'y4',
         line: { color: '#2dd4bf', width: 1.2 },
       });
     }
@@ -462,13 +482,105 @@ export default function PhaseEscapeModelPanel() {
         type: 'scatter',
         mode: 'lines',
         name: 'Barrier ratio',
-        yaxis: 'y3',
+        yaxis: 'y5',
         line: { color: '#f472b6', width: 1.2, dash: 'dash' },
       });
     }
 
     return traces;
   }, [model.phi0Deg, rThreshold, recentSeries, showBarrierRatioSeries, showEnergySeries, showPhaseAcceleration]);
+
+  useEffect(() => {
+    if (!expandedChart || typeof document === 'undefined') {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExpandedChart(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [expandedChart]);
+
+  const curveLayout = useMemo(() => ({
+    title: { text: 'Phase-Dependent Escape Probability' },
+    template: 'plotly_dark',
+    xaxis: { title: { text: 'Residual phase misalignment phi (deg)' }, range: [-180, 180], gridcolor: '#374151' },
+    yaxis: { title: { text: 'P(escape | phi)' }, range: [0, 1], gridcolor: '#374151' },
+    yaxis2: { title: { text: 'Phase potential energy' }, overlaying: 'y', side: 'right', showgrid: false },
+    legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
+    margin: { l: 56, r: 78, t: 48, b: 70 },
+    plot_bgcolor: '#111827',
+    paper_bgcolor: '#111827',
+    font: { color: '#e5e7eb' },
+    height: plotHeight,
+    autosize: true,
+  }), [plotHeight]);
+
+  const timeSeriesLayout = useMemo(() => ({
+    title: { text: `Recent ${daysShown} Days` },
+    template: 'plotly_dark',
+    xaxis: { title: { text: 'Date' }, gridcolor: '#374151', domain: [0.07, 0.90] },
+    yaxis: { title: { text: 'R(t) / Escape probability' }, gridcolor: '#374151', side: 'left', range: [0, 1] },
+    yaxis2: {
+      title: { text: 'Phi (deg)', font: { color: '#c084fc', size: 11 }, standoff: 2 },
+      tickfont: { color: '#c084fc', size: 10 },
+      overlaying: 'y',
+      side: 'right',
+      anchor: 'free',
+      position: 0.91,
+      range: [-180, 180],
+      showgrid: false,
+      zeroline: false,
+    },
+    yaxis3: {
+      title: { text: 'Accel', font: { color: '#facc15', size: 11 }, standoff: 2 },
+      tickfont: { color: '#facc15', size: 10 },
+      overlaying: 'y',
+      side: 'left',
+      anchor: 'free',
+      position: 0,
+      showgrid: false,
+      zeroline: false,
+    },
+    yaxis4: {
+      title: { text: 'Energy', font: { color: '#2dd4bf', size: 11 }, standoff: 2 },
+      tickfont: { color: '#2dd4bf', size: 10 },
+      overlaying: 'y',
+      side: 'right',
+      anchor: 'free',
+      position: 0.955,
+      showgrid: false,
+      zeroline: false,
+    },
+    yaxis5: {
+      title: { text: 'Barrier', font: { color: '#f472b6', size: 11 }, standoff: 2 },
+      tickfont: { color: '#f472b6', size: 10 },
+      overlaying: 'y',
+      side: 'right',
+      anchor: 'free',
+      position: 1,
+      showgrid: false,
+      zeroline: false,
+    },
+    legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
+    margin: { l: 92, r: 112, t: 48, b: 70 },
+    plot_bgcolor: '#111827',
+    paper_bgcolor: '#111827',
+    font: { color: '#e5e7eb' },
+    height: plotHeight,
+    autosize: true,
+  }), [daysShown, plotHeight]);
 
   if (loading && !dataset) {
     return (
@@ -576,31 +688,21 @@ export default function PhaseEscapeModelPanel() {
 
       <div className="mb-4 grid gap-4 xl:grid-cols-2">
         <div className="min-w-0 rounded-lg border border-[#243041] bg-[#111827] p-3">
-          <label className="mb-2 inline-flex items-center gap-2 text-xs text-[#9ca3af]">
-            <input
-              type="checkbox"
-              checked={showEnergyCurve}
-              onChange={(event) => setShowEnergyCurve(event.target.checked)}
-              className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
-            />
-            Show energy curve
-          </label>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-xs text-[#9ca3af]">
+              <input
+                type="checkbox"
+                checked={showEnergyCurve}
+                onChange={(event) => setShowEnergyCurve(event.target.checked)}
+                className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
+              />
+              Show energy curve
+            </label>
+            <ExpandChartButton title="View phase probability chart fullscreen" onClick={() => setExpandedChart('curve')} />
+          </div>
           <Plot
             data={curveData}
-            layout={{
-              title: { text: 'Phase-Dependent Escape Probability' },
-              template: 'plotly_dark',
-              xaxis: { title: { text: 'Residual phase misalignment phi (deg)' }, range: [-180, 180], gridcolor: '#374151' },
-              yaxis: { title: { text: 'P(escape | phi)' }, range: [0, 1], gridcolor: '#374151' },
-              yaxis2: { title: { text: 'Phase potential energy' }, overlaying: 'y', side: 'right', showgrid: false },
-              legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
-              margin: { l: 56, r: 78, t: 48, b: 70 },
-              plot_bgcolor: '#111827',
-              paper_bgcolor: '#111827',
-              font: { color: '#e5e7eb' },
-              height: plotHeight,
-              autosize: true,
-            } as any}
+            layout={curveLayout as any}
             config={createCsvExportConfig('phase-escape-curve.csv', { displayModeBar: true, responsive: true })}
             style={{ width: '100%', height: `${plotHeight}px` }}
             useResizeHandler
@@ -608,52 +710,41 @@ export default function PhaseEscapeModelPanel() {
         </div>
 
         <div className="min-w-0 rounded-lg border border-[#243041] bg-[#111827] p-3">
-          <div className="mb-2 flex flex-wrap gap-3 text-xs text-[#9ca3af]">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={showPhaseAcceleration}
-                onChange={(event) => setShowPhaseAcceleration(event.target.checked)}
-                className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
-              />
-              Phase acceleration
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={showEnergySeries}
-                onChange={(event) => setShowEnergySeries(event.target.checked)}
-                className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
-              />
-              Energy
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={showBarrierRatioSeries}
-                onChange={(event) => setShowBarrierRatioSeries(event.target.checked)}
-                className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
-              />
-              Barrier ratio
-            </label>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-3 text-xs text-[#9ca3af]">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showPhaseAcceleration}
+                  onChange={(event) => setShowPhaseAcceleration(event.target.checked)}
+                  className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
+                />
+                Phase acceleration
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showEnergySeries}
+                  onChange={(event) => setShowEnergySeries(event.target.checked)}
+                  className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
+                />
+                Energy
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showBarrierRatioSeries}
+                  onChange={(event) => setShowBarrierRatioSeries(event.target.checked)}
+                  className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
+                />
+                Barrier ratio
+              </label>
+            </div>
+            <ExpandChartButton title="View recent dynamics chart fullscreen" onClick={() => setExpandedChart('timeSeries')} />
           </div>
           <Plot
             data={timeSeriesData}
-            layout={{
-              title: { text: `Recent ${daysShown} Days` },
-              template: 'plotly_dark',
-              xaxis: { title: { text: 'Date' }, gridcolor: '#374151' },
-              yaxis: { title: { text: 'R(t) / Escape probability' }, gridcolor: '#374151', side: 'left', range: [0, 1] },
-              yaxis2: { title: { text: 'Phase (deg)' }, overlaying: 'y', side: 'right', range: [-180, 180], gridcolor: '#374151' },
-              yaxis3: { title: { text: 'Dynamics / energy index' }, overlaying: 'y', side: 'right', anchor: 'free', position: 0.97, showgrid: false },
-              legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
-              margin: { l: 64, r: 96, t: 48, b: 70 },
-              plot_bgcolor: '#111827',
-              paper_bgcolor: '#111827',
-              font: { color: '#e5e7eb' },
-              height: plotHeight,
-              autosize: true,
-            } as any}
+            layout={timeSeriesLayout as any}
             config={createCsvExportConfig('phase-escape-timeseries.csv', { displayModeBar: true, responsive: true })}
             style={{ width: '100%', height: `${plotHeight}px` }}
             useResizeHandler
@@ -687,6 +778,52 @@ export default function PhaseEscapeModelPanel() {
           </p>
         </div>
       </div>
+
+      {expandedChart && (
+        <>
+          <div
+            className="fixed inset-0 z-[9998] bg-[#0b1220]/95"
+            onClick={() => setExpandedChart(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-[9999] flex max-h-[90vh] w-[min(88vw,1920px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-[#374151] bg-[#111827] p-4 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="truncate pr-2 text-sm font-bold uppercase tracking-wider text-[#e5e7eb]">
+                {expandedChart === 'curve' ? 'Phase-Dependent Escape Probability Fullscreen' : `Recent ${daysShown} Days Fullscreen`}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setExpandedChart(null)}
+                className="rounded p-2 text-[#9ca3af] transition-colors hover:bg-[#374151] hover:text-[#e5e7eb]"
+                title="Close fullscreen chart"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="min-h-0 flex-1">
+              <Plot
+                data={expandedChart === 'curve' ? curveData : timeSeriesData}
+                layout={{
+                  ...(expandedChart === 'curve' ? curveLayout : timeSeriesLayout),
+                  height: undefined,
+                  autosize: true,
+                  margin: expandedChart === 'curve'
+                    ? { l: 72, r: 92, t: 54, b: 82 }
+                    : { l: 104, r: 132, t: 54, b: 82 },
+                } as any}
+                config={createCsvExportConfig(
+                  expandedChart === 'curve' ? 'phase-escape-curve.csv' : 'phase-escape-timeseries.csv',
+                  { displayModeBar: true, responsive: true }
+                )}
+                style={{ width: '100%', height: 'calc(86vh - 112px)' }}
+                useResizeHandler
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
