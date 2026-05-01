@@ -111,6 +111,87 @@ interface AppState {
   refetchData: () => Promise<void>;
 }
 
+const PANEL_PREFERENCES_STORAGE_KEY = 'drift-panel-preferences-v1';
+const DEFAULT_VISIBLE_PANELS = new Set<string>();
+const KNOWN_PANEL_IDS = new Set<string>(DEFAULT_PANEL_ORDER);
+
+interface StoredPanelPreferences {
+  collapsedPanels?: unknown;
+  hiddenPanels?: unknown;
+  panelOrder?: unknown;
+}
+
+function normalizePanelSet(value: unknown): Set<string> {
+  if (!Array.isArray(value)) {
+    return new Set();
+  }
+
+  return new Set(value.filter((panelId): panelId is string => (
+    typeof panelId === 'string' && KNOWN_PANEL_IDS.has(panelId)
+  )));
+}
+
+function normalizePanelOrder(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_PANEL_ORDER];
+  }
+
+  const orderedKnownPanels = value.filter((panelId): panelId is string => (
+    typeof panelId === 'string' && KNOWN_PANEL_IDS.has(panelId)
+  ));
+  const uniqueOrderedPanels = Array.from(new Set(orderedKnownPanels));
+  const missingPanels = DEFAULT_PANEL_ORDER.filter((panelId) => !uniqueOrderedPanels.includes(panelId));
+
+  return [...uniqueOrderedPanels, ...missingPanels];
+}
+
+function readPanelPreferences(): Pick<AppState, 'collapsedPanels' | 'hiddenPanels' | 'panelOrder'> | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(PANEL_PREFERENCES_STORAGE_KEY);
+    if (!storedValue) {
+      return null;
+    }
+
+    const parsed = JSON.parse(storedValue) as StoredPanelPreferences;
+    return {
+      collapsedPanels: normalizePanelSet(parsed.collapsedPanels),
+      hiddenPanels: normalizePanelSet(parsed.hiddenPanels),
+      panelOrder: normalizePanelOrder(parsed.panelOrder),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePanelPreferences({
+  collapsedPanels,
+  hiddenPanels,
+  panelOrder,
+}: Pick<AppState, 'collapsedPanels' | 'hiddenPanels' | 'panelOrder'>) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      PANEL_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        collapsedPanels: [...collapsedPanels],
+        hiddenPanels: [...hiddenPanels],
+        panelOrder,
+      })
+    );
+  } catch {
+    // Ignore storage failures so the dashboard remains usable in restricted browser contexts.
+  }
+}
+
+const initialPanelPreferences = readPanelPreferences();
+
 const useStore = create<AppState>((set, get) => ({
    data: [],
    frame: 'earth',
@@ -125,9 +206,9 @@ const useStore = create<AppState>((set, get) => ({
   rollingStats: null,
   turnThreshold: 0.05,
   alignment: null,
-  collapsedPanels: new Set(),
-  hiddenPanels: new Set(['lagModel', 'conditionalLag']),
-  panelOrder: [...DEFAULT_PANEL_ORDER],
+  collapsedPanels: initialPanelPreferences?.collapsedPanels ?? new Set(),
+  hiddenPanels: initialPanelPreferences?.hiddenPanels ?? new Set(DEFAULT_VISIBLE_PANELS),
+  panelOrder: initialPanelPreferences?.panelOrder ?? [...DEFAULT_PANEL_ORDER],
   lastUpdated: null,
   setData: (data) => {
     const transformedData = data.map(item => {
@@ -176,6 +257,7 @@ const useStore = create<AppState>((set, get) => ({
       newHidden.add(panelId);
     }
     set({ hiddenPanels: newHidden });
+    writePanelPreferences(get());
   },
   togglePanelCollapse: (panelId) => {
     const { collapsedPanels } = get();
@@ -186,6 +268,7 @@ const useStore = create<AppState>((set, get) => ({
       newCollapsed.add(panelId);
     }
     set({ collapsedPanels: newCollapsed });
+    writePanelPreferences(get());
   },
   movePanel: (panelId, direction) => {
     const panelOrder = [...get().panelOrder];
@@ -197,12 +280,17 @@ const useStore = create<AppState>((set, get) => ({
 
     [panelOrder[currentIndex], panelOrder[targetIndex]] = [panelOrder[targetIndex], panelOrder[currentIndex]];
     set({ panelOrder });
+    writePanelPreferences(get());
   },
-  resetPanelPreferences: () => set({
-    hiddenPanels: new Set(['lagModel', 'conditionalLag']),
-    collapsedPanels: new Set(),
-    panelOrder: [...DEFAULT_PANEL_ORDER],
-  }),
+  resetPanelPreferences: () => {
+    const nextPreferences = {
+      hiddenPanels: new Set(DEFAULT_VISIBLE_PANELS),
+      collapsedPanels: new Set<string>(),
+      panelOrder: [...DEFAULT_PANEL_ORDER],
+    };
+    set(nextPreferences);
+    writePanelPreferences(nextPreferences);
+  },
   setRollingStats: (stats) => set({ rollingStats: stats }),
   setTurnThreshold: (threshold) => set({ turnThreshold: threshold }),
   setCurrentAlignment: (alignment) => set({ alignment }),

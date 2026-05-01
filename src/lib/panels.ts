@@ -4,15 +4,15 @@ export interface PanelOption {
 }
 
 export const DEFAULT_PANEL_ORDER = [
-  'forecast',
   'sphere',
+  'forecast',
   'polar',
   'drift',
   'phase',
   'phaseDiag',
   'ortho',
-  'overlay',
   'lagModel',
+  'overlay',
   'conditionalLag',
 ] as const;
 

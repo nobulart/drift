@@ -71,7 +71,7 @@ export default function ResponsiveGrid({
         phase: { colSpan: 1 },
         phaseDiag: { colSpan: 1 },
         ortho: { colSpan: 1 },
-        overlay: { colSpan: 1 },
+        overlay: { colSpan: 2 },
         lagModel: { colSpan: 1 },
         conditionalLag: { colSpan: 1 },
       } as PanelLayout;
@@ -86,7 +86,7 @@ export default function ResponsiveGrid({
       phase: { colSpan: 1 },
       phaseDiag: { colSpan: 1 },
       ortho: { colSpan: 1 },
-      overlay: { colSpan: 1 },
+      overlay: { colSpan: 2 },
       lagModel: { colSpan: 1 },
       conditionalLag: { colSpan: 1 },
     } as PanelLayout;

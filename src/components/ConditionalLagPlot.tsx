@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { ConditionalLagResult } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useStore } from '@/store/useStore';
 
 type StateOption = 'Stable' | 'Pre' | 'Transition' | 'Post';
@@ -262,7 +263,7 @@ export default function ConditionalLagPlot() {
             <Plot
               data={[heatmapData]}
               layout={heatmapLayout}
-              config={{ displayModeBar: true, responsive: true }}
+              config={createCsvExportConfig('conditional-lag-heatmap.csv', { displayModeBar: true, responsive: true })}
               style={{ width: '100%', height: `${heatmapHeight}px` }}
               useResizeHandler
             />
@@ -279,7 +280,7 @@ export default function ConditionalLagPlot() {
             <Plot
               data={sliceData}
               layout={sliceLayout}
-              config={{ displayModeBar: false, responsive: true }}
+              config={createCsvExportConfig('conditional-lag-slice.csv', { displayModeBar: true, responsive: true })}
               style={{ width: '100%', height: `${sliceHeight}px` }}
               useResizeHandler
             />

@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Plot from 'react-plotly.js';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
+import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 
 interface PhasePortraitProps {
   dates: string[];
@@ -162,7 +163,7 @@ export default function PhasePortrait({
       <Plot
         data={traces}
         layout={layout}
-        config={{ displayModeBar: true, responsive: true }}
+        config={createCsvExportConfig('phase-portrait.csv', { displayModeBar: true, responsive: true })}
         style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />

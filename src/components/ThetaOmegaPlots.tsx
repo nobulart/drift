@@ -6,6 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { computeDisplayOmega } from '@/lib/phase';
+import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 
 interface ThetaOmegaPlotsProps {
   dates: string[];
@@ -151,7 +152,7 @@ export default function ThetaOmegaPlots({
        data={traces}
        layout={layoutWithRange}
        onRelayout={handleRelayout}
-       config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
+       config={createCsvExportConfig('phase-diagnostics.csv', { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' })}
        style={{ width: '100%', height: `${plotHeight}px` }}
        useResizeHandler
      />

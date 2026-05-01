@@ -10,6 +10,7 @@ import {
 } from '@/lib/ephemeris';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { EphemerisDataset, EphemerisRecord, LagResult } from '@/lib/types';
+import { buildSelectedSeriesCsvRows, createCsvExportConfig, plotlyXRange, WideCsvSeries } from '@/lib/plotlyCsvExport';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
 
@@ -86,6 +87,30 @@ export default function OverlayPage() {
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const [lagTraces, setLagTraces] = useState<Plotly.Data[]>([]);
 
+  const selectedSeries = useMemo(() => {
+    if (!rollingStats || data.length === 0) {
+      return [];
+    }
+
+    const timestamps = data.map(d => d.t);
+    return selectedSignals.map(signalKey => {
+      const raw = signalKey.includes(':')
+        ? getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate)
+        : getCoreSignalSeries(signalKey, rollingStats, data);
+
+      if (!raw) {
+        return null;
+      }
+
+      return {
+        key: signalKey,
+        label: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey as keyof typeof CORE_SIGNALS]?.label ?? signalKey,
+        raw,
+        normalized: normalize(raw),
+      };
+    }).filter(Boolean) as Array<WideCsvSeries & { key: string }>;
+  }, [data, ephemerisByDate, rollingStats, selectedSignals]);
+
   useEffect(() => {
     if (rollingStats?.lagModel) {
       setLagResult(rollingStats.lagModel);
@@ -131,24 +156,16 @@ export default function OverlayPage() {
       : timestamps.map((_, i) => i);
     const filteredTime = filteredIndices.map(i => timestamps[i]);
 
-    const nextTraces = selectedSignals.map(signalKey => {
-      const raw = signalKey.includes(':')
-        ? getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate)
-        : getCoreSignalSeries(signalKey, rollingStats, data);
-
-      if (!raw) {
-        return null;
-      }
-
-      const filtered = filteredIndices.map(i => raw[i] ?? NaN);
+    const nextTraces = selectedSeries.map(series => {
+      const filtered = filteredIndices.map(i => series.raw[i] ?? NaN);
       return {
         x: filteredTime,
         y: normalize(filtered),
         mode: 'lines',
-        name: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey as keyof typeof CORE_SIGNALS]?.label ?? signalKey,
+        name: series.label,
         line: { width: 2 },
       } as Plotly.Data;
-    }).filter(Boolean) as Plotly.Data[];
+    });
 
     if (showTurningPoints && rollingStats.turningPoints?.length) {
       const tpTimes = rollingStats.turningPoints
@@ -165,7 +182,7 @@ export default function OverlayPage() {
     }
 
     setTraces(nextTraces);
-  }, [data, ephemerisByDate, rollingStats, selectedSignals, showTurningPoints, timeLockEnabled, timeRange]);
+  }, [data, rollingStats, selectedSeries, showTurningPoints, timeLockEnabled, timeRange]);
 
   const handleRelayout = (event: any) => {
     if (isInternalUpdate.current || !timeLockEnabled) return;
@@ -254,6 +271,15 @@ export default function OverlayPage() {
     ),
   ]), []);
 
+  const overlayCsvConfig = useMemo(() => createCsvExportConfig(
+    'overlay-plot.csv',
+    { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' },
+    (graphDiv) => {
+      const xRange = plotlyXRange(graphDiv);
+      return buildSelectedSeriesCsvRows(data, selectedSeries, xRange);
+    }
+  ), [data, selectedSeries]);
+
   return (
     <div className="p-6 bg-[#0b1220] min-h-screen">
       <h2 className="text-2xl font-bold mb-6 text-[#e5e7eb]">Overlay Analysis</h2>
@@ -296,7 +322,7 @@ export default function OverlayPage() {
         <Plot
           data={traces}
           layout={overlayLayout as any}
-          config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
+          config={overlayCsvConfig}
           style={{ width: '100%', height: '500px' }}
           useResizeHandler
           onRelayout={handleRelayout}
@@ -311,7 +337,7 @@ export default function OverlayPage() {
           <Plot
             data={lagTraces}
             layout={lagLayout as any}
-            config={{ displayModeBar: true, responsive: true }}
+            config={createCsvExportConfig('overlay-lag-response.csv', { displayModeBar: true, responsive: true })}
             style={{ width: '100%', height: '400px' }}
             useResizeHandler
           />

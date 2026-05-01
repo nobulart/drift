@@ -11,6 +11,7 @@ import {
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { EphemerisDataset, EphemerisRecord } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { buildSelectedSeriesCsvRows, createCsvExportConfig, plotlyXRange, WideCsvSeries } from '@/lib/plotlyCsvExport';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
 
@@ -89,6 +90,30 @@ export default function OverlayPlot() {
   const data = useStore(state => state.data);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
 
+  const selectedSeries = useMemo(() => {
+    if (!rollingStats || data.length === 0) {
+      return [];
+    }
+
+    const timestamps = data.map(d => d.t);
+    return selectedSignals.map(signalKey => {
+      const raw = signalKey.includes(':')
+        ? getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate)
+        : getCoreSignalSeries(signalKey, rollingStats, data);
+
+      if (!raw) {
+        return null;
+      }
+
+      return {
+        key: signalKey,
+        label: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey]?.label ?? signalKey,
+        raw,
+        normalized: normalize(raw),
+      };
+    }).filter(Boolean) as Array<WideCsvSeries & { key: string }>;
+  }, [data, ephemerisByDate, rollingStats, selectedSignals]);
+
   useEffect(() => {
     let active = true;
 
@@ -128,27 +153,28 @@ export default function OverlayPlot() {
       : timestamps.map((_, i) => i);
     const filteredTime = filteredIndices.map(i => timestamps[i]);
 
-    const nextTraces = selectedSignals.map(signalKey => {
-      const raw = signalKey.includes(':')
-        ? getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate)
-        : getCoreSignalSeries(signalKey, rollingStats, data);
-
-      if (!raw) {
-        return null;
-      }
-
-      const filtered = filteredIndices.map(i => raw[i] ?? NaN);
+    const nextTraces = selectedSeries.map(series => {
+      const filtered = filteredIndices.map(i => series.raw[i] ?? NaN);
       return {
         x: filteredTime,
         y: normalize(filtered),
         mode: 'lines',
-        name: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey]?.label ?? signalKey,
+        name: series.label,
         line: { width: 2 },
       } as Plotly.Data;
-    }).filter(Boolean) as Plotly.Data[];
+    });
 
     setTraces(nextTraces);
-  }, [data, ephemerisByDate, rollingStats, selectedSignals, timeLockEnabled, timeRange]);
+  }, [data, rollingStats, selectedSeries, timeLockEnabled, timeRange]);
+
+  const overlayCsvConfig = useMemo(() => createCsvExportConfig(
+    'overlay-plot.csv',
+    { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' },
+    (graphDiv) => {
+      const xRange = plotlyXRange(graphDiv);
+      return buildSelectedSeriesCsvRows(data, selectedSeries, xRange);
+    }
+  ), [data, selectedSeries]);
 
   const handleRelayout = (event: any) => {
     if (isInternalUpdate.current || !timeLockEnabled) return;
@@ -259,7 +285,7 @@ export default function OverlayPlot() {
               ? `${new Date(timeRange[0]).toISOString()}-${new Date(timeRange[1]).toISOString()}`
               : 'overlay-free-zoom',
           } as any}
-          config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
+          config={overlayCsvConfig}
           style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
           onRelayout={handleRelayout}

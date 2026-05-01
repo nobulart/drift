@@ -5,6 +5,7 @@ import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 
 interface CouplingPlotProps {
   dates: string[];
@@ -272,7 +273,7 @@ export default function CouplingPlot({
           data={traces}
           layout={layoutWithRange}
           onRelayout={handleRelayout}
-          config={{ displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' }}
+          config={createCsvExportConfig('coupling.csv', { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' })}
           style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
         />

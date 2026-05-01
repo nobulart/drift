@@ -6,7 +6,7 @@ export const PANEL_GUIDES: Record<string, string> = {
   polar:
     'Observed polar-motion trajectory in xp-yp space. Look for narrow-band confinement, turning points, loop structure, and changes in clustering or excursion shape.',
   drift:
-    'Tracks the longitude of the dominant drift axis through time. Smooth migration indicates a persistent geometric trend, while flattening, reversals, or abrupt bends can mark reorganization.',
+    'Tracks the longitude of the dominant drift axis through time. For each selected window, the polar-motion samples are read in the active frame, the dominant direction of the recent xp-yp trajectory is fit from that local cloud, and the planar angle of that direction is reported as drift longitude. Smooth migration indicates a persistent geometric trend, while flattening, reversals, or abrupt bends can mark reorganization.',
   angle:
     'Monitors relative angular measures within the inferred geometric frame. Spikes, drift, or repeated crossings indicate changes in orientation coherence, but they should be read alongside the other structural panels.',
   coupling:
@@ -26,15 +26,15 @@ export const PANEL_GUIDES: Record<string, string> = {
 };
 
 export const DOCS_PANEL_GUIDES = [
-  { title: 'Transition Forecast', guide: PANEL_GUIDES.forecast },
   { title: '3D Vector View', guide: PANEL_GUIDES.sphere },
+  { title: 'Transition Forecast', guide: PANEL_GUIDES.forecast },
   { title: 'Polar Motion (XP, YP)', guide: PANEL_GUIDES.polar },
   { title: 'Drift Direction', guide: PANEL_GUIDES.drift },
   { title: 'Phase Portrait', guide: PANEL_GUIDES.phase },
   { title: 'Phase Diagnostics', guide: PANEL_GUIDES.phaseDiag },
   { title: 'Orthogonal Deviation Ratio R(t)', guide: PANEL_GUIDES.ortho },
-  { title: 'Overlay Plot', guide: PANEL_GUIDES.overlay },
   { title: 'Lag Model', guide: PANEL_GUIDES.lagModel },
+  { title: 'Overlay Plot', guide: PANEL_GUIDES.overlay },
   { title: 'Conditional Lag Response', guide: PANEL_GUIDES.conditionalLag },
 ];
 

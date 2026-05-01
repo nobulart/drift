@@ -6,6 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
 import { LagResult } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 
 export default function LagModelPlot() {
   const [lagResult, setLagResult] = useState<LagResult | null>(null);
@@ -87,7 +88,7 @@ export default function LagModelPlot() {
         <Plot
           data={lagTraces}
           layout={lagLayout}
-          config={{ displayModeBar: true, responsive: true }}
+          config={createCsvExportConfig('lag-model.csv', { displayModeBar: true, responsive: true })}
           style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
         />

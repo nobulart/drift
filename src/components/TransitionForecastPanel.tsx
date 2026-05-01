@@ -6,6 +6,7 @@ import { useStore } from '@/store/useStore';
 import { LagKernel, TransitionForecast } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { computeTransitionForecast } from '@/lib/transitionForecast';
+import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 
 export default function TransitionForecastPanel() {
   const [lagKernel, setLagKernel] = useState<LagKernel | null>(null);
@@ -271,7 +272,7 @@ export default function TransitionForecastPanel() {
         key={`${currentState}-${baseProb}-${forecast.phase_bin}-${forecast.expected_time.toFixed(3)}`}
         data={plotData as any}
         layout={forecastLayout as any}
-        config={{ displayModeBar: true, responsive: true }}
+        config={createCsvExportConfig('transition-forecast.csv', { displayModeBar: true, responsive: true })}
         style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
