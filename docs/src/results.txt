@@ -1,0 +1,237 @@
+(.venv) ➜  dickman python 05_state_transition_detection.py
+
+=== GEOMETRIC STATE TRANSITION ANALYSIS ===
+
+Principal axis angle (deg): 135.32
+Anisotropy ratio (λ1 / Σλ): 0.8932
+
+Total transitions: 29
+Transition rate (per year): 0.545
+
+First transition: 1974-03-17 00:00:00
+Last transition:  2025-08-12 00:00:00
+
+Dwell time statistics:
+       count        mean         std   min    25%    50%    75%     max
+state                                                                  
+0       15.0  634.800000  357.449937  85.0  405.5  573.0  876.5  1422.0
+1       15.0  661.333333  260.156180  59.0  582.0  636.0  714.0  1202.0
+
+Saved:
+- state_transition_analysis.csv
+- axis_dwell_times.csv
+(.venv) ➜  dickman python 06_visualisation_suite.py       
+Columns check:
+mode: ['date', 'vx', 'vy', 'zach_75W_parallel', 'zach_75W_perp', 'adhikari_100W_parallel', 'adhikari_100W_perp', 'observed_326_parallel', 'observed_326_perp', 'v_mag', 'direction_deg']
+time: ['date', 'mean_direction', 'direction_std', 'mean_magnitude', 'zach_75W_parallel', 'adhikari_100W_parallel', 'greenland_45_parallel']
+state: ['MJD', 'Year', 'Month', 'Day', 'Type', 'x_pole', 'sigma_x_pole', 'y_pole', 'sigma_y_pole', 'x_rate', 'sigma_x_rate', 'y_rate', 'sigma_y_rate', 'Type.1', 'UT1-UTC', 'sigma_UT1-UTC', 'LOD', 'sigma_LOD', 'Type.2', 'dPsi', 'sigma_dPsi', 'dEpsilon', 'sigma_dEpsilon', 'dX', 'sigma_dX', 'dY', 'sigma_dY', 'Type.3', 'bulB/x_pole', 'bulB/y_pole', 'Type.4', 'bulB/UT-UTC', 'Type.5', 'bulB/dPsi', 'bulB/dEpsilon', 'bulB/dX', 'bulB/dY', 'date', 'x', 'y', 'x_detrend', 'y_detrend', 'x_filt', 'y_filt', 'v_filt_parallel', 'state', 'projection', 'dprojection']
+
+All figures generated successfully.
+(.venv) ➜  dickman python 07_state_geometry_analysis.py 
+
+=== GEOMETRIC ANALYSIS ===
+
+Principal axis angle (deg): 135.32
+Anisotropy ratio (λ1 / Σλ): 0.8932
+
+Angular deviation from principal axis:
+Mean: 98.32 deg
+Std : 66.87 deg
+
+Entropy:
+Mean entropy: 0.8664
+Std entropy : 0.6574
+
+Saved:
+- axis_distance_analysis.csv
+- entropy_analysis.csv
+(.venv) ➜  dickman python 08_rolling_pca_analysis.py 
+
+=== ROLLING PCA SUMMARY ===
+Mean variance ratio: 0.929828274680319
+Max  variance ratio: 0.9999560541650466
+Min  variance ratio: 0.5569161018840894
+
+Mean principal angle: 163.5997653876372
+Std  principal angle: 86.17521830624223
+
+Saved:
+- rolling_pca_analysis.csv
+(.venv) ➜  dickman python 09_axis_angular_velocity_corrected.py 
+=== ANGULAR VELOCITY (FIXED) ===
+Mean ω: -13.556705
+Std  ω: 48.315614
+Max  ω: 126.809832
+Min  ω: -153.854021
+
+Saved: axis_angular_velocity.csv
+(.venv) ➜  dickman python 10_omega_diagnostics.py 
+
+=== DISTRIBUTION ===
+Mean: -13.557
+Std:  48.316
+Skewness: -0.236
+Kurtosis (excess): 1.997
+
+Detected 19 events (|ω| > 2.0σ)
+
+=== INTER-EVENT ===
+Mean Δt: 2.672 years
+Std  Δt: 1.306 years
+Burstiness B: -0.343
+
+=== SIGN PERSISTENCE ===
+P(+→+): 0.314
+P(-→-): 0.684
+
+Saved:
+- omega_events.csv
+- omega_sign_runs.csv
+- omega_summary.csv
+- fig_20–23 diagnostics
+(.venv) ➜  dickman python 12_theta_reconstruction.py 
+
+Saved:
+- theta_reconstruction.csv
+- fig_28–30
+(.venv) ➜  dickman python 13b_so3_reconstruction.py 
+
+Saved:
+- so3_trajectory_from_theta.csv
+- fig_31_xy_traj_time_colored.png
+- fig_theta_timeseries.png
+(.venv) ➜  dickman python 14_axis_clustering_transitions.py 
+
+Columns: ['date', 'x', 'y', 'z']
+
+Cluster centers:
+[[ 0.  0. -1.]
+ [ 0.  0.  1.]]
+
+Plane normal undefined (degenerate axis: planar motion)
+
+Transitions: 30
+
+Dwell stats:
+Mean: 1.6524254266852134
+Std : 1.5975914764546373
+Min : 0.2108145106091719
+Max : 6.433949349760439
+
+Saved:
+- axis_states_timeseries.csv
+- axis_dwell_times.csv
+- axis_plane_summary.csv
+- fig_40–42
+(.venv) ➜  dickman python 15_extract_plane_alignment.py 
+
+Plane normal is undefined (degenerate planar dynamics).
+Earth-fixed plane alignment analysis is not applicable.
+(.venv) ➜  dickman python 16_axis_geometry_mapping.py 
+
+Plane undefined → using canonical Z normal (planar phase system)
+
+Saved updated figures (phase-consistent, degeneracy-safe)
+(.venv) ➜  dickman python 17_theta_dynamics.py 
+
+DONE (geometry-consistent solution)
+(.venv) ➜  dickman python 18_two_mode_torus_analysis.py 
+
+Detected impulses: 1533
+
+Saved:
+- fig_70_phase_space.png
+- fig_71_potential_state_*.png
+- fig_72_impulses.png
+- fig_73_velocity_field.png
+- impulses.csv
+
+(.venv) ➜  dickman python 27_hybrid_system_intrinsic_2D.py 
+
+Saved FINAL intrinsic model:
+- fig_final_phase.png
+- fig_final_theta1.png
+- fig_final_state.png
+- hybrid_simulation_final_intrinsic.csv
+(.venv) ➜  dickman python 28_full_spherical_anisotropy_sweep.py 
+Computing real projection energy...
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 16200/16200 [00:00<00:00, 37295.64it/s]
+Running surrogate ensemble...
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [01:28<00:00,  2.27it/s]
+
+=== ANISOTROPY SIGNIFICANCE ===
+Real max energy: 0.6587975330513197
+Surrogate mean: 0.5759279120492053
+Surrogate std: 0.0368273658512901
+Z-score: 2.2502185286477974
+p-value: 0.015
+
+Saved:
+- anisotropy_sweep_full_sphere.csv
+- anisotropy_top_directions.csv
+- anisotropy_summary.txt
+(.venv) ➜  dickman python 28_full_spherical_anisotropy_sweep.py 
+Computing real projection energy...
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 16200/16200 [00:00<00:00, 37208.37it/s]
+Running surrogate ensemble...
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 200/200 [01:27<00:00,  2.29it/s]
+
+=== ANISOTROPY SIGNIFICANCE ===
+Real max energy: 0.6587975330513197
+Surrogate mean: 0.5752888303145256
+Surrogate std: 0.03765306520305712
+Z-score: 2.2178460713417842
+p-value: 0.03
+
+Saved:
+- anisotropy_sweep_full_sphere.csv
+- anisotropy_top_directions.csv
+- anisotropy_summary.txt
+(.venv) ➜  dickman python 29_spherical_harmonic_decomposition.py 
+
+=== SPHERICAL HARMONIC DECOMPOSITION (FINAL) ===
+
+Dipole magnitude: 0.028033
+Dipole direction: θ=90.00, φ=134.24
+
+Quadrupole eigenvalues:
+[ 0.32551452  0.00781881 -0.33333333]
+
+Principal axis:
+θ=90.00, φ=109.28
+
+Plane normal:
+θ=0.00, φ=0.00
+
+Power diagnostics:
+P2 (quadrupole): 0.217132
+P1 (dipole):     0.000786
+P2_iso ref:      0.166667
+Anisotropy ratio: 0.996394
+
+Dipole–quadrupole alignment:
+24.96 degrees
+
+Saved: spherical_harmonics_summary.csv
+(.venv) ➜  dickman python 30_time_resolved_quadrupole_tracking.py 
+Tracking quadrupole over time...
+
+Saved: quadrupole_time_tracking.csv
+
+Summary:
+        date     phi_deg  theta_deg  quadrupole_power  dipole_magnitude   lambda1   lambda2   lambda3  phi_unwrapped_deg
+0 1973-01-02  130.081835       90.0          0.594039          0.980683  0.628929 -0.295595 -0.333333         130.081835
+1 1973-02-01  126.320025       90.0          0.561494          0.970925  0.610979 -0.277646 -0.333333         126.320025
+2 1973-03-03  121.997410       90.0          0.496543          0.947889  0.572793 -0.239459 -0.333333         121.997410
+3 1973-04-02  118.601162       90.0          0.398556          0.895347  0.507173 -0.173840 -0.333333         118.601162
+4 1973-05-02  118.244343       90.0          0.319569          0.810522  0.443165 -0.109832 -0.333333         118.244343
+(.venv) ➜  dickman python 31_surrogate_significance.py 
+=== ANISOTROPY SIGNIFICANCE ===
+Real max energy: 69738.93717244973
+Surrogate mean: 33136.01019217475
+Surrogate std: 24653.961373561026
+Z-score: 1.4846671666942766
+p-value: 0.0
+(.venv) ➜  dickman python 32_axis_bootstrap.py 
+Mean: 135.3185447775249
+Std: 0.17597810879787484

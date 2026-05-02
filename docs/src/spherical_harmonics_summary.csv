@@ -1,0 +1,2 @@
+dipole_magnitude,dipole_theta,dipole_phi,quadrupole_eigenvalues,principal_axis_theta,principal_axis_phi,secondary_axis_theta,secondary_axis_phi,normal_axis_theta,normal_axis_phi,quadrupole_power_P2,dipole_power_P1,anisotropy_ratio,P2_isotropic_reference,dipole_quadrupole_alignment_deg
+0.028033345165434223,90.0,134.2432522344482,"[0.325514523553322, 0.007818809780010785, -0.3333333333333333]",90.0,109.27886713735039,90.0,199.27886713735037,0.0,0.0,0.21713194994163332,0.0007858684411643744,0.9963937394014274,0.16666666666666666,24.964385097097857

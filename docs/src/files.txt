@@ -1,0 +1,553 @@
+total 331432
+-rw-r--r--@  1 craig  staff      3870 Mar 31 11:43 01_dickman_zach.py
+-rw-r--r--@  1 craig  staff      4331 Mar 31 11:48 02_gia_removed_analysis.py
+-rw-r--r--@  1 craig  staff      4062 Mar 31 11:52 03_filtered_residual_test.py
+-rw-r--r--@  1 craig  staff      4736 Mar 31 12:14 03_mode_projection_analysis.py
+-rw-r--r--@  1 craig  staff      2780 Mar 31 12:17 04_time_window_mode_tracking.py
+-rw-r--r--@  1 craig  staff      3878 Apr  1 13:34 05_state_transition_detection.py
+-rw-r--r--   1 craig  staff      1206 Mar 31 17:41 06_R_parameter_corrected.py
+-rw-r--r--@  1 craig  staff     12389 Apr  2 13:34 06_visualisation_suite.py
+-rw-r--r--@  1 craig  staff     24048 Apr  3 11:08 06b_visualisation_suite.py
+-rw-r--r--@  1 craig  staff     24985 Apr  3 12:39 06c_visualisation_suite.py
+-rw-r--r--@  1 craig  staff      3810 Apr  1 13:42 07_state_geometry_analysis.py
+-rw-r--r--@  1 craig  staff      4391 Apr  1 13:42 08_rolling_pca_analysis.py
+-rw-r--r--@  1 craig  staff      3948 Apr  1 13:46 09_axis_angular_velocity_corrected.py
+-rw-r--r--@  1 craig  staff      2375 Mar 31 17:37 09_axis_angular_velocity.py
+-rw-r--r--@  1 craig  staff      5377 Apr  1 13:48 10_omega_diagnostics.py
+-rw-r--r--@  1 craig  staff      3764 Apr  1 13:51 11_omega_model_fit.py
+-rw-r--r--@  1 craig  staff      2371 Apr  1 13:52 12_theta_reconstruction.py
+-rw-r--r--@  1 craig  staff      6259 Mar 31 20:15 13_so3_reconstruction.py
+-rw-r--r--   1 craig  staff      3353 Apr  1 13:53 13b_so3_reconstruction.py
+-rw-r--r--@  1 craig  staff      5271 Apr  1 14:09 14_axis_clustering_transitions.py
+-rw-r--r--@  1 craig  staff      1626 Apr  1 14:12 15_extract_plane_alignment.py
+-rw-r--r--@  1 craig  staff      4367 Apr  1 14:15 16_axis_geometry_mapping.py
+-rw-r--r--   1 craig  staff      3841 Apr  1 13:35 17_theta_dynamics.py
+-rw-r--r--@  1 craig  staff      4271 Apr  1 14:19 18_two_mode_torus_analysis.py
+-rw-r--r--@  1 craig  staff      4998 Apr  1 14:23 27_hybrid_system_intrinsic_2D.py
+-rw-r--r--@  1 craig  staff      3902 Apr  1 14:34 28_full_spherical_anisotropy_sweep.py
+-rw-r--r--@  1 craig  staff      4304 Apr  1 14:36 29_spherical_harmonic_decomposition.py
+-rw-r--r--@  1 craig  staff      3346 Apr  1 14:38 30_time_resolved_quadrupole_tracking.py
+-rw-r--r--   1 craig  staff      1923 Apr  1 13:16 31_surrogate_significance.py
+-rw-r--r--   1 craig  staff       613 Apr  1 13:34 32_axis_bootstrap.py
+-rw-r--r--   1 craig  staff      5640 Apr  1 18:04 33_geometric_robustness_suite.py
+-rw-r--r--   1 craig  staff       866 Apr  2 16:14 34_phase_surrogate_test.py
+-rw-r--r--   1 craig  staff       148 Apr  1 14:45 anisotropy_summary.txt
+-rw-r--r--   1 craig  staff      9160 Apr  1 14:46 anisotropy_surrogate_distribution.csv
+-rw-r--r--   1 craig  staff   1271646 Apr  1 14:45 anisotropy_sweep_full_sphere.csv
+-rw-r--r--   1 craig  staff       624 Apr  1 14:45 anisotropy_top_directions.csv
+-rw-r--r--   1 craig  staff   1983788 Apr  1 14:41 axis_angular_velocity.csv
+-rw-r--r--   1 craig  staff      9347 Apr  1 14:46 axis_bootstrap_distribution.csv
+-rw-r--r--   1 craig  staff   7217920 Apr  1 14:40 axis_distance_analysis.csv
+-rw-r--r--   1 craig  staff       594 Apr  1 14:41 axis_dwell_times.csv
+-rw-r--r--   1 craig  staff     28097 Apr  3 18:20 axis_opt.png
+-rw-r--r--   1 craig  staff      2192 Apr  3 18:18 axis_optimization_bootstrap.py
+-rw-r--r--   1 craig  staff        48 Apr  1 14:41 axis_plane_summary.csv
+-rw-r--r--   1 craig  staff   1042439 Apr  1 14:41 axis_states_timeseries.csv
+-rw-r--r--   1 craig  staff      2472 Apr  3 18:28 axis_vs_geomagnetic_jerks.py
+-rw-r--r--   1 craig  staff     11967 Apr  3 19:18 axisproj.png
+-rw-r--r--   1 craig  staff    247344 Apr  3 19:35 azi.png
+-rw-r--r--   1 craig  staff      4278 Apr  3 17:50 barrier_kramers_validation.py
+-rw-r--r--   1 craig  staff     13176 Apr  3 18:19 bootstrap_axis.png
+-rw-r--r--   1 craig  staff   1235663 Oct  2  2019 CHAOS-7.mat
+-rw-r--r--   1 craig  staff    172834 Apr  3 17:13 code.txt
+-rw-r--r--   1 craig  staff     31143 Apr  3 17:57 comparison.png
+-rw-r--r--   1 craig  staff     44221 Apr  3 17:58 consistency.png
+-rw-r--r--   1 craig  staff     33356 Apr  3 17:39 continuous.png
+-rw-r--r--   1 craig  staff     20702 Apr  3 18:09 curl_2d.png
+-rw-r--r--   1 craig  staff     34696 Apr  3 17:54 current.png
+-rw-r--r--   1 craig  staff     34592 Apr  3 17:30 curvature.png
+-rw-r--r--   1 craig  staff     51046 Apr  3 19:31 data.txt
+-rw-r--r--   1 craig  staff     28482 Apr  3 17:39 deciation.png
+-rw-r--r--   1 craig  staff     30859 Apr  3 17:54 density.png
+-rw-r--r--   1 craig  staff     21037 Apr  3 17:36 deviation.png
+-rw-r--r--   1 craig  staff     37319 Apr  3 17:54 diffusion.png
+-rw-r--r--   1 craig  staff      2976 Apr  3 17:53 drift_current_reconstruction.py
+-rw-r--r--@  1 craig  staff   9617295 May  1 15:10 drift.csv
+-rw-r--r--   1 craig  staff     22611 Apr  3 17:40 drift.png
+-rw-r--r--   1 craig  staff     24012 Apr  3 17:37 dynamics.png
+-rw-r--r--   1 craig  staff    580737 Apr  1 14:40 entropy_analysis.csv
+-rw-r--r--   1 craig  staff     15728 Apr  3 17:51 excursion.png
+-rw-r--r--   1 craig  staff     68938 Apr  3 18:08 field_2d.png
+-rw-r--r--   1 craig  staff    958765 Apr  2 13:35 fig_01_polar_trajectory.png
+-rw-r--r--   1 craig  staff    321958 Apr  2 13:35 fig_02_vector_field.png
+-rw-r--r--   1 craig  staff    165975 Apr  2 13:35 fig_03_direction_time.png
+-rw-r--r--   1 craig  staff    207497 Apr  2 13:35 fig_04_mode_projections.png
+-rw-r--r--   1 craig  staff    199359 Apr  2 13:35 fig_05_time_window_modes.png
+-rw-r--r--   1 craig  staff    101602 Apr  1 13:18 fig_06_R_ratio.png
+-rw-r--r--   1 craig  staff    167119 Apr  2 13:35 fig_06_state_projection.png
+-rw-r--r--   1 craig  staff    172238 Apr  1 13:18 fig_07_phase_space.png
+-rw-r--r--   1 craig  staff     40836 Apr  2 13:35 fig_07_state_timeseries.png
+-rw-r--r--   1 craig  staff    229479 Apr  2 13:35 fig_08_phase_space_projection.png
+-rw-r--r--   1 craig  staff    317929 Apr  1 13:18 fig_08_residual_field.png
+-rw-r--r--   1 craig  staff    127926 Apr  1 13:18 fig_09_magnitude.png
+-rw-r--r--   1 craig  staff    317929 Apr  2 13:35 fig_09_residual_field.png
+-rw-r--r--   1 craig  staff    144973 Apr  1 14:40 fig_10_axis_deviation.png
+-rw-r--r--   1 craig  staff    299295 Apr  1 13:39 fig_10_axis_distance.png
+-rw-r--r--   1 craig  staff    127926 Apr  2 13:35 fig_10_magnitude.png
+-rw-r--r--   1 craig  staff     51307 Mar 31 14:37 fig_101_theta1_sim.png
+-rw-r--r--   1 craig  staff     37973 Mar 31 14:37 fig_102_state_sim.png
+-rw-r--r--   1 craig  staff    174231 Apr  1 14:40 fig_11_entropy.png
+-rw-r--r--   1 craig  staff    182968 Apr  3 12:39 fig_11_xy_phase_density.png
+-rw-r--r--   1 craig  staff    114975 Apr  1 14:40 fig_12_pca.png
+-rw-r--r--   1 craig  staff    337378 Apr  2 13:18 fig_12_residual_phase_xy_time.png
+-rw-r--r--   1 craig  staff    261192 Apr  3 12:39 fig_12a_residual_path.png
+-rw-r--r--   1 craig  staff    143720 Apr  3 12:39 fig_12b_residual_structure.png
+-rw-r--r--   1 craig  staff    323751 Apr  3 12:39 fig_12c_residual_combined.png
+-rw-r--r--@  1 craig  staff    153762 Apr  3 12:39 fig_13_residual_spectrum.png
+-rw-r--r--   1 craig  staff    197593 Apr  1 14:41 fig_13_variance_ratio.png
+-rw-r--r--   1 craig  staff    128050 Apr  3 12:39 fig_13b_residual_spectrum_zoom.png
+-rw-r--r--   1 craig  staff    114132 Apr  1 14:41 fig_14_eigenvalues.png
+-rw-r--r--   1 craig  staff    323786 Apr  3 12:39 fig_14_phase_velocity_field.png
+-rw-r--r--   1 craig  staff    297696 Apr  3 12:39 fig_15_loop_centers.png
+-rw-r--r--   1 craig  staff    128140 Apr  1 14:41 fig_15_principal_axis.png
+-rw-r--r--   1 craig  staff     83889 Apr  3 12:39 fig_15b_center_angle_timeseries.png
+-rw-r--r--   1 craig  staff    157906 Apr  3 12:39 fig_16_angular_velocity.png
+-rw-r--r--   1 craig  staff    106096 Apr  1 14:41 fig_16_principal_axis_unwrapped.png
+-rw-r--r--   1 craig  staff    111268 Apr  3 12:39 fig_16b_period_estimate.png
+-rw-r--r--   1 craig  staff     72381 Mar 31 12:52 fig_17_omega_raw.png
+-rw-r--r--   1 craig  staff    164248 Mar 31 12:52 fig_18_omega_filtered.png
+-rw-r--r--   1 craig  staff     63038 Mar 31 12:52 fig_19_omega_hist.png
+-rw-r--r--   1 craig  staff     33333 Apr  1 14:41 fig_20_omega_distribution.png
+-rw-r--r--   1 craig  staff     29918 Apr  1 14:41 fig_21_interevent_hist.png
+-rw-r--r--   1 craig  staff     30301 Apr  1 14:41 fig_22_run_lengths.png
+-rw-r--r--   1 craig  staff     46991 Apr  1 14:41 fig_23_phase_space.png
+-rw-r--r--   1 craig  staff     56887 Apr  1 13:51 fig_24_ar1_fit.png
+-rw-r--r--   1 craig  staff     31765 Apr  1 13:51 fig_25_residuals.png
+-rw-r--r--   1 craig  staff     63745 Apr  1 13:51 fig_26_drift_function.png
+-rw-r--r--   1 craig  staff     54478 Apr  1 13:51 fig_27_potential.png
+-rw-r--r--   1 craig  staff     74358 Apr  1 14:41 fig_28_theta.png
+-rw-r--r--   1 craig  staff     53188 Apr  1 14:41 fig_29_phase_space.png
+-rw-r--r--   1 craig  staff    166681 Mar 31 13:08 fig_29_theta_planes.png
+-rw-r--r--   1 craig  staff     35452 Mar 31 13:08 fig_30_theta_alignment_hist.png
+-rw-r--r--   1 craig  staff     32479 Apr  1 14:41 fig_30_theta_hist.png
+-rw-r--r--   1 craig  staff    112589 Mar 31 13:22 fig_31_xy_traj_corrected.png
+-rw-r--r--   1 craig  staff    114824 Apr  1 14:41 fig_31_xy_traj_time_colored.png
+-rw-r--r--   1 craig  staff     35581 Mar 31 13:11 fig_31_xy_traj.png
+-rw-r--r--   1 craig  staff     74948 Mar 31 13:22 fig_32_z_tilt_corrected.png
+-rw-r--r--   1 craig  staff     25626 Mar 31 13:11 fig_32_z_tilt.png
+-rw-r--r--   1 craig  staff    125850 Mar 31 13:22 fig_33_so3_planes_corrected.png
+-rw-r--r--   1 craig  staff     31995 Mar 31 13:11 fig_33_so3_planes.png
+-rw-r--r--   1 craig  staff     34741 Mar 31 13:22 fig_34_so3_hist_corrected.png
+-rw-r--r--   1 craig  staff     36028 Mar 31 13:11 fig_34_so3_hist.png
+-rw-r--r--   1 craig  staff     53967 Apr  1 14:41 fig_40_axis_states_xy.png
+-rw-r--r--   1 craig  staff     53102 Apr  1 14:41 fig_41_state_timeseries.png
+-rw-r--r--   1 craig  staff     38140 Apr  1 14:41 fig_42_dwell_times.png
+-rw-r--r--   1 craig  staff     74613 Apr  1 14:41 fig_50_states_xy_clustered.png
+-rw-r--r--   1 craig  staff     42108 Apr  1 14:41 fig_51_state_timeseries.png
+-rw-r--r--   1 craig  staff     61578 Apr  1 14:41 fig_52_phase_trajectory.png
+-rw-r--r--   1 craig  staff    366853 Mar 31 14:06 fig_52_so3_plane.png
+-rw-r--r--   1 craig  staff     66458 Apr  1 14:41 fig_53_plane_intrinsic.png
+-rw-r--r--   1 craig  staff    194197 Mar 31 14:01 fig_53_plane_projection.png
+-rw-r--r--   1 craig  staff    176517 Mar 31 14:01 fig_54_axis_alignment_timeseries.png
+-rw-r--r--   1 craig  staff    272974 Apr  1 14:41 fig_54_mode_projections.png
+-rw-r--r--   1 craig  staff    211804 Mar 31 14:06 fig_55_axis_distance.png
+-rw-r--r--   1 craig  staff     28309 Mar 31 14:01 fig_55_dwell_hist.png
+-rw-r--r--   1 craig  staff     63881 Apr  1 14:41 fig_56_phase_theta.png
+-rw-r--r--   1 craig  staff     21289 Apr  1 14:41 fig_57_dwell_hist.png
+-rw-r--r--   1 craig  staff     25534 Apr  1 14:41 fig_60_theta_time.png
+-rw-r--r--   1 craig  staff     32971 Apr  1 14:41 fig_61_omega_theta.png
+-rw-r--r--   1 craig  staff     96548 Mar 31 14:13 fig_62_omega_comparison.png
+-rw-r--r--   1 craig  staff     21403 Apr  1 14:41 fig_63_omega_theta_phase.png
+-rw-r--r--   1 craig  staff     85362 Apr  1 14:41 fig_64_potential_2D.png
+-rw-r--r--   1 craig  staff     45603 Mar 31 14:14 fig_64_potential.png
+-rw-r--r--   1 craig  staff     89440 Apr  1 14:42 fig_70_phase_space.png
+-rw-r--r--   1 craig  staff     70836 Mar 31 14:20 fig_70_torus.png
+-rw-r--r--   1 craig  staff     42291 Apr  1 14:42 fig_71_potential_state_0.png
+-rw-r--r--   1 craig  staff     40674 Apr  1 14:42 fig_71_potential_state_1.png
+-rw-r--r--   1 craig  staff     81206 Apr  1 14:42 fig_72_impulses.png
+-rw-r--r--   1 craig  staff     77071 Mar 31 14:20 fig_73_vector_field.png
+-rw-r--r--   1 craig  staff     58483 Apr  1 14:42 fig_73_velocity_field.png
+-rw-r--r--   1 craig  staff    115853 Mar 31 14:30 fig_80_switching_manifold.png
+-rw-r--r--   1 craig  staff     49167 Mar 31 14:30 fig_81_impulse_map.png
+-rw-r--r--   1 craig  staff     54755 Mar 31 14:30 fig_82_reset_fit.png
+-rw-r--r--   1 craig  staff     74153 Mar 31 14:34 fig_90_switching_density.png
+-rw-r--r--   1 craig  staff     64371 Mar 31 14:34 fig_91_reset_slice_state_0.png
+-rw-r--r--   1 craig  staff     60581 Mar 31 14:34 fig_91_reset_slice_state_1.png
+-rw-r--r--   1 craig  staff     26996 Mar 31 15:23 fig_fixed_state.png
+-rw-r--r--   1 craig  staff     61255 Mar 31 15:23 fig_fixed_theta1.png
+-rw-r--r--   1 craig  staff     26920 Mar 31 15:26 fig_intrinsic_state.png
+-rw-r--r--   1 craig  staff     57974 Apr  1 14:41 fig_theta_timeseries.png
+-rw-r--r--   1 craig  staff      8073 Apr  1 16:47 figures.txt
+-rw-r--r--   1 craig  staff         0 May  1 21:15 files.txt
+-rw-r--r--   1 craig  staff   1183798 Mar 31 11:52 filtered_drift_analysis.csv
+-rw-r--r--   1 craig  staff   6218960 Mar 31 11:52 filtered_series.csv
+-rw-r--r--   1 craig  staff     23772 Apr  3 18:08 flow_2d.png
+-rw-r--r--   1 craig  staff     24473 Apr  3 18:09 flow138_2d.png
+-rw-r--r--   1 craig  staff     29056 Apr  3 18:09 flowtraj_2d.png
+-rw-r--r--   1 craig  staff     37365 Apr  3 17:57 foorce.png
+-rw-r--r--   1 craig  staff     34008 Apr  3 17:54 gradient.png
+-rw-r--r--   1 craig  staff    195020 Mar 31 14:40 hybrid_simulation_corrected.csv
+-rw-r--r--   1 craig  staff    379097 Apr  1 14:42 hybrid_simulation_final_intrinsic.csv
+-rw-r--r--   1 craig  staff    195190 Mar 31 14:51 hybrid_simulation_geometric.csv
+-rw-r--r--   1 craig  staff    379829 Mar 31 15:26 hybrid_simulation_intrinsic_2D.csv
+-rw-r--r--   1 craig  staff    195548 Mar 31 14:37 hybrid_simulation_output.csv
+-rw-r--r--   1 craig  staff    194524 Mar 31 15:00 hybrid_simulation_phase_fibered.csv
+-rw-r--r--   1 craig  staff    288245 Mar 31 15:19 hybrid_simulation_phase_reduced_embedding.csv
+-rw-r--r--   1 craig  staff    286423 Mar 31 15:23 hybrid_simulation_phase_reduced_FIXED.csv
+-rw-r--r--   1 craig  staff    195253 Mar 31 14:45 hybrid_simulation_phase_reduced.csv
+-rw-r--r--   1 craig  staff   1411015 Mar 31 14:34 hybrid_system_corrected.csv
+-rw-r--r--   1 craig  staff   1375387 Mar 31 14:30 hybrid_system_state_space.csv
+-rw-r--r--   1 craig  staff     57823 Apr  1 14:42 impulses.csv
+-rw-r--r--   1 craig  staff      2397 Apr  3 18:13 infer_reduced_sde.py
+-rw-r--r--   1 craig  staff     28768 Apr  3 18:14 infer1.png
+-rw-r--r--   1 craig  staff     32948 Apr  3 18:14 infer2.png
+-rw-r--r--   1 craig  staff     26482 Apr  3 18:14 infer3.png
+-rw-r--r--   1 craig  staff   5161551 Mar 31 11:43 instantaneous_velocity.csv
+-rw-r--r--   1 craig  staff     20253 Apr  3 17:50 kramers.png
+-rw-r--r--   1 craig  staff     14328 Apr  3 17:33 manifold_centers_v4.csv
+-rw-r--r--   1 craig  staff       394 Apr  3 17:20 manifold_centers.csv
+-rw-r--r--   1 craig  staff      4696 Apr  3 17:33 manifold_extraction_curvature.py
+-rw-r--r--   1 craig  staff    138703 Apr  3 17:33 manifold_geometry_v4.csv
+-rw-r--r--   1 craig  staff     47967 Apr  3 17:20 manifold_geometry.csv
+-rw-r--r--   1 craig  staff     45505 Apr  3 17:30 manifold.png
+-rw-r--r--   1 craig  staff   3879019 Mar 31 12:14 mode_projection_analysis_filtered.csv
+-rw-r--r--   1 craig  staff   3842817 Mar 31 12:04 mode_projection_analysis.csv
+-rw-r--r--   1 craig  staff      4106 Apr  3 17:57 nonconservative_flow_reconstruction.py
+-rw-r--r--   1 craig  staff     17852 Apr  3 17:36 normal.png
+-rw-r--r--   1 craig  staff     27702 Apr 15  2025 NP.xy.csv
+-rw-r--r--   1 craig  staff      1850 Apr  3 18:15 null_model_isotropic_test.py
+-rw-r--r--   1 craig  staff     12671 Apr  3 18:15 null.png
+-rw-r--r--   1 craig  staff      8438 Apr  3 19:18 nulldist.png
+-rw-r--r--   1 craig  staff      1197 Apr  1 14:41 omega_events.csv
+-rw-r--r--   1 craig  staff        95 Apr  1 13:51 omega_model_fit.csv
+-rw-r--r--   1 craig  staff       279 Apr  1 14:41 omega_sign_runs.csv
+-rw-r--r--   1 craig  staff       157 Apr  1 14:41 omega_summary.csv
+-rw-r--r--   1 craig  staff        29 Apr  3 19:08 output.txt
+drwxr-xr-x  14 craig  staff       448 May  1 21:14 outputs
+-rw-r--r--@  1 craig  staff      5933 Apr  2 16:16 patch.py
+-rw-r--r--   1 craig  staff      2011 Apr  2 16:14 phase_surrogate_results.csv
+-rw-r--r--@  1 craig  staff      5384 Apr  3 19:46 polar_azimuthal_axes_dashboard.py
+-rw-r--r--   1 craig  staff   9929371 Apr  3 11:16 polar_motion_full_1.mp4
+-rw-r--r--@  1 craig  staff    547240 Apr  3 12:40 polar_motion_full.mp4
+-rw-r--r--   1 craig  staff     14662 Apr  1 16:43 polar.aux
+-rw-r--r--   1 craig  staff      4478 Apr  1 16:43 polar.lof
+-rw-r--r--   1 craig  staff     27308 Apr  1 16:43 polar.log
+-rw-r--r--   1 craig  staff     10314 Apr  1 16:43 polar.out
+-rw-r--r--@  1 craig  staff   3868635 Apr  1 16:43 polar.pdf
+-rw-r--r--@  1 craig  staff     37212 Apr  1 17:51 polar.tex
+-rw-r--r--   1 craig  staff  36596584 Apr  2 14:49 polar.zip
+-rw-r--r--   1 craig  staff     10503 Apr  1 16:56 polar2.aux
+-rw-r--r--   1 craig  staff     33920 Apr  1 16:56 polar2.log
+-rw-r--r--   1 craig  staff      9277 Apr  1 16:56 polar2.out
+-rw-r--r--   1 craig  staff   2003688 Apr  1 16:56 polar2.pdf
+-rw-r--r--@  1 craig  staff     22790 Apr  1 16:56 polar2.tex
+-rw-r--r--   1 craig  staff     20381 Apr  1 17:44 polar3.aux
+-rw-r--r--   1 craig  staff     31514 Apr  1 17:44 polar3.log
+-rw-r--r--   1 craig  staff     11082 Apr  1 17:44 polar3.out
+-rw-r--r--@  1 craig  staff   3404074 Apr  1 17:44 polar3.pdf
+-rw-r--r--@  1 craig  staff     28087 Apr  1 17:44 polar3.tex
+-rw-r--r--   1 craig  staff     16062 Apr  2 15:26 polar4.aux
+-rw-r--r--   1 craig  staff     33261 Apr  2 15:26 polar4.log
+-rw-r--r--@  1 craig  staff   5126474 Apr  2 15:26 polar4.pdf
+-rw-r--r--@  1 craig  staff     68158 Apr  2 15:37 polar4.tex
+-rw-r--r--   1 craig  staff       104 Apr  2 15:26 polar4Notes.bib
+-rw-r--r--   1 craig  staff     35947 Apr  2 15:54 polar5.aux
+-rw-r--r--   1 craig  staff     42875 Apr  2 15:54 polar5.log
+-rw-r--r--   1 craig  staff     13639 Apr  2 15:54 polar5.out
+-rw-r--r--@  1 craig  staff   5140418 Apr  2 15:54 polar5.pdf
+-rw-r--r--@  1 craig  staff     71221 Apr  2 15:51 polar5.tex
+-rw-r--r--   1 craig  staff       104 Apr  2 15:54 polar5Notes.bib
+-rw-r--r--   1 craig  staff     36855 Apr  2 21:01 polar6.aux
+-rw-r--r--   1 craig  staff     43644 Apr  2 21:01 polar6.log
+-rw-r--r--   1 craig  staff     13598 Apr  2 21:01 polar6.out
+-rw-r--r--@  1 craig  staff   5130786 Apr  2 21:01 polar6.pdf
+-rw-r--r--@  1 craig  staff     71525 Apr  2 21:00 polar6.tex
+-rw-r--r--   1 craig  staff       104 Apr  2 21:01 polar6Notes.bib
+-rw-r--r--   1 craig  staff      6319 Apr  1 12:55 pole.aux
+-rw-r--r--   1 craig  staff     23458 Apr  1 12:55 pole.log
+-rw-r--r--   1 craig  staff      4880 Apr  1 12:55 pole.out
+-rw-r--r--@  1 craig  staff   1735134 Apr  1 12:55 pole.pdf
+-rw-r--r--@  1 craig  staff     22929 Apr  1 13:30 pole.tex
+-rw-r--r--   1 craig  staff     27149 Apr  3 17:47 potential_100.png
+-rw-r--r--   1 craig  staff     26793 Apr  3 17:46 potential_80.png
+-rw-r--r--   1 craig  staff      4256 Apr  3 17:47 potential_and_transition_analysis.py
+-rw-r--r--   1 craig  staff      3630 Apr  3 17:47 potential.csv
+-rw-r--r--   1 craig  staff     25543 Apr  3 17:43 potential.png
+-rw-r--r--   1 craig  staff     16646 Apr  3 17:47 probability_100.png
+-rw-r--r--   1 craig  staff     13541 Apr  3 17:46 probability_80.png
+-rw-r--r--   1 craig  staff     15992 Apr  3 17:44 probability.png
+-rw-r--r--   1 craig  staff     34696 Apr  3 17:58 procurrent.png
+-rw-r--r--   1 craig  staff      3327 Apr  3 17:39 project_to_sn_dynamics_v2.py
+-rw-r--r--   1 craig  staff      2517 Apr  3 17:36 project_to_sn_dynamics.py
+-rw-r--r--   1 craig  staff     96257 Apr  1 14:45 quadrupole_time_tracking.csv
+-rw-r--r--   1 craig  staff   6077972 Mar 31 17:41 R_parameter_timeseries.csv
+-rw-r--r--   1 craig  staff        37 Apr  3 11:02 requirements.txt
+-rw-r--r--   1 craig  staff   1177669 Mar 31 11:48 residual_drift_analysis.csv
+-rw-r--r--   1 craig  staff   5812293 Mar 31 11:48 residual_velocity.csv
+-rw-r--r--@  1 craig  staff      9347 Apr  1 14:46 results.txt
+-rw-r--r--   1 craig  staff       131 Apr  1 18:04 robustness_ar1.csv
+-rw-r--r--   1 craig  staff       115 Apr  1 18:06 robustness_axis_stability.csv
+-rw-r--r--   1 craig  staff       339 Apr  1 18:04 robustness_smoothing.csv
+-rw-r--r--   1 craig  staff       110 Apr  1 18:04 robustness_states.csv
+-rw-r--r--   1 craig  staff   1086377 Mar 31 11:43 rolling_drift_analysis.csv
+-rw-r--r--   1 craig  staff   1604925 Apr  1 14:41 rolling_pca_analysis.csv
+-rw-r--r--@  1 craig  staff      5585 Apr  3 19:25 saa_axis_analysis.py
+-rw-r--r--   1 craig  staff      5845 Apr  3 18:13 sde_inferred.csv
+-rw-r--r--   1 craig  staff     18223 Apr  3 17:47 sequence_100.png
+-rw-r--r--   1 craig  staff     18235 Apr  3 17:46 sequence_80.png
+-rw-r--r--   1 craig  staff     17427 Apr  3 17:43 sequence.png
+-rw-r--r--   1 craig  staff   1252036 Apr  3 17:39 sn_dynamics_v2.csv
+-rw-r--r--   1 craig  staff   1273439 Apr  3 17:36 sn_dynamics.csv
+-rw-r--r--   1 craig  staff   1891659 Mar 31 13:22 so3_trajectory_corrected.csv
+-rw-r--r--   1 craig  staff   1014968 Apr  1 14:41 so3_trajectory_from_theta.csv
+-rw-r--r--   1 craig  staff    548110 Mar 31 13:11 so3_trajectory.csv
+-rw-r--r--   1 craig  staff       551 Apr  1 14:45 spherical_harmonics_summary.csv
+-rw-r--r--   1 craig  staff   6942032 Apr  1 14:40 state_transition_analysis.csv
+-rw-r--r--   1 craig  staff       183 Apr  3 17:47 states.csv
+-rw-r--r--   1 craig  staff     41999 Apr  3 18:08 streamlines_2d.png
+-rw-r--r--   1 craig  staff     62449 Apr  3 17:30 tangent.png
+-rw-r--r--   1 craig  staff        12 Apr  1 14:41 theta_dynamics_summary.csv
+-rw-r--r--   1 craig  staff   1514824 Mar 31 13:08 theta_projection_analysis.csv
+-rw-r--r--   1 craig  staff   1654236 Apr  1 14:41 theta_reconstruction.csv
+-rw-r--r--   1 craig  staff     30611 Apr  3 18:28 tim1.png
+-rw-r--r--   1 craig  staff      2108 Apr  3 18:29 time_resolved_sde.csv
+-rw-r--r--   1 craig  staff      2543 Apr  3 18:19 time_resolved_sde.py
+-rw-r--r--   1 craig  staff     64928 Mar 31 12:17 time_window_mode_tracking.csv
+-rw-r--r--   1 craig  staff     31033 Apr  3 18:28 time2.png
+-rw-r--r--   1 craig  staff     31233 Apr  3 18:29 time3.png
+-rw-r--r--   1 craig  staff     22068 Apr  3 18:08 trajectory_2d.png
+-rw-r--r--   1 craig  staff     33991 Apr  3 17:58 trajectory.png
+-rw-r--r--   1 craig  staff       150 Apr  3 17:47 transition_matrix.csv
+-rw-r--r--   1 craig  staff       241 Apr  3 17:47 transitions.csv
+-rw-r--r--   1 craig  staff     16003 Apr  3 17:40 tranverse.png
+-rw-r--r--   1 craig  staff      4666 Apr  3 18:07 vector_field_reconstruction_2d.py
+drwxr-xr-x   7 craig  staff       224 Apr  3 11:02 venv
+total 0
+drwx------@ 7 craig  staff  224 May  1 13:58 drift_torque_conditioning_results
+drwxr-xr-x  6 craig  staff  192 May  1 16:55 lagged_phase_transfer_5000
+drwxr-xr-x  7 craig  staff  224 May  1 16:00 optimal_composite_phase
+drwxr-xr-x  8 craig  staff  256 May  1 17:14 phase_dependent_escape_rate
+drwxr-xr-x  8 craig  staff  256 May  1 17:03 phase_potential_escape
+drwxr-xr-x  6 craig  staff  192 May  1 16:19 phase_randomized_null_5000
+drwxr-xr-x  7 craig  staff  224 May  1 15:23 planetary_phase_index
+drwxr-xr-x  7 craig  staff  224 May  1 16:12 preregistered_composites
+drwxr-xr-x  7 craig  staff  224 May  1 15:36 residual_phase_coherence
+drwxr-xr-x  8 craig  staff  256 May  1 15:15 solar_coherence
+drwxr-xr-x  6 craig  staff  192 May  1 17:03 transition_conditioned_lag
+
+outputs//drift_torque_conditioning_results:
+total 680
+-rw-r--r--@ 1 craig  staff   87979 May  1 11:56 01_global_vs_Rhigh_enrichment.png
+-rw-r--r--@ 1 craig  staff  172335 May  1 11:56 02_lag_probability.png
+-rw-r--r--@ 1 craig  staff   73658 May  1 11:56 03_theta_sector_localization.png
+-rw-r--r--@ 1 craig  staff     932 May  1 11:56 conditioning_summary.csv
+-rw-r--r--@ 1 craig  staff     851 May  1 11:56 theta_sector_conditioning.csv
+
+outputs//lagged_phase_transfer_5000:
+total 464
+drwxr-xr-x  13 craig  staff     416 May  1 16:55 figures
+-rw-r--r--   1 craig  staff  233391 May  1 16:55 lagged_phase_transfer_curves.csv
+-rw-r--r--   1 craig  staff    2023 May  1 16:55 lagged_phase_transfer_summary.csv
+
+outputs//lagged_phase_transfer_5000/figures:
+total 2792
+-rw-r--r--  1 craig  staff  117488 May  1 16:55 best_lag_days_summary.png
+-rw-r--r--  1 craig  staff  123177 May  1 16:46 lag_curve_All_NonSolar_Major.png
+-rw-r--r--  1 craig  staff  127118 May  1 16:52 lag_curve_Jupiter_Saturn.png
+-rw-r--r--  1 craig  staff  121733 May  1 16:48 lag_curve_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff  119857 May  1 16:43 lag_curve_Mercury_Venus_Mars.png
+-rw-r--r--  1 craig  staff  210544 May  1 16:55 lag_curve_Sun_removed_Moon.png
+-rw-r--r--  1 craig  staff  120071 May  1 16:50 lag_curve_Venus_Jupiter.png
+-rw-r--r--  1 craig  staff  115336 May  1 16:38 lag_curve_Venus_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff  112635 May  1 16:40 lag_curve_Venus_Mars.png
+-rw-r--r--  1 craig  staff  113623 May  1 16:55 lagged_phase_randomized_significance.png
+-rw-r--r--  1 craig  staff  118839 May  1 16:55 lead_lag_asymmetry_summary.png
+
+outputs//optimal_composite_phase:
+total 3200
+drwxr-xr-x  7 craig  staff      224 May  1 16:00 figures
+-rw-r--r--  1 craig  staff      585 May  1 16:00 model_report.md
+-rw-r--r--  1 craig  staff  1564307 May  1 16:00 optimal_composite_timeseries.csv
+-rw-r--r--  1 craig  staff    68588 May  1 16:00 optimized_composite_scan.csv
+
+outputs//optimal_composite_phase/figures:
+total 3024
+-rw-r--r--  1 craig  staff  239605 May  1 16:00 high_R_states_timeseries.png
+-rw-r--r--  1 craig  staff  375462 May  1 16:00 optimized_composite_test_contrast.png
+-rw-r--r--  1 craig  staff   56235 May  1 16:00 phase_misalignment_histogram.png
+-rw-r--r--  1 craig  staff  278686 May  1 16:00 phase_misalignment_polar.png
+-rw-r--r--  1 craig  staff  586749 May  1 16:00 phase_misalignment_timeseries.png
+
+outputs//phase_dependent_escape_rate:
+total 2296
+-rw-r--r--  1 craig  staff    10801 May  1 17:09 binned_escape_rates.csv
+-rw-r--r--  1 craig  staff  1053254 May  1 17:09 escape_rate_timeseries.csv
+drwxr-xr-x  9 craig  staff      288 May  1 17:09 figures
+-rw-r--r--  1 craig  staff    99315 May  1 17:09 fitted_escape_rate_curves.csv
+-rw-r--r--  1 craig  staff     1515 May  1 17:09 phase_dependent_escape_rate_summary.csv
+
+outputs//phase_dependent_escape_rate/figures:
+total 1328
+-rw-r--r--  1 craig  staff   89956 May  1 17:09 escape_rate_curve_All_NonSolar_Major.png
+-rw-r--r--  1 craig  staff  102142 May  1 17:09 escape_rate_curve_Mercury_Venus_Mars.png
+-rw-r--r--  1 craig  staff  101122 May  1 17:09 escape_rate_curve_Venus_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff  106974 May  1 17:09 escape_rate_curve_Venus_Mars.png
+-rw-r--r--  1 craig  staff   93220 May  1 17:09 escape_rate_modulation_amplitude.png
+-rw-r--r--  1 craig  staff   91418 May  1 17:09 escape_rate_ratio.png
+-rw-r--r--  1 craig  staff   82168 May  1 17:09 escape_rate_significance.png
+
+outputs//phase_potential_escape:
+total 2096
+-rw-r--r--   1 craig  staff      859 May  1 17:03 escape_alignment_summary.csv
+-rw-r--r--   1 craig  staff  1053257 May  1 17:03 escape_timeseries.csv
+drwxr-xr-x  11 craig  staff      352 May  1 17:03 figures
+-rw-r--r--   1 craig  staff     5289 May  1 17:03 phase_potential.csv
+-rw-r--r--   1 craig  staff      377 May  1 17:03 phase_wells_and_barriers.csv
+
+outputs//phase_potential_escape/figures:
+total 1632
+-rw-r--r--  1 craig  staff   46984 May  1 17:03 escape_alignment_All_NonSolar_Major.png
+-rw-r--r--  1 craig  staff   95981 May  1 17:03 escape_alignment_enrichment.png
+-rw-r--r--  1 craig  staff   55533 May  1 17:03 escape_alignment_Mercury_Venus_Mars.png
+-rw-r--r--  1 craig  staff   82968 May  1 17:03 escape_alignment_significance.png
+-rw-r--r--  1 craig  staff   48242 May  1 17:03 escape_alignment_Venus_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff   46698 May  1 17:03 escape_alignment_Venus_Mars.png
+-rw-r--r--  1 craig  staff  246548 May  1 17:03 escape_events_over_R.png
+-rw-r--r--  1 craig  staff   94636 May  1 17:03 phase_potential.png
+-rw-r--r--  1 craig  staff   97801 May  1 17:03 well_assignment_timeline.png
+
+outputs//phase_randomized_null_5000:
+total 6384
+drwxr-xr-x  20 craig  staff      640 May  1 16:19 figures
+-rw-r--r--   1 craig  staff  3263661 May  1 16:19 phase_randomized_null_samples.csv
+-rw-r--r--   1 craig  staff     3544 May  1 16:19 phase_randomized_null_summary.csv
+
+outputs//phase_randomized_null_5000/figures:
+total 2512
+-rw-r--r--  1 craig  staff   45459 May  1 16:19 null_distribution_All_NonSolar_Major.png
+-rw-r--r--  1 craig  staff   43469 May  1 16:17 null_distribution_Jupiter_Moon.png
+-rw-r--r--  1 craig  staff   45058 May  1 16:15 null_distribution_Jupiter_Saturn_Uranus_Neptune.png
+-rw-r--r--  1 craig  staff   44591 May  1 16:16 null_distribution_Jupiter_Saturn_Uranus_Pluto.png
+-rw-r--r--  1 craig  staff   44277 May  1 16:14 null_distribution_Jupiter_Saturn.png
+-rw-r--r--  1 craig  staff   45945 May  1 16:15 null_distribution_Jupiter_Uranus_Neptune.png
+-rw-r--r--  1 craig  staff   44192 May  1 16:17 null_distribution_Mars_Jupiter_Neptune.png
+-rw-r--r--  1 craig  staff   44973 May  1 16:16 null_distribution_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff   47457 May  1 16:14 null_distribution_Mercury_Venus_Mars.png
+-rw-r--r--  1 craig  staff   48462 May  1 16:17 null_distribution_Sun_removed_Moon.png
+-rw-r--r--  1 craig  staff   46833 May  1 16:16 null_distribution_Venus_Jupiter_Neptune.png
+-rw-r--r--  1 craig  staff   45334 May  1 16:16 null_distribution_Venus_Jupiter.png
+-rw-r--r--  1 craig  staff   44448 May  1 16:14 null_distribution_Venus_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff   46608 May  1 16:18 null_distribution_Venus_Mars_Moon.png
+-rw-r--r--  1 craig  staff   44256 May  1 16:13 null_distribution_Venus_Mars.png
+-rw-r--r--  1 craig  staff  195444 May  1 16:19 observed_contrast_summary.png
+-rw-r--r--  1 craig  staff  188372 May  1 16:19 phase_randomized_significance.png
+-rw-r--r--  1 craig  staff  191262 May  1 16:19 phase_randomized_zscore.png
+
+outputs//planetary_phase_index:
+total 120960
+drwxr-xr-x  16 craig  staff       512 May  1 15:23 figures
+-rw-r--r--   1 craig  staff   1997110 May  1 15:23 planetary_phase_lag_summary.csv
+-rw-r--r--   1 craig  staff     30005 May  1 15:23 planetary_phase_summary.csv
+-rw-r--r--   1 craig  staff  59899849 May  1 15:23 planetary_phase_timeseries.csv
+
+outputs//planetary_phase_index/figures:
+total 2808
+-rw-r--r--  1 craig  staff  269707 May  1 15:23 high_R_PLV_significance.png
+-rw-r--r--  1 craig  staff  272653 May  1 15:23 high_R_PLV_summary.png
+-rw-r--r--  1 craig  staff   91013 May  1 15:23 lagged_PLV_combo_Jupiter_Sun.png
+-rw-r--r--  1 craig  staff  100708 May  1 15:23 lagged_PLV_combo_Neptune_Pluto_Sun.png
+-rw-r--r--  1 craig  staff   98332 May  1 15:23 lagged_PLV_combo_Neptune_Sun.png
+-rw-r--r--  1 craig  staff   98248 May  1 15:23 lagged_PLV_combo_Saturn_Sun.png
+-rw-r--r--  1 craig  staff   90445 May  1 15:23 lagged_PLV_Mars.png
+-rw-r--r--  1 craig  staff   89970 May  1 15:23 lagged_PLV_Sun.png
+-rw-r--r--  1 craig  staff   47104 May  1 15:23 phase_hist_combo_Jupiter_Sun.png
+-rw-r--r--  1 craig  staff   49745 May  1 15:23 phase_hist_combo_Neptune_Pluto_Sun.png
+-rw-r--r--  1 craig  staff   50138 May  1 15:23 phase_hist_combo_Neptune_Sun.png
+-rw-r--r--  1 craig  staff   49883 May  1 15:23 phase_hist_combo_Saturn_Sun.png
+-rw-r--r--  1 craig  staff   46721 May  1 15:23 phase_hist_Mars.png
+-rw-r--r--  1 craig  staff   50863 May  1 15:23 phase_hist_Sun.png
+
+outputs//preregistered_composites:
+total 20728
+drwxr-xr-x  21 craig  staff       672 May  1 16:05 figures
+-rw-r--r--   1 craig  staff      3624 May  1 16:05 preregistered_composite_summary.csv
+-rw-r--r--   1 craig  staff  10549791 May  1 16:05 preregistered_phase_timeseries.csv
+-rw-r--r--   1 craig  staff     57304 May  1 16:05 preregistered_rolling_summary.csv
+
+outputs//preregistered_composites/figures:
+total 4200
+-rw-r--r--  1 craig  staff   48797 May  1 16:05 best_preregistered_phase_histogram.png
+-rw-r--r--  1 craig  staff  194646 May  1 16:05 preregistered_composite_contrast.png
+-rw-r--r--  1 craig  staff   98965 May  1 16:05 rolling_contrast_All_NonSolar_Major.png
+-rw-r--r--  1 craig  staff   98462 May  1 16:05 rolling_contrast_Jupiter_Moon.png
+-rw-r--r--  1 craig  staff   96470 May  1 16:05 rolling_contrast_Jupiter_Saturn_Uranus_Neptune.png
+-rw-r--r--  1 craig  staff  100419 May  1 16:05 rolling_contrast_Jupiter_Saturn_Uranus_Pluto.png
+-rw-r--r--  1 craig  staff   95350 May  1 16:05 rolling_contrast_Jupiter_Saturn.png
+-rw-r--r--  1 craig  staff  102940 May  1 16:05 rolling_contrast_Jupiter_Uranus_Neptune.png
+-rw-r--r--  1 craig  staff  104466 May  1 16:05 rolling_contrast_Mars_Jupiter_Neptune.png
+-rw-r--r--  1 craig  staff  100822 May  1 16:05 rolling_contrast_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff   96782 May  1 16:05 rolling_contrast_Mercury_Venus_Mars.png
+-rw-r--r--  1 craig  staff   86701 May  1 16:05 rolling_contrast_Sun_removed_Moon.png
+-rw-r--r--  1 craig  staff  103601 May  1 16:05 rolling_contrast_Venus_Jupiter_Neptune.png
+-rw-r--r--  1 craig  staff   96585 May  1 16:05 rolling_contrast_Venus_Jupiter.png
+-rw-r--r--  1 craig  staff   97976 May  1 16:05 rolling_contrast_Venus_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff   97078 May  1 16:05 rolling_contrast_Venus_Mars_Moon.png
+-rw-r--r--  1 craig  staff   99333 May  1 16:05 rolling_contrast_Venus_Mars.png
+-rw-r--r--  1 craig  staff  198987 May  1 16:05 rolling_positive_fraction.png
+-rw-r--r--  1 craig  staff  190908 May  1 16:05 year_block_significance.png
+
+outputs//residual_phase_coherence:
+total 6080
+drwxr-xr-x  12 craig  staff      384 May  1 15:31 figures
+-rw-r--r--   1 craig  staff  1508174 May  1 15:31 residual_phase_lag_summary.csv
+-rw-r--r--   1 craig  staff    33392 May  1 15:31 residual_phase_summary.csv
+-rw-r--r--   1 craig  staff  1564560 May  1 15:31 solar_residual_timeseries.csv
+
+outputs//residual_phase_coherence/figures:
+total 2792
+-rw-r--r--  1 craig  staff  329394 May  1 15:31 before_after_solar_removal_PLV.png
+-rw-r--r--  1 craig  staff   85870 May  1 15:31 residual_lag_combo_Venus_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff   92643 May  1 15:31 residual_lag_combo_Venus_Mars_Pluto.png
+-rw-r--r--  1 craig  staff   85898 May  1 15:31 residual_lag_combo_Venus_Mars_Saturn.png
+-rw-r--r--  1 craig  staff   93475 May  1 15:31 residual_lag_combo_Venus_Mars.png
+-rw-r--r--  1 craig  staff   90958 May  1 15:31 residual_lag_combo_Venus_Uranus_Pluto.png
+-rw-r--r--  1 craig  staff  113802 May  1 15:31 residual_lag_inner_planets.png
+-rw-r--r--  1 craig  staff   83986 May  1 15:31 residual_lag_venus_mars_jupiter.png
+-rw-r--r--  1 craig  staff   91257 May  1 15:31 residual_lag_venus_mars.png
+-rw-r--r--  1 craig  staff  345302 May  1 15:31 residual_phase_significance.png
+
+outputs//solar_coherence:
+total 344
+-rw-r--r--   1 craig  staff    1837 May  1 15:14 body_summary.csv
+drwxr-xr-x  16 craig  staff     512 May  1 15:14 figures
+-rw-r--r--   1 craig  staff  117417 May  1 15:14 lag_summary.csv
+-rw-r--r--   1 craig  staff   43408 May  1 15:14 multibody_summary.csv
+-rw-r--r--   1 craig  staff    7598 May  1 15:14 theta_sector_summary.csv
+
+outputs//solar_coherence/figures:
+total 2728
+-rw-r--r--  1 craig  staff   69911 May  1 15:14 body_enrichment.png
+-rw-r--r--  1 craig  staff   69321 May  1 15:14 body_surrogate_significance.png
+-rw-r--r--  1 craig  staff   85165 May  1 15:14 lag_curve_jupiter.png
+-rw-r--r--  1 craig  staff   91184 May  1 15:14 lag_curve_mars.png
+-rw-r--r--  1 craig  staff  106230 May  1 15:14 lag_curve_mercury.png
+-rw-r--r--  1 craig  staff   95890 May  1 15:14 lag_curve_moon.png
+-rw-r--r--  1 craig  staff   88143 May  1 15:14 lag_curve_neptune.png
+-rw-r--r--  1 craig  staff   61842 May  1 15:14 lag_curve_pluto.png
+-rw-r--r--  1 craig  staff   76467 May  1 15:14 lag_curve_saturn.png
+-rw-r--r--  1 craig  staff   96902 May  1 15:14 lag_curve_sun.png
+-rw-r--r--  1 craig  staff   52073 May  1 15:14 lag_curve_uranus.png
+-rw-r--r--  1 craig  staff   83594 May  1 15:14 lag_curve_venus.png
+-rw-r--r--  1 craig  staff  111496 May  1 15:14 theta_sector_enrichment_heatmap.png
+-rw-r--r--  1 craig  staff  282112 May  1 15:14 top_multibody_enrichment.png
+
+outputs//transition_conditioned_lag:
+total 1360
+drwxr-xr-x  14 craig  staff     448 May  1 16:56 figures
+-rw-r--r--   1 craig  staff  689341 May  1 16:56 transition_conditioned_lag_curves.csv
+-rw-r--r--   1 craig  staff    2117 May  1 16:56 transition_conditioned_lag_summary.csv
+
+outputs//transition_conditioned_lag/figures:
+total 3224
+-rw-r--r--  1 craig  staff  122165 May  1 16:56 transition_best_lag_days.png
+-rw-r--r--  1 craig  staff  120257 May  1 16:56 transition_coherence_gain.png
+-rw-r--r--  1 craig  staff  156060 May  1 16:48 transition_lag_curve_All_NonSolar_Major.png
+-rw-r--r--  1 craig  staff  133096 May  1 16:54 transition_lag_curve_Jupiter_Saturn.png
+-rw-r--r--  1 craig  staff  126719 May  1 16:50 transition_lag_curve_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff  149956 May  1 16:44 transition_lag_curve_Mercury_Venus_Mars.png
+-rw-r--r--  1 craig  staff  129304 May  1 16:56 transition_lag_curve_Sun_removed_Moon.png
+-rw-r--r--  1 craig  staff  105072 May  1 16:52 transition_lag_curve_Venus_Jupiter.png
+-rw-r--r--  1 craig  staff  112140 May  1 16:46 transition_lag_curve_Venus_Mars_Jupiter.png
+-rw-r--r--  1 craig  staff  121841 May  1 16:42 transition_lag_curve_Venus_Mars.png
+-rw-r--r--  1 craig  staff  110805 May  1 16:56 transition_window_significance.png
+-rw-r--r--  1 craig  staff  240462 May  1 16:40 transition_windows.png

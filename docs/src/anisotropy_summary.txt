@@ -1,0 +1,5 @@
+Real max energy: 0.6587975330513197
+Surrogate mean: 0.5752888303145256
+Surrogate std: 0.03765306520305712
+Z-score: 2.2178460713417842
+p-value: 0.03

@@ -1,0 +1,15 @@
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local build products from LaTeX/paper compilation.
+*.aux
+*.out
+*.log
+*.pdf
+
+# Place generated CSVs that exceed GitHub's 100 MB file limit here.
+large-csv/

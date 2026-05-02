@@ -1,0 +1,6373 @@
+import pandas as pd
+import numpy as np
+from scipy.stats import linregress
+from multiprocessing import get_context
+
+# =========================
+# CONFIG
+# =========================
+DATA_FILE = "finals.all.csv"
+WINDOW_DAYS = 365 * 10  # 10-year window
+
+# =========================
+# ATTRACTOR (~75°W)
+# =========================
+# Geographic bearing (clockwise from North)
+theta = np.deg2rad(285)
+
+# Convert to IERS frame:
+# x → Greenwich, y → 90°W
+# Geographic North corresponds to -y
+d_hat = np.array([
+    np.sin(theta),   # x component
+    -np.cos(theta)   # y component
+])
+
+# =========================
+# LOAD DATA
+# =========================
+df = pd.read_csv(DATA_FILE, sep=';')
+
+df['date'] = pd.to_datetime(df[['Year', 'Month', 'Day']])
+
+# arcsec → mas
+df['x'] = df['x_pole'] * 1000.0
+df['y'] = df['y_pole'] * 1000.0
+
+df = df.sort_values('date').reset_index(drop=True)
+
+# =========================
+# 1. INSTANTANEOUS VELOCITY
+# =========================
+dx = np.diff(df['x'])
+dy = np.diff(df['y'])
+
+dt = np.diff(df['date'].values).astype('timedelta64[D]').astype(float)
+
+vx = dx / dt
+vy = dy / dt
+
+v_mag = np.sqrt(vx**2 + vy**2)
+
+# Projection onto attractor
+v_parallel = vx * d_hat[0] + vy * d_hat[1]
+
+df['v_mag'] = np.nan
+df['v_parallel'] = np.nan
+df.loc[1:, 'v_mag'] = v_mag
+df.loc[1:, 'v_parallel'] = v_parallel
+
+# =========================
+# 2. ROLLING SECULAR DRIFT
+# =========================
+def compute_window(i):
+    start = i
+    end = i + WINDOW_DAYS
+    if end >= len(df):
+        return None
+
+    sub = df.iloc[start:end]
+    t = (sub['date'] - sub['date'].iloc[0]).dt.days.values
+
+    slope_x, _, _, _, _ = linregress(t, sub['x'])
+    slope_y, _, _, _, _ = linregress(t, sub['y'])
+
+    # magnitude
+    mag = np.sqrt(slope_x**2 + slope_y**2)
+    mag_yr = mag * 365.25
+
+    # ✅ CORRECT geographic direction
+    direction = np.rad2deg(np.arctan2(slope_x, -slope_y)) % 360
+
+    # projection onto attractor
+    v_par = slope_x * d_hat[0] + slope_y * d_hat[1]
+    v_par_yr = v_par * 365.25
+
+    return (
+        sub['date'].iloc[WINDOW_DAYS // 2],
+        mag_yr,
+        direction,
+        v_par_yr
+    )
+
+# =========================
+# RUN (macOS-safe)
+# =========================
+if __name__ == "__main__":
+    ctx = get_context("spawn")
+
+    with ctx.Pool() as pool:
+        results = pool.map(compute_window, range(len(df) - WINDOW_DAYS))
+
+    results = [r for r in results if r is not None]
+
+    drift_df = pd.DataFrame(results, columns=[
+        'date',
+        'drift_mas_per_year',
+        'direction_deg',
+        'parallel_mas_per_year'
+    ])
+
+    # =========================
+    # CIRCULAR MEAN (CRITICAL)
+    # =========================
+    angles = np.deg2rad(drift_df['direction_deg'])
+
+    mean_angle = np.arctan2(
+        np.mean(np.sin(angles)),
+        np.mean(np.cos(angles))
+    )
+
+    mean_direction = np.rad2deg(mean_angle) % 360
+
+    # =========================
+    # DIAGNOSTICS
+    # =========================
+    print("\n=== INSTANTANEOUS VELOCITY ===")
+    print(f"Mean |v| (mas/day): {np.nanmean(df['v_mag']):.3f}")
+    print(f"Max |v| (mas/day): {np.nanmax(df['v_mag']):.3f}")
+
+    print("\n=== SECULAR DRIFT ===")
+    print(f"Mean drift (mas/yr): {drift_df['drift_mas_per_year'].mean():.3f}")
+    print(f"Std drift (mas/yr): {drift_df['drift_mas_per_year'].std():.3f}")
+
+    print("\n=== DIRECTION (geographic) ===")
+    print(f"Circular mean direction (deg): {mean_direction:.2f}")
+
+    print("\n=== ALIGNMENT WITH ~75°W ===")
+    print(f"Mean parallel (mas/yr): {drift_df['parallel_mas_per_year'].mean():.3f}")
+
+    # =========================
+    # SAVE
+    # =========================
+    drift_df.to_csv("rolling_drift_analysis.csv", index=False)
+    df.to_csv("instantaneous_velocity.csv", index=False)
+
+    print("\nSaved:")
+    print("- rolling_drift_analysis.csv")
+    print("- instantaneous_velocity.csv")import pandas as pd
+import numpy as np
+from scipy.stats import linregress
+from multiprocessing import get_context
+
+# =========================
+# CONFIG
+# =========================
+DATA_FILE = "finals.all.csv"
+WINDOW_DAYS = 365 * 5
+
+# =========================
+# ATTRACTOR (~75°W)
+# =========================
+theta = np.deg2rad(285)
+d_hat = np.array([
+    np.sin(theta),
+    -np.cos(theta)
+])
+
+# =========================
+# LOAD + CLEAN DATA
+# =========================
+df = pd.read_csv(DATA_FILE, sep=';')
+
+# Keep only final solutions
+df = df[df['Type'] == 'final'].copy()
+
+# Drop NaNs explicitly
+df = df.dropna(subset=['x_pole', 'y_pole'])
+
+# Time
+df['date'] = pd.to_datetime(df[['Year', 'Month', 'Day']])
+
+# Convert to mas
+df['x'] = df['x_pole'] * 1000.0
+df['y'] = df['y_pole'] * 1000.0
+
+df = df.sort_values('date').reset_index(drop=True)
+
+# Time vector AFTER cleaning
+t_full = (df['date'] - df['date'].iloc[0]).dt.days.values
+
+# =========================
+# 1. GLOBAL SECULAR (GIA)
+# =========================
+slope_x, _, _, _, _ = linregress(t_full, df['x'])
+slope_y, _, _, _, _ = linregress(t_full, df['y'])
+
+mag = np.sqrt(slope_x**2 + slope_y**2) * 365.25
+direction = np.rad2deg(np.arctan2(slope_x, -slope_y)) % 360
+
+print("\n=== GLOBAL SECULAR (GIA) ===")
+print(f"Magnitude (mas/yr): {mag:.3f}")
+print(f"Direction (deg): {direction:.2f}")
+
+# =========================
+# 2. REMOVE SECULAR
+# =========================
+df['x_res'] = df['x'] - (slope_x * t_full)
+df['y_res'] = df['y'] - (slope_y * t_full)
+
+# =========================
+# 3. INSTANTANEOUS (RESIDUAL)
+# =========================
+dx = np.diff(df['x_res'])
+dy = np.diff(df['y_res'])
+
+dt = np.diff(df['date'].values).astype('timedelta64[D]').astype(float)
+
+vx = dx / dt
+vy = dy / dt
+
+v_mag = np.sqrt(vx**2 + vy**2)
+v_parallel = vx * d_hat[0] + vy * d_hat[1]
+
+df['v_res_mag'] = np.nan
+df['v_res_parallel'] = np.nan
+df.loc[1:, 'v_res_mag'] = v_mag
+df.loc[1:, 'v_res_parallel'] = v_parallel
+
+# =========================
+# 4. ROLLING RESIDUAL DRIFT
+# =========================
+def compute_window(i):
+    start = i
+    end = i + WINDOW_DAYS
+    if end >= len(df):
+        return None
+
+    sub = df.iloc[start:end]
+
+    # Ensure no NaNs in window
+    if sub[['x_res', 'y_res']].isna().any().any():
+        return None
+
+    t = (sub['date'] - sub['date'].iloc[0]).dt.days.values
+
+    slope_x, _, _, _, _ = linregress(t, sub['x_res'])
+    slope_y, _, _, _, _ = linregress(t, sub['y_res'])
+
+    mag = np.sqrt(slope_x**2 + slope_y**2) * 365.25
+    direction = np.rad2deg(np.arctan2(slope_x, -slope_y)) % 360
+
+    v_par = (slope_x * d_hat[0] + slope_y * d_hat[1]) * 365.25
+
+    return (
+        sub['date'].iloc[WINDOW_DAYS // 2],
+        mag,
+        direction,
+        v_par
+    )
+
+# =========================
+# RUN
+# =========================
+if __name__ == "__main__":
+    ctx = get_context("spawn")
+
+    with ctx.Pool() as pool:
+        results = pool.map(compute_window, range(len(df) - WINDOW_DAYS))
+
+    results = [r for r in results if r is not None]
+
+    drift_df = pd.DataFrame(results, columns=[
+        'date',
+        'residual_drift_mas_per_year',
+        'direction_deg',
+        'parallel_mas_per_year'
+    ])
+
+    # =========================
+    # CIRCULAR MEAN
+    # =========================
+    angles = np.deg2rad(drift_df['direction_deg'])
+
+    mean_angle = np.arctan2(
+        np.mean(np.sin(angles)),
+        np.mean(np.cos(angles))
+    )
+
+    mean_direction = np.rad2deg(mean_angle) % 360
+
+    # =========================
+    # OUTPUT
+    # =========================
+    print("\n=== RESIDUAL (GIA REMOVED) ===")
+    print(f"Mean drift (mas/yr): {drift_df['residual_drift_mas_per_year'].mean():.3f}")
+    print(f"Std drift (mas/yr): {drift_df['residual_drift_mas_per_year'].std():.3f}")
+    print(f"Mean direction (deg): {mean_direction:.2f}")
+    print(f"Mean parallel (mas/yr): {drift_df['parallel_mas_per_year'].mean():.3f}")
+
+    print("\n=== RESIDUAL INSTANTANEOUS ===")
+    print(f"Mean |v| (mas/day): {np.nanmean(df['v_res_mag']):.3f}")
+    print(f"Mean parallel (mas/day): {np.nanmean(df['v_res_parallel']):.3f}")
+
+    # Save
+    drift_df.to_csv("residual_drift_analysis.csv", index=False)
+    df.to_csv("residual_velocity.csv", index=False)
+
+    print("\nSaved:")
+    print("- residual_drift_analysis.csv")
+    print("- residual_velocity.csv")import pandas as pd
+import numpy as np
+from scipy.signal import butter, filtfilt
+from scipy.stats import linregress
+from multiprocessing import get_context
+
+# =========================
+# CONFIG
+# =========================
+DATA_FILE = "finals.all.csv"
+WINDOW_DAYS = 365 * 5
+
+# =========================
+# ATTRACTOR (~75°W)
+# =========================
+theta = np.deg2rad(285)
+d_hat = np.array([
+    np.sin(theta),
+    -np.cos(theta)
+])
+
+# =========================
+# LOAD + CLEAN
+# =========================
+df = pd.read_csv(DATA_FILE, sep=';')
+df = df[df['Type'] == 'final'].copy()
+df = df.dropna(subset=['x_pole', 'y_pole'])
+
+df['date'] = pd.to_datetime(df[['Year', 'Month', 'Day']])
+df['x'] = df['x_pole'] * 1000.0
+df['y'] = df['y_pole'] * 1000.0
+
+df = df.sort_values('date').reset_index(drop=True)
+
+t_full = (df['date'] - df['date'].iloc[0]).dt.days.values
+
+# =========================
+# 1. REMOVE GIA (linear)
+# =========================
+sx, _, _, _, _ = linregress(t_full, df['x'])
+sy, _, _, _, _ = linregress(t_full, df['y'])
+
+df['x_detrend'] = df['x'] - sx * t_full
+df['y_detrend'] = df['y'] - sy * t_full
+
+# =========================
+# 2. BAND-STOP FILTERS
+# =========================
+from scipy.signal import butter, filtfilt
+
+def lowpass(data, cutoff_days=1000, fs=1.0, order=4):
+    cutoff = 1.0 / cutoff_days  # cycles/day
+    nyq = 0.5 * fs
+    cutoff /= nyq
+
+    b, a = butter(order, cutoff, btype='low')
+    return filtfilt(b, a, data)
+
+# Apply low-pass
+df['x_filt'] = lowpass(df['x_detrend'].values)
+df['y_filt'] = lowpass(df['y_detrend'].values)
+
+# =========================
+# 3. INSTANTANEOUS (filtered)
+# =========================
+dx = np.diff(df['x_filt'])
+dy = np.diff(df['y_filt'])
+
+dt = np.diff(df['date'].values).astype('timedelta64[D]').astype(float)
+
+vx = dx / dt
+vy = dy / dt
+
+v_parallel = vx * d_hat[0] + vy * d_hat[1]
+
+df['v_filt_parallel'] = np.nan
+df.loc[1:, 'v_filt_parallel'] = v_parallel
+
+# =========================
+# 4. ROLLING DRIFT
+# =========================
+def compute_window(i):
+    start = i
+    end = i + WINDOW_DAYS
+    if end >= len(df):
+        return None
+
+    sub = df.iloc[start:end]
+
+    if sub[['x_filt', 'y_filt']].isna().any().any():
+        return None
+
+    t = (sub['date'] - sub['date'].iloc[0]).dt.days.values
+
+    sx, _, _, _, _ = linregress(t, sub['x_filt'])
+    sy, _, _, _, _ = linregress(t, sub['y_filt'])
+
+    mag = np.sqrt(sx**2 + sy**2) * 365.25
+    direction = np.rad2deg(np.arctan2(sx, -sy)) % 360
+
+    v_par = (sx * d_hat[0] + sy * d_hat[1]) * 365.25
+
+    return (
+        sub['date'].iloc[WINDOW_DAYS // 2],
+        mag,
+        direction,
+        v_par
+    )
+
+# =========================
+# RUN
+# =========================
+if __name__ == "__main__":
+    ctx = get_context("spawn")
+
+    with ctx.Pool() as pool:
+        results = pool.map(compute_window, range(len(df) - WINDOW_DAYS))
+
+    results = [r for r in results if r is not None]
+
+    drift_df = pd.DataFrame(results, columns=[
+        'date',
+        'filtered_drift_mas_per_year',
+        'direction_deg',
+        'parallel_mas_per_year'
+    ])
+
+    # Circular mean
+    angles = np.deg2rad(drift_df['direction_deg'])
+    mean_angle = np.arctan2(np.mean(np.sin(angles)), np.mean(np.cos(angles)))
+    mean_direction = np.rad2deg(mean_angle) % 360
+
+    # =========================
+    # OUTPUT
+    # =========================
+    print("\n=== FILTERED LOW-FREQUENCY TEST ===")
+    print(f"Mean drift (mas/yr): {drift_df['filtered_drift_mas_per_year'].mean():.3f}")
+    print(f"Std drift (mas/yr): {drift_df['filtered_drift_mas_per_year'].std():.3f}")
+    print(f"Mean direction (deg): {mean_direction:.2f}")
+    print(f"Mean parallel (mas/yr): {drift_df['parallel_mas_per_year'].mean():.3f}")
+
+    print("\n=== INSTANTANEOUS (FILTERED) ===")
+    print(f"Mean parallel (mas/day): {np.nanmean(df['v_filt_parallel']):.3f}")
+
+    drift_df.to_csv("filtered_drift_analysis.csv", index=False)
+    df.to_csv("filtered_series.csv", index=False)
+
+    print("\nSaved:")
+    print("- filtered_drift_analysis.csv")
+    print("- filtered_series.csv")import numpy as np
+import pandas as pd
+from scipy.signal import butter, filtfilt
+
+# =========================================================
+# CONFIG
+# =========================================================
+INPUT_FILE = "filtered_series.csv"
+OUTPUT_FILE = "mode_projection_analysis_filtered.csv"
+
+AXES = {
+    "zach_75W": 255.0,
+    "adhikari_100W": 260.0,
+    "observed_326": 326.0
+}
+
+DAYS_PER_YEAR = 365.25
+
+
+# =========================================================
+# UTILITIES
+# =========================================================
+def unit_vec(theta_deg):
+    th = np.deg2rad(theta_deg)
+    return np.array([np.cos(th), np.sin(th)])
+
+
+def safe_gradient(arr, dt=1.0):
+    arr = np.asarray(arr, dtype=np.float64)
+
+    # Fill NaNs safely
+    nans = np.isnan(arr)
+    if np.any(nans):
+        arr[nans] = np.interp(
+            np.flatnonzero(nans),
+            np.flatnonzero(~nans),
+            arr[~nans]
+        )
+
+    grad = np.gradient(arr, dt)
+    return np.nan_to_num(grad, nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def circular_mean_deg(theta_deg):
+    theta_rad = np.deg2rad(theta_deg)
+    mean_vec = np.mean(np.exp(1j * theta_rad))
+    return (np.degrees(np.angle(mean_vec)) + 360) % 360
+
+
+def circular_std_deg(theta_deg):
+    theta_rad = np.deg2rad(theta_deg)
+    R = np.abs(np.mean(np.exp(1j * theta_rad)))
+    return np.degrees(np.sqrt(-2 * np.log(R + 1e-12)))
+
+
+# =========================================================
+# LOW-PASS FILTER (CRITICAL)
+# =========================================================
+def lowpass(data, cutoff_days=365*5, order=4):
+    """
+    cutoff_days = period threshold (e.g. 5 years)
+    Removes Chandler (~433d) + annual + higher freq
+    """
+    data = np.asarray(data, dtype=np.float64)
+
+    # Fill NaNs before filtering
+    nans = np.isnan(data)
+    if np.any(nans):
+        data[nans] = np.interp(
+            np.flatnonzero(nans),
+            np.flatnonzero(~nans),
+            data[~nans]
+        )
+
+    fs = 1.0  # samples per day
+    nyq = 0.5 * fs
+
+    cutoff = 1.0 / cutoff_days  # cycles per day
+    normal_cutoff = cutoff / nyq
+
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    return filtfilt(b, a, data)
+
+
+# =========================================================
+# LOAD DATA
+# =========================================================
+df = pd.read_csv(INPUT_FILE, parse_dates=["date"])
+
+if not {"x", "y"}.issubset(df.columns):
+    raise ValueError("Input must contain 'x' and 'y' columns (mas).")
+
+x = df["x"].astype(float).values
+y = df["y"].astype(float).values
+
+
+# =========================================================
+# FILTER FIRST (THIS FIXES YOUR ISSUE)
+# =========================================================
+x_f = lowpass(x, cutoff_days=365*5)
+y_f = lowpass(y, cutoff_days=365*5)
+
+
+# =========================================================
+# VELOCITY (AFTER FILTERING)
+# =========================================================
+vx = safe_gradient(x_f)
+vy = safe_gradient(y_f)
+
+vx *= DAYS_PER_YEAR
+vy *= DAYS_PER_YEAR
+
+
+# =========================================================
+# PROJECTIONS
+# =========================================================
+out = pd.DataFrame({
+    "date": df["date"],
+    "vx": vx,
+    "vy": vy
+})
+
+for name, theta in AXES.items():
+    e = unit_vec(theta)
+    e_perp = unit_vec(theta + 90.0)
+
+    out[f"{name}_parallel"] = vx * e[0] + vy * e[1]
+    out[f"{name}_perp"] = vx * e_perp[0] + vy * e_perp[1]
+
+
+# =========================================================
+# MAGNITUDE + DIRECTION
+# =========================================================
+mag = np.sqrt(vx**2 + vy**2)
+direction = (np.degrees(np.arctan2(vy, vx)) + 360) % 360
+
+out["v_mag"] = mag
+out["direction_deg"] = direction
+
+
+# =========================================================
+# SUMMARY
+# =========================================================
+print("\n=== MODE PROJECTIONS (mas/yr) ===\n")
+
+for name in AXES.keys():
+    par = out[f"{name}_parallel"]
+    perp = out[f"{name}_perp"]
+
+    print(f"{name}:")
+    print(f"  mean_parallel : {np.mean(par):.3f}")
+    print(f"  std_parallel  : {np.std(par):.3f}")
+    print(f"  mean_perp     : {np.mean(perp):.3f}")
+    print(f"  std_perp      : {np.std(perp):.3f}")
+    print()
+
+print("=== DIRECTION STABILITY ===\n")
+print(f"Circular mean (deg): {circular_mean_deg(direction):.2f}")
+print(f"Circular std  (deg): {circular_std_deg(direction):.2f}")
+
+print("\n=== MAGNITUDE ===\n")
+print(f"Mean |v| (mas/yr): {np.mean(mag):.3f}")
+print(f"Std  |v| (mas/yr): {np.std(mag):.3f}")
+
+
+# =========================================================
+# SAVE
+# =========================================================
+out.to_csv(OUTPUT_FILE, index=False)
+
+print(f"\nSaved: {OUTPUT_FILE}")import numpy as np
+import pandas as pd
+
+# =========================================================
+# CONFIG
+# =========================================================
+INPUT_FILE = "mode_projection_analysis_filtered.csv"
+OUTPUT_FILE = "time_window_mode_tracking.csv"
+
+WINDOW_DAYS = 365 * 10   # 10-year window
+STEP_DAYS = 30           # monthly stepping
+
+AXES = {
+    "zach_75W": 255.0,
+    "adhikari_100W": 260.0,
+    "greenland_45": 45.0
+}
+
+
+# =========================================================
+# UTILITIES
+# =========================================================
+def circular_mean(theta_deg):
+    theta = np.deg2rad(theta_deg)
+    mean_vec = np.mean(np.exp(1j * theta))
+    return (np.degrees(np.angle(mean_vec)) + 360) % 360
+
+
+def circular_std(theta_deg):
+    theta = np.deg2rad(theta_deg)
+    R = np.abs(np.mean(np.exp(1j * theta)))
+    return np.degrees(np.sqrt(-2 * np.log(R + 1e-12)))
+
+
+def unit_vec(theta_deg):
+    th = np.deg2rad(theta_deg)
+    return np.array([np.cos(th), np.sin(th)])
+
+
+# =========================================================
+# LOAD
+# =========================================================
+df = pd.read_csv(INPUT_FILE, parse_dates=["date"])
+
+dates = df["date"].values
+vx = df["vx"].values
+vy = df["vy"].values
+
+direction = df["direction_deg"].values
+
+
+# =========================================================
+# WINDOW ANALYSIS
+# =========================================================
+results = []
+
+n = len(df)
+
+for start in range(0, n - WINDOW_DAYS, STEP_DAYS):
+    end = start + WINDOW_DAYS
+
+    sub_dir = direction[start:end]
+    sub_vx = vx[start:end]
+    sub_vy = vy[start:end]
+
+    # Direction stats
+    mean_dir = circular_mean(sub_dir)
+    std_dir = circular_std(sub_dir)
+
+    # Magnitude
+    mag = np.sqrt(sub_vx**2 + sub_vy**2)
+    mean_mag = np.mean(mag)
+
+    # Axis projections
+    projections = {}
+
+    for name, theta in AXES.items():
+        e = unit_vec(theta)
+        v_par = sub_vx * e[0] + sub_vy * e[1]
+        projections[f"{name}_parallel"] = np.mean(v_par)
+
+    results.append({
+        "date": df["date"].iloc[start + WINDOW_DAYS // 2],
+        "mean_direction": mean_dir,
+        "direction_std": std_dir,
+        "mean_magnitude": mean_mag,
+        **projections
+    })
+
+
+# =========================================================
+# OUTPUT
+# =========================================================
+out = pd.DataFrame(results)
+
+print("\n=== TIME WINDOW ANALYSIS ===\n")
+
+print("Overall mean direction:", np.mean(out["mean_direction"]))
+print("Direction variability:", np.std(out["mean_direction"]))
+
+print("\nAxis dominance (mean projection):")
+for name in AXES.keys():
+    print(f"{name}: {out[f'{name}_parallel'].mean():.3f}")
+
+out.to_csv(OUTPUT_FILE, index=False)
+
+print(f"\nSaved: {OUTPUT_FILE}")import pandas as pd
+import numpy as np
+
+# =========================================================
+# LOAD (use filtered polar motion, not mode projections)
+# =========================================================
+df = pd.read_csv("filtered_series.csv", parse_dates=["date"])
+
+# =========================================================
+# EXTRACT + MEAN CENTER (CRITICAL)
+# =========================================================
+x = df["x_filt"].values
+y = df["y_filt"].values
+
+x = x - np.mean(x)
+y = y - np.mean(y)
+
+# =========================================================
+# COVARIANCE + PRINCIPAL AXIS
+# =========================================================
+C = np.cov(x, y)
+vals, vecs = np.linalg.eigh(C)
+
+# sort eigenvalues descending
+order = np.argsort(vals)[::-1]
+vals = vals[order]
+vecs = vecs[:, order]
+
+principal_axis = vecs[:, 0]
+
+# =========================================================
+# PROJECTION ONTO PRINCIPAL AXIS
+# =========================================================
+s = x * principal_axis[0] + y * principal_axis[1]
+
+# =========================================================
+# DERIVATIVE (ROBUST)
+# =========================================================
+# use central differences where possible
+ds = np.gradient(s)
+
+# =========================================================
+# STATE DEFINITION (GEOMETRIC)
+# =========================================================
+# state = direction of motion along principal axis
+state = (ds > 0).astype(int)
+
+df["state"] = state
+df["projection"] = s
+df["dprojection"] = ds
+
+# =========================================================
+# TRANSITIONS
+# =========================================================
+state_shift = np.diff(state, prepend=state[0])
+transition_idx = np.where(state_shift != 0)[0]
+
+transition_times = df["date"].iloc[transition_idx]
+
+# =========================================================
+# DWELL TIMES
+# =========================================================
+runs = []
+current_state = state[0]
+length = 1
+
+for i in range(1, len(state)):
+    if state[i] == current_state:
+        length += 1
+    else:
+        runs.append((current_state, length))
+        current_state = state[i]
+        length = 1
+
+runs.append((current_state, length))
+
+# convert to DataFrame
+dwell_df = pd.DataFrame(runs, columns=["state", "length"])
+
+# =========================================================
+# TIME AXIS (for rates)
+# =========================================================
+t = df["date"]
+t_numeric = (t - t.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+# =========================================================
+# TRANSITION RATE
+# =========================================================
+total_time = t_numeric.iloc[-1] - t_numeric.iloc[0]
+transition_rate = len(transition_idx) / total_time if total_time > 0 else np.nan
+
+# =========================================================
+# OUTPUT
+# =========================================================
+print("\n=== GEOMETRIC STATE TRANSITION ANALYSIS ===\n")
+
+print(f"Principal axis angle (deg): {np.degrees(np.arctan2(principal_axis[1], principal_axis[0])):.2f}")
+print(f"Anisotropy ratio (λ1 / Σλ): {vals[0]/vals.sum():.4f}")
+
+print(f"\nTotal transitions: {len(transition_idx)}")
+print(f"Transition rate (per year): {transition_rate:.3f}")
+
+if len(transition_times) > 0:
+    print(f"\nFirst transition: {transition_times.iloc[0]}")
+    print(f"Last transition:  {transition_times.iloc[-1]}")
+
+print("\nDwell time statistics:")
+print(dwell_df.groupby("state")["length"].describe())
+
+# =========================================================
+# SAVE
+# =========================================================
+df.to_csv("state_transition_analysis.csv", index=False)
+dwell_df.to_csv("axis_dwell_times.csv", index=False)
+
+print("\nSaved:")
+print("- state_transition_analysis.csv")
+print("- axis_dwell_times.csv")import pandas as pd
+import numpy as np
+
+INPUT_FILE = "axis_distance_analysis.csv"
+OUTPUT_FILE = "R_parameter_timeseries.csv"
+
+# Candidate axes (must match projection script exactly)
+AXES = [
+    "zach_75W_parallel",
+    "adhikari_100W_parallel",
+    "observed_326_parallel"   # your ~45° dominant axis
+]
+
+
+def compute_R(row):
+    values = np.array([abs(row[a]) for a in AXES])
+    max_val = np.max(values)
+    mean_val = np.mean(values)
+
+    if mean_val == 0:
+        return np.nan
+
+    return max_val / mean_val
+
+
+def compute_dominant_axis(row):
+    values = {a: abs(row[a]) for a in AXES}
+    return max(values, key=values.get)
+
+
+def main():
+    df = pd.read_csv(INPUT_FILE)
+
+    # --- Compute R(t) ---
+    df["R"] = df.apply(compute_R, axis=1)
+
+    # --- Dominant axis tracking ---
+    df["dominant_axis"] = df.apply(compute_dominant_axis, axis=1)
+
+    # --- Optional: anisotropy strength ---
+    df["anisotropy_excess"] = df["R"] - 1.0
+
+    df.to_csv(OUTPUT_FILE, index=False)
+
+    print("=== R PARAMETER ===")
+    print(f"Mean R: {df['R'].mean()}")
+    print(f"Max  R: {df['R'].max()}")
+    print(f"Min  R: {df['R'].min()}")
+
+    print("\nSaved:", OUTPUT_FILE)
+
+
+if __name__ == "__main__":
+    main()import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# =========================================================
+# LOAD DATA
+# =========================================================
+inst = pd.read_csv("instantaneous_velocity.csv", parse_dates=["date"])
+res  = pd.read_csv("residual_velocity.csv", parse_dates=["date"])
+mode = pd.read_csv("mode_projection_analysis_filtered.csv", parse_dates=["date"])
+time = pd.read_csv("time_window_mode_tracking.csv", parse_dates=["date"])
+state = pd.read_csv("state_transition_analysis.csv", parse_dates=["date"])
+
+# =========================================================
+# SETTINGS
+# =========================================================
+plt.rcParams["figure.figsize"] = (10, 6)
+plt.rcParams["font.size"] = 10
+
+# =========================================================
+# HELPERS
+# =========================================================
+def safe_col(df, name_list):
+    for n in name_list:
+        if n in df.columns:
+            return df[n]
+    raise KeyError(f"Missing columns: {name_list}")
+
+# =========================================================
+# 1. POLAR TRAJECTORY
+# =========================================================
+def plot_polar_trajectory():
+    plt.figure()
+    plt.plot(inst["x"], inst["y"], linewidth=0.5)
+    plt.xlabel("x pole (mas)")
+    plt.ylabel("y pole (mas)")
+    plt.title("Polar Motion Trajectory")
+    plt.axis("equal")
+    plt.grid()
+    plt.savefig("fig_01_polar_trajectory.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 2. VELOCITY FIELD
+# =========================================================
+def plot_vector_field():
+    df = inst.dropna(subset=["x", "y"]).iloc[::50]
+
+    dx = np.gradient(df["x"])
+    dy = np.gradient(df["y"])
+
+    plt.figure()
+    plt.quiver(df["x"], df["y"], dx, dy, scale=5000)
+    plt.title("Velocity Field")
+    plt.axis("equal")
+    plt.grid()
+    plt.savefig("fig_02_vector_field.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 3. DIRECTION TIME SERIES
+# =========================================================
+def plot_direction_time():
+    direction = safe_col(mode, ["direction_deg"])
+
+    plt.figure()
+    plt.plot(mode["date"], direction, linewidth=0.5)
+    plt.ylabel("Direction (deg)")
+    plt.title("Direction Evolution")
+    plt.grid()
+    plt.savefig("fig_03_direction_time.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 4. MODE PROJECTIONS
+# =========================================================
+def plot_mode_projections():
+    plt.figure()
+
+    if "zach_75W_parallel" in mode:
+        plt.plot(mode["date"], mode["zach_75W_parallel"], label="75W")
+
+    if "adhikari_100W_parallel" in mode:
+        plt.plot(mode["date"], mode["adhikari_100W_parallel"], label="100W")
+
+    if "observed_326_parallel" in mode:
+        plt.plot(mode["date"], mode["observed_326_parallel"], label="~45°")
+
+    plt.legend()
+    plt.ylabel("Projection (mas/yr)")
+    plt.title("Mode Projections")
+    plt.grid()
+    plt.savefig("fig_04_mode_projections.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 5. TIME WINDOW MODES
+# =========================================================
+def plot_time_window_modes():
+    plt.figure()
+
+    plt.plot(time["date"], time["zach_75W_parallel"], label="75W")
+    plt.plot(time["date"], time["adhikari_100W_parallel"], label="100W")
+    plt.plot(time["date"], time["greenland_45_parallel"], label="45°")
+
+    plt.legend()
+    plt.ylabel("Projection (mas/yr)")
+    plt.title("Mode Evolution")
+    plt.grid()
+    plt.savefig("fig_05_time_window_modes.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 6. GEOMETRIC STATE PROJECTION (REPLACES R)
+# =========================================================
+def plot_state_projection():
+    plt.figure()
+
+    plt.plot(state["date"], state["projection"], label="Projection", linewidth=1)
+
+    state_scaled = (state["state"] - 0.5) * state["projection"].std() * 2
+    plt.plot(state["date"], state_scaled, label="State (scaled)", alpha=0.6)
+
+    plt.legend()
+    plt.ylabel("Projection")
+    plt.title("Geometric State Evolution")
+    plt.grid()
+
+    plt.savefig("fig_06_state_projection.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 7. STATE TIME SERIES
+# =========================================================
+def plot_state_timeseries():
+    plt.figure(figsize=(10,3))
+    plt.step(state["date"], state["state"], where="post")
+
+    plt.title("State Time Series (Geometric)")
+    plt.yticks([0,1])
+    plt.grid()
+
+    plt.savefig("fig_07_state_timeseries.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 8. PHASE SPACE (FIXED: projection vs direction)
+# =========================================================
+def plot_phase_space():
+    merged = pd.merge(state, time, on="date")
+
+    direction = safe_col(merged, ["mean_direction", "direction_deg"])
+
+    plt.figure()
+
+    plt.scatter(
+        merged["projection"],
+        direction,
+        c=np.linspace(0, 1, len(merged)),
+        s=5
+    )
+
+    plt.colorbar(label="Time progression")
+    plt.xlabel("Projection")
+    plt.ylabel("Direction (deg)")
+    plt.title("Phase Space: Projection vs Direction")
+    plt.grid()
+
+    plt.savefig("fig_08_phase_space_projection.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 9. RESIDUAL FIELD
+# =========================================================
+def plot_residual_field():
+    df = res.dropna(subset=["x_res", "y_res"]).iloc[::50]
+
+    dx = np.gradient(df["x_res"])
+    dy = np.gradient(df["y_res"])
+
+    plt.figure()
+    plt.quiver(df["x_res"], df["y_res"], dx, dy, scale=5000)
+    plt.title("Residual Field")
+    plt.axis("equal")
+    plt.grid()
+    plt.savefig("fig_09_residual_field.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 10. MAGNITUDE
+# =========================================================
+def plot_magnitude():
+    mag = safe_col(mode, ["v_mag"])
+
+    plt.figure()
+    plt.plot(mode["date"], mag)
+    plt.ylabel("|v| (mas/yr)")
+    plt.title("Magnitude Evolution")
+    plt.grid()
+    plt.savefig("fig_10_magnitude.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 11. XY PHASE DENSITY + PCA (CRITICAL FIGURE)
+# =========================================================
+def plot_xy_density_pca():
+    df = pd.read_csv("filtered_series.csv")
+
+    x = df["x_filt"].values
+    y = df["y_filt"].values
+
+    # mean center
+    x = x - np.mean(x)
+    y = y - np.mean(y)
+
+    C = np.cov(x, y)
+    vals, vecs = np.linalg.eigh(C)
+
+    order = np.argsort(vals)[::-1]
+    vecs = vecs[:, order]
+
+    plt.figure(figsize=(6,6))
+    sns.kdeplot(x=x, y=y, fill=True, levels=50)
+
+    plt.plot(x, y, color="white", alpha=0.3, linewidth=0.5)
+
+    for i in range(2):
+        v = vecs[:, i]
+        plt.quiver(0, 0, v[0], v[1], scale=3, color="red")
+
+    plt.xlabel("x_p")
+    plt.ylabel("y_p")
+    plt.title("Phase Space with Principal Axes")
+
+    plt.axis("equal")
+    plt.savefig("fig_11_xy_phase_density.png", dpi=300)
+    plt.close()
+
+
+# =========================================================
+# 12. RESIDUAL PHASE SPACE (XY + DECOMPOSED VIEWS)
+# =========================================================
+def plot_residual_phase_xy_time():
+    df = res.dropna(subset=["x_res", "y_res", "date"]).copy()
+
+    # Ensure sorted time
+    df = df.sort_values("date")
+
+    # Convert time to seconds
+    dt = df["date"].diff().dt.total_seconds().fillna(0)
+
+    # Convert to mas/sec (if needed)
+    vx = df["x_res"] / (365.25 * 24 * 3600)
+    vy = df["y_res"] / (365.25 * 24 * 3600)
+
+    from scipy.signal import detrend
+
+    # Remove drift / bias
+    vx = detrend(vx)
+    vy = detrend(vy)
+
+    # Integrate to recover residual position
+    df["x_res_pos"] = np.cumsum(vx * dt)
+    df["y_res_pos"] = np.cumsum(vy * dt)
+
+    # Time in calendar years (fractional)
+    df["year"] = df["date"].dt.year + df["date"].dt.dayofyear / 365.25
+
+    # =====================================================
+    # CENTROID (SLOW MANIFOLD)
+    # =====================================================
+    window = 365
+
+    cx = df["x_res_pos"].rolling(window, center=True).mean()
+    cy = df["y_res_pos"].rolling(window, center=True).mean()
+
+    valid = (~cx.isna()) & (~cy.isna())
+
+    cxv = cx[valid].values
+    cyv = cy[valid].values
+
+    # =====================================================
+    # PCA ON CENTROID PATH (DRIFT AXIS)
+    # =====================================================
+    C = np.cov(cxv, cyv)
+    vals, vecs = np.linalg.eigh(C)
+
+    order = np.argsort(vals)[::-1]
+    vecs = vecs[:, order]
+
+    v = vecs[:, 0]
+
+    angle_deg = np.degrees(np.arctan2(v[1], v[0]))
+    print(f"[Drift Axis] Angle (deg): {angle_deg:.2f}")
+
+    # Scaling for axis visualization
+    scale = np.max(np.abs(df[["x_res_pos", "y_res_pos"]].values)) * 0.5
+
+    # =====================================================
+    # 1. RAW RESIDUAL PATH ONLY
+    # =====================================================
+    plt.figure(figsize=(6,6))
+
+    sc = plt.scatter(
+        df["x_res_pos"],
+        df["y_res_pos"],
+        c=df["year"],
+        s=5
+    )
+
+    plt.colorbar(sc, label="Calendar year")
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Residual Phase Space (XY)")
+
+    plt.axis("equal")
+    plt.grid()
+
+    plt.savefig("fig_12a_residual_path.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # 2. DERIVED STRUCTURE ONLY (CENTROID + AXIS)
+    # =====================================================
+    plt.figure(figsize=(6,6))
+
+    plt.plot(cxv, cyv, color="black", linewidth=2, label="Centroid path")
+
+    plt.quiver(
+        0, 0,
+        v[0], v[1],
+        scale=1/scale,
+        color="red",
+        width=0.01,
+        label=f"Drift axis ({angle_deg:.1f}°)"
+    )
+
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Residual Drift Structure")
+
+    plt.legend()
+    plt.axis("equal")
+    plt.grid()
+
+    plt.savefig("fig_12b_residual_structure.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # 3. COMBINED (FULL VIEW)
+    # =====================================================
+    plt.figure(figsize=(6,6))
+
+    sc = plt.scatter(
+        df["x_res_pos"],
+        df["y_res_pos"],
+        c=df["year"],
+        s=5,
+        alpha=0.7
+    )
+
+    plt.plot(cxv, cyv, color="black", linewidth=2, label="Centroid path")
+
+    plt.quiver(
+        0, 0,
+        v[0], v[1],
+        scale=1/scale,
+        color="red",
+        width=0.01,
+        label=f"Drift axis ({angle_deg:.1f}°)"
+    )
+
+    plt.colorbar(sc, label="Calendar year")
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Residual Polar Motion Phase Space (XY)")
+
+    plt.legend()
+    plt.axis("equal")
+    plt.grid()
+
+    plt.savefig("fig_12c_residual_combined.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# RUN
+# =========================================================
+if __name__ == "__main__":
+    print("Columns check:")
+    print("mode:", mode.columns.tolist())
+    print("time:", time.columns.tolist())
+    print("state:", state.columns.tolist())
+
+    plot_polar_trajectory()
+    plot_vector_field()
+    plot_direction_time()
+    plot_mode_projections()
+    plot_time_window_modes()
+
+    # NEW GEOMETRIC REPLACEMENTS
+    plot_state_projection()
+    plot_state_timeseries()
+    plot_phase_space()
+
+    plot_residual_field()
+    plot_magnitude()
+    plot_xy_density_pca()
+    plot_residual_phase_xy_time()
+
+    from scipy.signal import periodogram
+
+    # use one component (x or y)
+    fs = 1 / np.median(dt)  # sampling frequency (Hz)
+
+    f, Pxx = periodogram(df["x_res_pos"].dropna(), fs=fs)
+
+    # convert to period (years)
+    period_years = 1 / f / (365.25 * 24 * 3600)
+
+    plt.figure()
+    plt.plot(period_years, Pxx)
+    plt.xlim(0, 5)
+    plt.xlabel("Period (years)")
+    plt.ylabel("Power")
+    plt.title("Residual Spectrum")
+    plt.grid()
+
+
+    print("\nAll figures generated successfully.")import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# =========================================================
+# LOAD DATA
+# =========================================================
+inst = pd.read_csv("instantaneous_velocity.csv", parse_dates=["date"])
+res  = pd.read_csv("residual_velocity.csv", parse_dates=["date"])
+mode = pd.read_csv("mode_projection_analysis_filtered.csv", parse_dates=["date"])
+time = pd.read_csv("time_window_mode_tracking.csv", parse_dates=["date"])
+state = pd.read_csv("state_transition_analysis.csv", parse_dates=["date"])
+
+# =========================================================
+# SETTINGS
+# =========================================================
+plt.rcParams["figure.figsize"] = (10, 6)
+plt.rcParams["font.size"] = 10
+
+# =========================================================
+# HELPERS
+# =========================================================
+def safe_col(df, name_list):
+    for n in name_list:
+        if n in df.columns:
+            return df[n]
+    raise KeyError(f"Missing columns: {name_list}")
+
+# =========================================================
+# 11. XY PHASE DENSITY + PCA
+# =========================================================
+def plot_xy_density_pca():
+    df = pd.read_csv("filtered_series.csv")
+
+    x = df["x_filt"].values - np.mean(df["x_filt"].values)
+    y = df["y_filt"].values - np.mean(df["y_filt"].values)
+
+    C = np.cov(x, y)
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+
+    plt.figure(figsize=(6,6))
+    sns.kdeplot(x=x, y=y, fill=True, levels=50)
+    plt.plot(x, y, color="white", alpha=0.3, linewidth=0.5)
+
+    for i in range(2):
+        v = vecs[:, i]
+        plt.quiver(0, 0, v[0], v[1], scale=3, color="red")
+
+    plt.xlabel("x_p")
+    plt.ylabel("y_p")
+    plt.title("Phase Space with Principal Axes")
+    plt.axis("equal")
+    plt.savefig("fig_11_xy_phase_density.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 12. RESIDUAL PHASE SPACE (FINAL FORM)
+# =========================================================
+def compute_residual_phase():
+    df = res.dropna(subset=["x_res", "y_res", "date"]).copy()
+    df = df.sort_values("date")
+
+    dt = df["date"].diff().dt.total_seconds().fillna(0)
+
+    vx = df["x_res"] / (365.25 * 24 * 3600)
+    vy = df["y_res"] / (365.25 * 24 * 3600)
+
+    from scipy.signal import detrend
+    vx = detrend(vx)
+    vy = detrend(vy)
+
+    df["x_res_pos"] = np.cumsum(vx * dt)
+    df["y_res_pos"] = np.cumsum(vy * dt)
+
+    df["year"] = df["date"].dt.year + df["date"].dt.dayofyear / 365.25
+
+    return df, dt
+
+
+def plot_residual_phase_xy_time(df):
+    # =====================================================
+    # CENTROID
+    # =====================================================
+    window = 365
+
+    cx = df["x_res_pos"].rolling(window, center=True).mean()
+    cy = df["y_res_pos"].rolling(window, center=True).mean()
+
+    valid = (~cx.isna()) & (~cy.isna())
+    cxv, cyv = cx[valid].values, cy[valid].values
+
+    # =====================================================
+    # PCA (DRIFT AXIS)
+    # =====================================================
+    C = np.cov(cxv, cyv)
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+
+    v = vecs[:, 0]
+    angle_deg = np.degrees(np.arctan2(v[1], v[0]))
+
+    print(f"[Drift Axis] Angle (deg): {angle_deg:.2f}")
+    print(f"[Axis Vector] {v}")
+
+    scale = np.max(np.abs(df[["x_res_pos", "y_res_pos"]].values)) * 0.5
+
+    # =====================================================
+    # 1. RAW
+    # =====================================================
+    plt.figure(figsize=(6,6))
+    sc = plt.scatter(df["x_res_pos"], df["y_res_pos"], c=df["year"], s=5)
+    plt.colorbar(sc, label="Calendar year")
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Residual Phase Space (XY)")
+    plt.axis("equal")
+    plt.grid()
+    plt.savefig("fig_12a_residual_path.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # 2. STRUCTURE
+    # =====================================================
+    plt.figure(figsize=(6,6))
+    plt.plot(cxv, cyv, color="black", linewidth=2, label="Centroid")
+
+    plt.quiver(
+        0, 0, v[0], v[1],
+        scale=1/scale,
+        color="red",
+        width=0.01,
+        label=f"Axis ({angle_deg:.1f}°)"
+    )
+
+    plt.legend()
+    plt.axis("equal")
+    plt.grid()
+    plt.title("Residual Drift Structure")
+    plt.savefig("fig_12b_residual_structure.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # 3. COMBINED
+    # =====================================================
+    plt.figure(figsize=(6,6))
+    sc = plt.scatter(df["x_res_pos"], df["y_res_pos"], c=df["year"], s=5, alpha=0.7)
+
+    plt.plot(cxv, cyv, color="black", linewidth=2, label="Centroid")
+
+    plt.quiver(
+        0, 0, v[0], v[1],
+        scale=1/scale,
+        color="red",
+        width=0.01,
+        label=f"Axis ({angle_deg:.1f}°)"
+    )
+
+    plt.colorbar(sc, label="Calendar year")
+    plt.legend()
+    plt.axis("equal")
+    plt.grid()
+    plt.title("Residual Polar Motion Phase Space (XY)")
+    plt.savefig("fig_12c_residual_combined.png", dpi=300)
+    plt.close()
+
+    return df
+
+
+# # =========================================================
+# 13. ENHANCED SPECTRAL DIAGNOSTIC
+# =========================================================
+def plot_residual_spectrum(df, dt):
+    from scipy.signal import periodogram, find_peaks
+
+    dt_mean = np.median(dt[dt > 0])
+    fs = 1 / dt_mean
+
+    # Compute spectrum
+    f, Pxx = periodogram(df["x_res_pos"].dropna(), fs=fs)
+
+    # Remove zero frequency
+    f = f[1:]
+    Pxx = Pxx[1:]
+
+    # Convert to period (years)
+    period = 1 / f / (365.25 * 24 * 3600)
+
+    # Sort by period (ascending for plotting)
+    idx = np.argsort(period)
+    period = period[idx]
+    Pxx = Pxx[idx]
+
+    # Normalize for readability
+    Pxx_norm = Pxx / np.max(Pxx)
+
+    # Find peaks
+    peaks, _ = find_peaks(Pxx_norm, height=0.1)
+
+    # =====================================================
+    # MAIN PLOT (LOG SCALE)
+    # =====================================================
+    plt.figure(figsize=(8,6))
+
+    plt.plot(period, Pxx_norm)
+
+    plt.yscale("log")
+    plt.xlim(0, 5)
+
+    # Reference lines
+    plt.axvline(1.0, linestyle="--", label="Annual (1 yr)")
+    plt.axvline(1.19, linestyle="--", label="Chandler (~1.19 yr)")
+
+    # Mark peaks
+    plt.scatter(period[peaks], Pxx_norm[peaks], zorder=3)
+
+    for p in peaks:
+        plt.text(period[p], Pxx_norm[p]*1.2, f"{period[p]:.2f}", fontsize=8)
+
+    plt.xlabel("Period (years)")
+    plt.ylabel("Normalized Power (log scale)")
+    plt.title("Residual Spectrum (Enhanced)")
+    plt.legend()
+    plt.grid()
+
+    plt.savefig("fig_13_residual_spectrum.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # ZOOMED VIEW (0.5–2.5 years)
+    # =====================================================
+    mask = (period > 0.5) & (period < 2.5)
+
+    plt.figure(figsize=(8,5))
+    plt.plot(period[mask], Pxx_norm[mask])
+
+    plt.axvline(1.0, linestyle="--")
+    plt.axvline(1.19, linestyle="--")
+
+    plt.xlabel("Period (years)")
+    plt.ylabel("Normalized Power")
+    plt.title("Residual Spectrum (Zoom: Annual + Chandler)")
+    plt.grid()
+
+    plt.savefig("fig_13b_residual_spectrum_zoom.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 14. PHASE VELOCITY FIELD (CONSISTENT WITH PHASE SPACE)
+# =========================================================
+def plot_phase_velocity_field(df):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.ndimage import gaussian_filter1d
+
+    df = df.dropna(subset=["x_res_pos", "y_res_pos", "date"]).copy()
+    df = df.sort_values("date")
+
+    # -----------------------------------------------------
+    # Time step (seconds)
+    # -----------------------------------------------------
+    dt = df["date"].diff().dt.total_seconds().to_numpy(copy=True)
+
+    dt[dt <= 0] = np.nan
+    dt = np.nan_to_num(dt, nan=np.nanmedian(dt))
+
+    # -----------------------------------------------------
+    # Velocity (finite difference)
+    # -----------------------------------------------------
+    # -----------------------------------------------------
+    # Robust finite difference (forward difference)
+    # -----------------------------------------------------
+    x = df["x_res_pos"].values
+    y = df["y_res_pos"].values
+
+    dx = np.diff(x)
+    dy = np.diff(y)
+    dt_safe = dt[1:]  # align with diff
+
+    # Prevent division issues
+    dt_safe[dt_safe <= 0] = np.nanmedian(dt_safe[dt_safe > 0])
+
+    vx = dx / dt_safe
+    vy = dy / dt_safe
+
+    # Pad to original length
+    vx = np.concatenate([[vx[0]], vx])
+    vy = np.concatenate([[vy[0]], vy])
+
+    # -----------------------------------------------------
+    # Smooth (remove noise, preserve structure)
+    # -----------------------------------------------------
+    vx = gaussian_filter1d(vx, sigma=2)
+    vy = gaussian_filter1d(vy, sigma=2)
+
+    # -----------------------------------------------------
+    # Subsample for clarity
+    # -----------------------------------------------------
+    step = max(1, len(df) // 400)
+
+    x = df["x_res_pos"].values[::step]
+    y = df["y_res_pos"].values[::step]
+    vx = vx[::step]
+    vy = vy[::step]
+
+    # -----------------------------------------------------
+    # Magnitude (for coloring)
+    # -----------------------------------------------------
+    mag = np.sqrt(vx**2 + vy**2)
+    mag_norm = mag / np.max(mag)
+
+    # -----------------------------------------------------
+    # Drift axis (PCA on full trajectory)
+    # -----------------------------------------------------
+    C = np.cov(df["x_res_pos"], df["y_res_pos"])
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+    v = vecs[:, 0]
+
+    # -----------------------------------------------------
+    # Plot
+    # -----------------------------------------------------
+    plt.figure(figsize=(7,7))
+
+    # Background trajectory
+    plt.plot(df["x_res_pos"], df["y_res_pos"], alpha=0.15)
+
+    # Velocity field (colored by magnitude)
+    q = plt.quiver(
+        x, y,
+        vx, vy,
+        mag_norm,
+        angles='xy',
+        scale_units='xy',
+        scale=50,
+        width=0.003
+    )
+
+    plt.colorbar(q, label="Normalized velocity magnitude")
+
+    # Drift axis
+    L = np.max(np.abs(df[["x_res_pos", "y_res_pos"]].values))
+    plt.plot(
+        [-L*v[0], L*v[0]],
+        [-L*v[1], L*v[1]],
+        linewidth=2,
+        label="Drift axis"
+    )
+
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Phase Velocity Field (Residual Polar Motion)")
+
+    plt.axis("equal")
+    plt.grid()
+
+    plt.savefig("fig_14_phase_velocity_field.png", dpi=300)
+    plt.close()
+
+
+# =========================================================
+# 15. LOOP CENTER TRACKING (GEOMETRIC LOW-FREQ DIAGNOSTIC)
+# =========================================================
+def plot_loop_centers(df):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.signal import find_peaks
+
+    df = df.copy().dropna(subset=["x_res_pos", "y_res_pos", "date"])
+    df = df.sort_values("date")
+
+    x = df["x_res_pos"].values
+    y = df["y_res_pos"].values
+
+    # -----------------------------------------------------
+    # Radius from origin (phase-space distance)
+    # -----------------------------------------------------
+    r = np.sqrt(x**2 + y**2)
+
+    # -----------------------------------------------------
+    # Detect loop boundaries via peaks in radius
+    # (Chandler-scale loops)
+    # -----------------------------------------------------
+    peaks, _ = find_peaks(
+        r,
+        distance=200,      # ~1 year spacing (tune if needed)
+        prominence=np.std(r) * 0.2
+    )
+
+    # -----------------------------------------------------
+    # Estimate loop centers (mean within each segment)
+    # -----------------------------------------------------
+    centers_x = []
+    centers_y = []
+    centers_t = []
+
+    for i in range(len(peaks) - 1):
+        i0 = peaks[i]
+        i1 = peaks[i+1]
+
+        seg_x = x[i0:i1]
+        seg_y = y[i0:i1]
+
+        if len(seg_x) < 10:
+            continue
+
+        centers_x.append(np.mean(seg_x))
+        centers_y.append(np.mean(seg_y))
+        centers_t.append(df["date"].iloc[i0])
+
+    centers_x = np.array(centers_x)
+    centers_y = np.array(centers_y)
+    centers_t = np.array(centers_t)
+
+    # -----------------------------------------------------
+    # Plot 1: centers in phase space
+    # -----------------------------------------------------
+    plt.figure(figsize=(6,6))
+
+    # background trajectory
+    plt.plot(x, y, alpha=0.1)
+
+    # centers
+    plt.scatter(centers_x, centers_y, c=np.arange(len(centers_x)), s=40)
+
+    # connect centers
+    plt.plot(centers_x, centers_y, linewidth=2)
+
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Loop Center Trajectory")
+
+    plt.axis("equal")
+    plt.grid()
+
+    plt.savefig("fig_15_loop_centers.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # Compute angular evolution
+    # -----------------------------------------------------
+    theta = np.unwrap(np.arctan2(centers_y, centers_x))
+
+    # Convert time to fractional years
+    years = np.array([
+        t.year + t.dayofyear / 365.25 for t in centers_t
+    ])
+
+    # -----------------------------------------------------
+    # Plot 2: angle vs time
+    # -----------------------------------------------------
+    plt.figure(figsize=(8,5))
+    plt.plot(years, theta)
+
+    plt.xlabel("Year")
+    plt.ylabel("Angle (radians)")
+    plt.title("Loop Center Angular Evolution")
+
+    plt.grid()
+
+    plt.savefig("fig_15b_center_angle_timeseries.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # Diagnostics
+    # -----------------------------------------------------
+    dtheta = theta[-1] - theta[0]
+
+    print("\n[Loop Center Diagnostics]")
+    print(f"Total angular change (rad): {dtheta:.2f}")
+    print(f"Total angular change (deg): {np.degrees(dtheta):.2f}")
+
+    if abs(dtheta) > 5:
+        print("→ Indicates substantial rotation (possible long-period cycle)")
+    else:
+        print("→ Indicates drift without full rotation")
+
+    return centers_x, centers_y, theta, years
+
+# =========================================================
+# 16. ANGULAR VELOCITY ω(t) — ROBUST + PUBLICATION GRADE
+# =========================================================
+def plot_angular_velocity(theta, years):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.signal import savgol_filter
+
+    years = np.asarray(years)
+    theta = np.asarray(theta)
+
+    # -----------------------------------------------------
+    # Sort
+    # -----------------------------------------------------
+    order = np.argsort(years)
+    years = years[order]
+    theta = theta[order]
+
+    # -----------------------------------------------------
+    # Finite difference (robust)
+    # -----------------------------------------------------
+    dt = np.diff(years)
+    dtheta = np.diff(theta)
+
+    dt[dt <= 0] = np.nanmedian(dt[dt > 0])
+
+    omega_raw = dtheta / dt
+    t_mid = 0.5 * (years[:-1] + years[1:])
+
+    # -----------------------------------------------------
+    # Savitzky–Golay smoothing (adaptive)
+    # -----------------------------------------------------
+    window = min(9, len(omega_raw)//2*2 + 1)
+    if window < 5:
+        window = 5
+
+    omega_smooth = savgol_filter(omega_raw, window_length=window, polyorder=2)
+
+    # -----------------------------------------------------
+    # Robust uncertainty (MAD-based)
+    # -----------------------------------------------------
+    residual = omega_raw - omega_smooth
+
+    mad = np.median(np.abs(residual - np.median(residual)))
+    sigma = 1.4826 * mad  # robust std estimate
+
+    upper = omega_smooth + 2 * sigma
+    lower = omega_smooth - 2 * sigma
+
+    # -----------------------------------------------------
+    # Period (masked near zero to prevent blow-up)
+    # -----------------------------------------------------
+    eps = 0.02  # rad/year threshold
+
+    period = np.full_like(omega_smooth, np.nan)
+    valid = np.abs(omega_smooth) > eps
+
+    period[valid] = 2 * np.pi / omega_smooth[valid]
+
+    # -----------------------------------------------------
+    # PLOT 1: ω(t)
+    # -----------------------------------------------------
+    plt.figure(figsize=(8,5))
+
+    plt.plot(t_mid, omega_smooth, linewidth=2)
+    plt.fill_between(t_mid, lower, upper, alpha=0.25)
+
+    plt.axhline(0, linestyle="--", linewidth=1)
+
+    plt.xlabel("Year")
+    plt.ylabel("Angular velocity (rad/year)")
+    plt.title("Angular Velocity of Loop-Center Evolution")
+
+    plt.grid()
+
+    plt.savefig("fig_16_angular_velocity.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # PLOT 2: Period (clean, no spikes)
+    # -----------------------------------------------------
+    plt.figure(figsize=(8,5))
+
+    plt.plot(t_mid, period, linewidth=2)
+
+    plt.ylim(0, 100)
+    plt.xlabel("Year")
+    plt.ylabel("Implied Period (years)")
+    plt.title("Implied Long-Period Timescale (Stable Regions Only)")
+
+    plt.grid()
+
+    plt.savefig("fig_16b_period_estimate.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # Diagnostics
+    # -----------------------------------------------------
+    print("\n[Angular Velocity Diagnostics]")
+    print(f"Mean ω (rad/yr): {np.nanmean(omega_smooth):.4f}")
+    print(f"Median ω (rad/yr): {np.nanmedian(omega_smooth):.4f}")
+
+    if np.nanmean(omega_smooth) != 0:
+        T_mean = 2*np.pi / np.nanmean(omega_smooth)
+        print(f"Implied mean period (years): {T_mean:.1f}")
+
+    return t_mid, omega_smooth, lower, upper, period
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from scipy.signal import savgol_filter
+
+# =========================================================
+# 17. ANIMATION — PHASE SPACE + ANGULAR DIAGNOSTICS
+# =========================================================
+def animate_full_evolution(df, centers_x, centers_y, theta, years,
+                          save_path="polar_motion_animation.mp4"):
+
+    # -----------------------------------------------------
+    # Prepare data
+    # -----------------------------------------------------
+    x = df["x_res_pos"].values
+    y = df["y_res_pos"].values
+    t = df["year"].values
+
+    # Normalize frame count
+    N = len(x)
+
+    # Loop centers
+    cx = np.array(centers_x)
+    cy = np.array(centers_y)
+
+    theta = np.array(theta)
+    years = np.array(years)
+
+    # Angular velocity
+    dt = np.diff(years)
+    dtheta = np.diff(theta)
+    dt[dt <= 0] = np.nanmedian(dt[dt > 0])
+
+    omega = dtheta / dt
+    t_mid = 0.5 * (years[:-1] + years[1:])
+
+    # Smooth
+    window = min(9, len(omega)//2*2 + 1)
+    if window < 5:
+        window = 5
+    omega_smooth = savgol_filter(omega, window, 2)
+
+    # -----------------------------------------------------
+    # Drift axis (PCA)
+    # -----------------------------------------------------
+    C = np.cov(x, y)
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+    v = vecs[:, 0]
+
+    L = np.max(np.abs(np.vstack([x, y])))
+
+    # -----------------------------------------------------
+    # Figure layout
+    # -----------------------------------------------------
+    fig = plt.figure(figsize=(12, 6))
+
+    gs = fig.add_gridspec(2, 2)
+
+    ax_phase = fig.add_subplot(gs[:, 0])
+    ax_theta = fig.add_subplot(gs[0, 1])
+    ax_omega = fig.add_subplot(gs[1, 1])
+
+    # -----------------------------------------------------
+    # Phase space setup
+    # -----------------------------------------------------
+    ax_phase.set_xlim(np.min(x)*1.1, np.max(x)*1.1)
+    ax_phase.set_ylim(np.min(y)*1.1, np.max(y)*1.1)
+    ax_phase.set_title("Residual Polar Motion Phase Evolution")
+    ax_phase.set_xlabel("x_res")
+    ax_phase.set_ylabel("y_res")
+    ax_phase.grid()
+    ax_phase.set_aspect("equal")
+
+    # Static drift axis
+    ax_phase.plot([-L*v[0], L*v[0]],
+                  [-L*v[1], L*v[1]],
+                  color="red", linewidth=2, label="Drift Axis")
+
+    path_line, = ax_phase.plot([], [], lw=1, alpha=0.6)
+    centroid_line, = ax_phase.plot([], [], lw=2, color="black")
+    point, = ax_phase.plot([], [], "o", color="blue")
+
+    # -----------------------------------------------------
+    # θ(t)
+    # -----------------------------------------------------
+    ax_theta.set_title("Loop Center Angle θ(t)")
+    ax_theta.set_xlim(years.min(), years.max())
+    ax_theta.set_ylim(np.min(theta)*1.1, np.max(theta)*1.1)
+    ax_theta.grid()
+
+    theta_line, = ax_theta.plot([], [], lw=2)
+    theta_point, = ax_theta.plot([], [], "o")
+
+    # -----------------------------------------------------
+    # ω(t)
+    # -----------------------------------------------------
+    ax_omega.set_title("Angular Velocity ω(t)")
+    ax_omega.set_xlim(t_mid.min(), t_mid.max())
+    ax_omega.set_ylim(np.min(omega_smooth)*1.2, np.max(omega_smooth)*1.2)
+    ax_omega.axhline(0, linestyle="--", linewidth=1)
+    ax_omega.grid()
+
+    omega_line, = ax_omega.plot([], [], lw=2)
+    omega_point, = ax_omega.plot([], [], "o")
+
+    # -----------------------------------------------------
+    # Frame update
+    # -----------------------------------------------------
+    def update(frame):
+
+        frame = min(frame, len(x)-1)
+
+        # trajectory
+        path_line.set_data(x[:frame], y[:frame])
+        point.set_data([x[frame]], [y[frame]])
+
+        # centroid
+        window = 365
+        i0 = max(0, frame - window)
+        cx = np.mean(x[i0:frame])
+        cy = np.mean(y[i0:frame])
+        centroid_line.set_data([cx], [cy])
+
+        # theta
+        idx_theta = np.searchsorted(years, t[frame], side="right")
+        theta_line.set_data(years[:idx_theta], theta[:idx_theta])
+        if idx_theta > 0:
+            theta_point.set_data([years[idx_theta-1]], [theta[idx_theta-1]])
+
+        # omega
+        idx_omega = np.searchsorted(t_mid, t[frame], side="right")
+        omega_line.set_data(t_mid[:idx_omega], omega_smooth[:idx_omega])
+        if idx_omega > 0:
+            omega_point.set_data([t_mid[idx_omega-1]], [omega_smooth[idx_omega-1]])
+
+        return (
+            path_line, centroid_line, point,
+            theta_line, theta_point,
+            omega_line, omega_point
+        )
+
+    # -----------------------------------------------------
+    # Animate
+    # -----------------------------------------------------
+    anim = FuncAnimation(
+        fig,
+        update,
+        frames=N,
+        interval=30,
+        blit=True
+    )
+
+    # Save (ffmpeg required)
+    anim.save(save_path, dpi=200, fps=30)
+
+    print(f"Animation saved → {save_path}")
+
+
+# =========================================================
+# RUN
+# =========================================================
+if __name__ == "__main__":
+    print("Columns check:")
+    print("mode:", mode.columns.tolist())
+    print("time:", time.columns.tolist())
+    print("state:", state.columns.tolist())
+
+    plot_xy_density_pca()
+
+    df_res, dt = compute_residual_phase()
+    df_res = plot_residual_phase_xy_time(df_res)
+
+    plot_residual_spectrum(df_res, dt)
+
+    # FIX: pass df_res (NOT res)
+    plot_phase_velocity_field(df_res)
+
+    plot_loop_centers(df_res)
+
+    centers_x, centers_y, theta, years = plot_loop_centers(df_res)
+
+    plot_angular_velocity(theta, years)
+
+    print("\nAll figures generated successfully.")
+
+    centers_x, centers_y, theta, years = plot_loop_centers(df_res)
+
+    plot_angular_velocity(theta, years)
+
+    animate_full_evolution(
+        df_res,
+        centers_x,
+        centers_y,
+        theta,
+        years,
+        save_path="polar_motion_full.mp4"
+    )import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# =========================================================
+# LOAD DATA
+# =========================================================
+inst = pd.read_csv("instantaneous_velocity.csv", parse_dates=["date"])
+res  = pd.read_csv("residual_velocity.csv", parse_dates=["date"])
+mode = pd.read_csv("mode_projection_analysis_filtered.csv", parse_dates=["date"])
+time = pd.read_csv("time_window_mode_tracking.csv", parse_dates=["date"])
+state = pd.read_csv("state_transition_analysis.csv", parse_dates=["date"])
+
+# =========================================================
+# SETTINGS
+# =========================================================
+plt.rcParams["figure.figsize"] = (10, 6)
+plt.rcParams["font.size"] = 10
+
+# =========================================================
+# HELPERS
+# =========================================================
+def safe_col(df, name_list):
+    for n in name_list:
+        if n in df.columns:
+            return df[n]
+    raise KeyError(f"Missing columns: {name_list}")
+
+# =========================================================
+# 11. XY PHASE DENSITY + PCA
+# =========================================================
+def plot_xy_density_pca():
+    df = pd.read_csv("filtered_series.csv")
+
+    x = df["x_filt"].values - np.mean(df["x_filt"].values)
+    y = df["y_filt"].values - np.mean(df["y_filt"].values)
+
+    C = np.cov(x, y)
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+
+    plt.figure(figsize=(6,6))
+    sns.kdeplot(x=x, y=y, fill=True, levels=50)
+    plt.plot(x, y, color="white", alpha=0.3, linewidth=0.5)
+
+    for i in range(2):
+        v = vecs[:, i]
+        plt.quiver(0, 0, v[0], v[1], scale=3, color="red")
+
+    plt.xlabel("x_p")
+    plt.ylabel("y_p")
+    plt.title("Phase Space with Principal Axes")
+    plt.axis("equal")
+    plt.savefig("fig_11_xy_phase_density.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 12. RESIDUAL PHASE SPACE (FINAL FORM)
+# =========================================================
+def compute_residual_phase():
+    df = res.dropna(subset=["x_res", "y_res", "date"]).copy()
+    df = df.sort_values("date")
+
+    dt = df["date"].diff().dt.total_seconds().fillna(0)
+
+    vx = df["x_res"] / (365.25 * 24 * 3600)
+    vy = df["y_res"] / (365.25 * 24 * 3600)
+
+    from scipy.signal import detrend
+    vx = detrend(vx)
+    vy = detrend(vy)
+
+    df["x_res_pos"] = np.cumsum(vx * dt)
+    df["y_res_pos"] = np.cumsum(vy * dt)
+
+    df["year"] = df["date"].dt.year + df["date"].dt.dayofyear / 365.25
+
+    return df, dt
+
+
+def plot_residual_phase_xy_time(df):
+    # =====================================================
+    # CENTROID
+    # =====================================================
+    window = 365
+
+    cx = df["x_res_pos"].rolling(window, center=True).mean()
+    cy = df["y_res_pos"].rolling(window, center=True).mean()
+
+    valid = (~cx.isna()) & (~cy.isna())
+    cxv, cyv = cx[valid].values, cy[valid].values
+
+    # =====================================================
+    # PCA (DRIFT AXIS)
+    # =====================================================
+    C = np.cov(cxv, cyv)
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+
+    v = vecs[:, 0]
+    angle_deg = np.degrees(np.arctan2(v[1], v[0]))
+
+    print(f"[Drift Axis] Angle (deg): {angle_deg:.2f}")
+    print(f"[Axis Vector] {v}")
+
+    scale = np.max(np.abs(df[["x_res_pos", "y_res_pos"]].values)) * 0.5
+
+    # =====================================================
+    # 1. RAW
+    # =====================================================
+    plt.figure(figsize=(6,6))
+    sc = plt.scatter(df["x_res_pos"], df["y_res_pos"], c=df["year"], s=5)
+    plt.colorbar(sc, label="Calendar year")
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Residual Phase Space (XY)")
+    plt.axis("equal")
+    plt.grid()
+    plt.savefig("fig_12a_residual_path.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # 2. STRUCTURE
+    # =====================================================
+    plt.figure(figsize=(6,6))
+    plt.plot(cxv, cyv, color="black", linewidth=2, label="Centroid")
+
+    plt.quiver(
+        0, 0, v[0], v[1],
+        scale=1/scale,
+        color="red",
+        width=0.01,
+        label=f"Axis ({angle_deg:.1f}°)"
+    )
+
+    plt.legend()
+    plt.axis("equal")
+    plt.grid()
+    plt.title("Residual Drift Structure")
+    plt.savefig("fig_12b_residual_structure.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # 3. COMBINED
+    # =====================================================
+    plt.figure(figsize=(6,6))
+    sc = plt.scatter(df["x_res_pos"], df["y_res_pos"], c=df["year"], s=5, alpha=0.7)
+
+    plt.plot(cxv, cyv, color="black", linewidth=2, label="Centroid")
+
+    plt.quiver(
+        0, 0, v[0], v[1],
+        scale=1/scale,
+        color="red",
+        width=0.01,
+        label=f"Axis ({angle_deg:.1f}°)"
+    )
+
+    plt.colorbar(sc, label="Calendar year")
+    plt.legend()
+    plt.axis("equal")
+    plt.grid()
+    plt.title("Residual Polar Motion Phase Space (XY)")
+    plt.savefig("fig_12c_residual_combined.png", dpi=300)
+    plt.close()
+
+    return df
+
+
+# # =========================================================
+# 13. ENHANCED SPECTRAL DIAGNOSTIC
+# =========================================================
+def plot_residual_spectrum(df, dt):
+    from scipy.signal import periodogram, find_peaks
+
+    dt_mean = np.median(dt[dt > 0])
+    fs = 1 / dt_mean
+
+    # Compute spectrum
+    f, Pxx = periodogram(df["x_res_pos"].dropna(), fs=fs)
+
+    # Remove zero frequency
+    f = f[1:]
+    Pxx = Pxx[1:]
+
+    # Convert to period (years)
+    period = 1 / f / (365.25 * 24 * 3600)
+
+    # Sort by period (ascending for plotting)
+    idx = np.argsort(period)
+    period = period[idx]
+    Pxx = Pxx[idx]
+
+    # Normalize for readability
+    Pxx_norm = Pxx / np.max(Pxx)
+
+    # Find peaks
+    peaks, _ = find_peaks(Pxx_norm, height=0.1)
+
+    # =====================================================
+    # MAIN PLOT (LOG SCALE)
+    # =====================================================
+    plt.figure(figsize=(8,6))
+
+    plt.plot(period, Pxx_norm)
+
+    plt.yscale("log")
+    plt.xlim(0, 5)
+
+    # Reference lines
+    plt.axvline(1.0, linestyle="--", label="Annual (1 yr)")
+    plt.axvline(1.19, linestyle="--", label="Chandler (~1.19 yr)")
+
+    # Mark peaks
+    plt.scatter(period[peaks], Pxx_norm[peaks], zorder=3)
+
+    for p in peaks:
+        plt.text(period[p], Pxx_norm[p]*1.2, f"{period[p]:.2f}", fontsize=8)
+
+    plt.xlabel("Period (years)")
+    plt.ylabel("Normalized Power (log scale)")
+    plt.title("Residual Spectrum (Enhanced)")
+    plt.legend()
+    plt.grid()
+
+    plt.savefig("fig_13_residual_spectrum.png", dpi=300)
+    plt.close()
+
+    # =====================================================
+    # ZOOMED VIEW (0.5–2.5 years)
+    # =====================================================
+    mask = (period > 0.5) & (period < 2.5)
+
+    plt.figure(figsize=(8,5))
+    plt.plot(period[mask], Pxx_norm[mask])
+
+    plt.axvline(1.0, linestyle="--")
+    plt.axvline(1.19, linestyle="--")
+
+    plt.xlabel("Period (years)")
+    plt.ylabel("Normalized Power")
+    plt.title("Residual Spectrum (Zoom: Annual + Chandler)")
+    plt.grid()
+
+    plt.savefig("fig_13b_residual_spectrum_zoom.png", dpi=300)
+    plt.close()
+
+# =========================================================
+# 14. PHASE VELOCITY FIELD (CONSISTENT WITH PHASE SPACE)
+# =========================================================
+def plot_phase_velocity_field(df):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.ndimage import gaussian_filter1d
+
+    df = df.dropna(subset=["x_res_pos", "y_res_pos", "date"]).copy()
+    df = df.sort_values("date")
+
+    # -----------------------------------------------------
+    # Time step (seconds)
+    # -----------------------------------------------------
+    dt = df["date"].diff().dt.total_seconds().to_numpy(copy=True)
+
+    dt[dt <= 0] = np.nan
+    dt = np.nan_to_num(dt, nan=np.nanmedian(dt))
+
+    # -----------------------------------------------------
+    # Velocity (finite difference)
+    # -----------------------------------------------------
+    # -----------------------------------------------------
+    # Robust finite difference (forward difference)
+    # -----------------------------------------------------
+    x = df["x_res_pos"].values
+    y = df["y_res_pos"].values
+
+    dx = np.diff(x)
+    dy = np.diff(y)
+    dt_safe = dt[1:]  # align with diff
+
+    # Prevent division issues
+    dt_safe[dt_safe <= 0] = np.nanmedian(dt_safe[dt_safe > 0])
+
+    vx = dx / dt_safe
+    vy = dy / dt_safe
+
+    # Pad to original length
+    vx = np.concatenate([[vx[0]], vx])
+    vy = np.concatenate([[vy[0]], vy])
+
+    # -----------------------------------------------------
+    # Smooth (remove noise, preserve structure)
+    # -----------------------------------------------------
+    vx = gaussian_filter1d(vx, sigma=2)
+    vy = gaussian_filter1d(vy, sigma=2)
+
+    # -----------------------------------------------------
+    # Subsample for clarity
+    # -----------------------------------------------------
+    step = max(1, len(df) // 400)
+
+    x = df["x_res_pos"].values[::step]
+    y = df["y_res_pos"].values[::step]
+    vx = vx[::step]
+    vy = vy[::step]
+
+    # -----------------------------------------------------
+    # Magnitude (for coloring)
+    # -----------------------------------------------------
+    mag = np.sqrt(vx**2 + vy**2)
+    mag_norm = mag / np.max(mag)
+
+    # -----------------------------------------------------
+    # Drift axis (PCA on full trajectory)
+    # -----------------------------------------------------
+    C = np.cov(df["x_res_pos"], df["y_res_pos"])
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+    v = vecs[:, 0]
+
+    # -----------------------------------------------------
+    # Plot
+    # -----------------------------------------------------
+    plt.figure(figsize=(7,7))
+
+    # Background trajectory
+    plt.plot(df["x_res_pos"], df["y_res_pos"], alpha=0.15)
+
+    # Velocity field (colored by magnitude)
+    q = plt.quiver(
+        x, y,
+        vx, vy,
+        mag_norm,
+        angles='xy',
+        scale_units='xy',
+        scale=50,
+        width=0.003
+    )
+
+    plt.colorbar(q, label="Normalized velocity magnitude")
+
+    # Drift axis
+    L = np.max(np.abs(df[["x_res_pos", "y_res_pos"]].values))
+    plt.plot(
+        [-L*v[0], L*v[0]],
+        [-L*v[1], L*v[1]],
+        linewidth=2,
+        label="Drift axis"
+    )
+
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Phase Velocity Field (Residual Polar Motion)")
+
+    plt.axis("equal")
+    plt.grid()
+
+    plt.savefig("fig_14_phase_velocity_field.png", dpi=300)
+    plt.close()
+
+
+# =========================================================
+# 15. LOOP CENTER TRACKING (GEOMETRIC LOW-FREQ DIAGNOSTIC)
+# =========================================================
+def plot_loop_centers(df):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.signal import find_peaks
+
+    df = df.copy().dropna(subset=["x_res_pos", "y_res_pos", "date"])
+    df = df.sort_values("date")
+
+    x = df["x_res_pos"].values
+    y = df["y_res_pos"].values
+
+    # -----------------------------------------------------
+    # Radius from origin (phase-space distance)
+    # -----------------------------------------------------
+    r = np.sqrt(x**2 + y**2)
+
+    # -----------------------------------------------------
+    # Detect loop boundaries via peaks in radius
+    # (Chandler-scale loops)
+    # -----------------------------------------------------
+    peaks, _ = find_peaks(
+        r,
+        distance=200,      # ~1 year spacing (tune if needed)
+        prominence=np.std(r) * 0.2
+    )
+
+    # -----------------------------------------------------
+    # Estimate loop centers (mean within each segment)
+    # -----------------------------------------------------
+    centers_x = []
+    centers_y = []
+    centers_t = []
+
+    for i in range(len(peaks) - 1):
+        i0 = peaks[i]
+        i1 = peaks[i+1]
+
+        seg_x = x[i0:i1]
+        seg_y = y[i0:i1]
+
+        if len(seg_x) < 10:
+            continue
+
+        centers_x.append(np.mean(seg_x))
+        centers_y.append(np.mean(seg_y))
+        centers_t.append(df["date"].iloc[i0])
+
+    centers_x = np.array(centers_x)
+    centers_y = np.array(centers_y)
+    centers_t = np.array(centers_t)
+
+    # -----------------------------------------------------
+    # Plot 1: centers in phase space
+    # -----------------------------------------------------
+    plt.figure(figsize=(6,6))
+
+    # background trajectory
+    plt.plot(x, y, alpha=0.1)
+
+    # centers
+    plt.scatter(centers_x, centers_y, c=np.arange(len(centers_x)), s=40)
+
+    # connect centers
+    plt.plot(centers_x, centers_y, linewidth=2)
+
+    plt.xlabel("x_res (mas)")
+    plt.ylabel("y_res (mas)")
+    plt.title("Loop Center Trajectory")
+
+    plt.axis("equal")
+    plt.grid()
+
+    plt.savefig("fig_15_loop_centers.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # Compute angular evolution
+    # -----------------------------------------------------
+    theta = np.unwrap(np.arctan2(centers_y, centers_x))
+
+    # Convert time to fractional years
+    years = np.array([
+        t.year + t.dayofyear / 365.25 for t in centers_t
+    ])
+
+    # -----------------------------------------------------
+    # Plot 2: angle vs time
+    # -----------------------------------------------------
+    plt.figure(figsize=(8,5))
+    plt.plot(years, theta)
+
+    plt.xlabel("Year")
+    plt.ylabel("Angle (radians)")
+    plt.title("Loop Center Angular Evolution")
+
+    plt.grid()
+
+    plt.savefig("fig_15b_center_angle_timeseries.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # Diagnostics
+    # -----------------------------------------------------
+    dtheta = theta[-1] - theta[0]
+
+    print("\n[Loop Center Diagnostics]")
+    print(f"Total angular change (rad): {dtheta:.2f}")
+    print(f"Total angular change (deg): {np.degrees(dtheta):.2f}")
+
+    if abs(dtheta) > 5:
+        print("→ Indicates substantial rotation (possible long-period cycle)")
+    else:
+        print("→ Indicates drift without full rotation")
+
+    return centers_x, centers_y, theta, years
+
+# =========================================================
+# 16. ANGULAR VELOCITY ω(t) — ROBUST + PUBLICATION GRADE
+# =========================================================
+def plot_angular_velocity(theta, years):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.signal import savgol_filter
+
+    years = np.asarray(years)
+    theta = np.asarray(theta)
+
+    # -----------------------------------------------------
+    # Sort
+    # -----------------------------------------------------
+    order = np.argsort(years)
+    years = years[order]
+    theta = theta[order]
+
+    # -----------------------------------------------------
+    # Finite difference (robust)
+    # -----------------------------------------------------
+    dt = np.diff(years)
+    dtheta = np.diff(theta)
+
+    dt[dt <= 0] = np.nanmedian(dt[dt > 0])
+
+    omega_raw = dtheta / dt
+    t_mid = 0.5 * (years[:-1] + years[1:])
+
+    # -----------------------------------------------------
+    # Savitzky–Golay smoothing (adaptive)
+    # -----------------------------------------------------
+    window = min(9, len(omega_raw)//2*2 + 1)
+    if window < 5:
+        window = 5
+
+    omega_smooth = savgol_filter(omega_raw, window_length=window, polyorder=2)
+
+    # -----------------------------------------------------
+    # Robust uncertainty (MAD-based)
+    # -----------------------------------------------------
+    residual = omega_raw - omega_smooth
+
+    mad = np.median(np.abs(residual - np.median(residual)))
+    sigma = 1.4826 * mad  # robust std estimate
+
+    upper = omega_smooth + 2 * sigma
+    lower = omega_smooth - 2 * sigma
+
+    # -----------------------------------------------------
+    # Period (masked near zero to prevent blow-up)
+    # -----------------------------------------------------
+    eps = 0.02  # rad/year threshold
+
+    period = np.full_like(omega_smooth, np.nan)
+    valid = np.abs(omega_smooth) > eps
+
+    period[valid] = 2 * np.pi / omega_smooth[valid]
+
+    # -----------------------------------------------------
+    # PLOT 1: ω(t)
+    # -----------------------------------------------------
+    plt.figure(figsize=(8,5))
+
+    plt.plot(t_mid, omega_smooth, linewidth=2)
+    plt.fill_between(t_mid, lower, upper, alpha=0.25)
+
+    plt.axhline(0, linestyle="--", linewidth=1)
+
+    plt.xlabel("Year")
+    plt.ylabel("Angular velocity (rad/year)")
+    plt.title("Angular Velocity of Loop-Center Evolution")
+
+    plt.grid()
+
+    plt.savefig("fig_16_angular_velocity.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # PLOT 2: Period (clean, no spikes)
+    # -----------------------------------------------------
+    plt.figure(figsize=(8,5))
+
+    plt.plot(t_mid, period, linewidth=2)
+
+    plt.ylim(0, 100)
+    plt.xlabel("Year")
+    plt.ylabel("Implied Period (years)")
+    plt.title("Implied Long-Period Timescale (Stable Regions Only)")
+
+    plt.grid()
+
+    plt.savefig("fig_16b_period_estimate.png", dpi=300)
+    plt.close()
+
+    # -----------------------------------------------------
+    # Diagnostics
+    # -----------------------------------------------------
+    print("\n[Angular Velocity Diagnostics]")
+    print(f"Mean ω (rad/yr): {np.nanmean(omega_smooth):.4f}")
+    print(f"Median ω (rad/yr): {np.nanmedian(omega_smooth):.4f}")
+
+    if np.nanmean(omega_smooth) != 0:
+        T_mean = 2*np.pi / np.nanmean(omega_smooth)
+        print(f"Implied mean period (years): {T_mean:.1f}")
+
+    return t_mid, omega_smooth, lower, upper, period
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from scipy.signal import savgol_filter
+
+def animate_full_evolution(
+    df,
+    centers_x,
+    centers_y,
+    theta,
+    years,
+    save_path="polar_motion_full.mp4"
+):
+
+    # =====================================================
+    # PREP DATA (CCW ORIENTATION)
+    # =====================================================
+    x = df["x_res_pos"].values
+    y = -df["y_res_pos"].values
+
+    t = df["year"].values
+    N = len(x)
+
+    centers_x = np.array(centers_x)
+    centers_y = -np.array(centers_y)
+
+    theta = np.array(theta)
+    years = np.array(years)
+
+    # =====================================================
+    # GEOMAGNETIC JERKS (REFERENCE EVENTS)
+    # =====================================================
+    jerks = np.array([1969, 1978, 1991, 1999, 2003, 2013])
+
+    # -----------------------------------------------------
+    # ANGULAR VELOCITY
+    # -----------------------------------------------------
+    dt = np.diff(years)
+    dtheta = np.diff(theta)
+
+    dt[dt <= 0] = np.nanmedian(dt[dt > 0])
+
+    omega = dtheta / dt
+    t_mid = 0.5 * (years[:-1] + years[1:])
+
+    # Smooth
+    window = min(9, len(omega)//2*2 + 1)
+    if window < 5:
+        window = 5
+    omega_smooth = savgol_filter(omega, window, 2)
+
+    # -----------------------------------------------------
+    # DRIFT AXIS
+    # -----------------------------------------------------
+    C = np.cov(x, y)
+    vals, vecs = np.linalg.eigh(C)
+    vecs = vecs[:, np.argsort(vals)[::-1]]
+    v = vecs[:, 0]
+
+    L = np.max(np.abs(np.vstack([x, y])))
+
+    # =====================================================
+    # FRAME DOWNSAMPLING
+    # =====================================================
+    STEP = max(1, N // 800)
+    frames = range(0, N, STEP)
+
+    print(f"[Animation] Total frames: {N} → Downsampled: {len(list(frames))}")
+
+    # =====================================================
+    # FIGURE
+    # =====================================================
+    fig = plt.figure(figsize=(12, 6))
+    gs = fig.add_gridspec(2, 2)
+
+    ax_phase = fig.add_subplot(gs[:, 0])
+    ax_theta = fig.add_subplot(gs[0, 1])
+    ax_omega = fig.add_subplot(gs[1, 1])
+
+    # -----------------------------------------------------
+    # PHASE SPACE
+    # -----------------------------------------------------
+    ax_phase.set_xlim(np.min(x)*1.1, np.max(x)*1.1)
+    ax_phase.set_ylim(np.min(y)*1.1, np.max(y)*1.1)
+    ax_phase.set_title("Residual Polar Motion (CCW)")
+    ax_phase.set_xlabel("x_res")
+    ax_phase.set_ylabel("y_res")
+    ax_phase.grid()
+    ax_phase.set_aspect("equal")
+
+    ax_phase.plot(
+        [-L*v[0], L*v[0]],
+        [-L*v[1], L*v[1]],
+        color="red",
+        linewidth=2
+    )
+
+    path_line, = ax_phase.plot([], [], lw=1, alpha=0.6)
+    centroid_point, = ax_phase.plot([], [], "o", color="black")
+    point, = ax_phase.plot([], [], "o", color="blue")
+
+    # -----------------------------------------------------
+    # θ(t)
+    # -----------------------------------------------------
+    ax_theta.set_title("Loop Center Angle θ(t)")
+    ax_theta.set_xlim(years.min(), years.max())
+    ax_theta.set_ylim(np.min(theta)*1.1, np.max(theta)*1.1)
+    ax_theta.grid()
+
+    # --- JERK MARKERS ---
+    for j in jerks:
+        ax_theta.axvline(j, linestyle="--", linewidth=1, alpha=0.5)
+
+    theta_line, = ax_theta.plot([], [], lw=2)
+    theta_point, = ax_theta.plot([], [], "o")
+
+    # -----------------------------------------------------
+    # ω(t)
+    # -----------------------------------------------------
+    ax_omega.set_title("Angular Velocity ω(t)")
+    ax_omega.set_xlim(t_mid.min(), t_mid.max())
+    ax_omega.set_ylim(np.min(omega_smooth)*1.2, np.max(omega_smooth)*1.2)
+    ax_omega.axhline(0, linestyle="--", linewidth=1)
+    ax_omega.grid()
+
+    # --- JERK MARKERS ---
+    for j in jerks:
+        ax_omega.axvline(j, linestyle="--", linewidth=1, alpha=0.5)
+
+    omega_line, = ax_omega.plot([], [], lw=2)
+    omega_point, = ax_omega.plot([], [], "o")
+
+    # =====================================================
+    # UPDATE
+    # =====================================================
+    def update(frame):
+
+        frame = int(frame)
+        frame = min(frame, N - 1)
+
+        if frame % (STEP * 50) == 0:
+            print(f"[Animation] Frame {frame}/{N}")
+
+        # ---- trajectory ----
+        path_line.set_data(x[:frame], y[:frame])
+        point.set_data([x[frame]], [y[frame]])
+
+        # ---- centroid ----
+        window = 365
+        i0 = max(0, frame - window)
+
+        if frame > i0:
+            cx = np.mean(x[i0:frame])
+            cy = np.mean(y[i0:frame])
+        else:
+            cx = x[frame]
+            cy = y[frame]
+
+        centroid_point.set_data([cx], [cy])
+
+        # ---- θ(t) ----
+        idx_theta = np.searchsorted(years, t[frame], side="right")
+
+        theta_line.set_data(years[:idx_theta], theta[:idx_theta])
+        if idx_theta > 0:
+            theta_point.set_data(
+                [years[idx_theta - 1]],
+                [theta[idx_theta - 1]]
+            )
+
+        # ---- ω(t) ----
+        idx_omega = np.searchsorted(t_mid, t[frame], side="right")
+
+        omega_line.set_data(t_mid[:idx_omega], omega_smooth[:idx_omega])
+        if idx_omega > 0:
+            omega_point.set_data(
+                [t_mid[idx_omega - 1]],
+                [omega_smooth[idx_omega - 1]]
+            )
+
+        return (
+            path_line,
+            centroid_point,
+            point,
+            theta_line,
+            theta_point,
+            omega_line,
+            omega_point
+        )
+
+    # =====================================================
+    # RUN
+    # =====================================================
+    anim = FuncAnimation(
+        fig,
+        update,
+        frames=frames,
+        interval=30,
+        blit=False
+    )
+
+    print("[Animation] Rendering video...")
+
+    anim.save(
+        save_path,
+        dpi=150,
+        fps=30
+    )
+
+    print(f"[Animation] Saved → {save_path}")
+
+# =========================================================
+# RUN
+# =========================================================
+if __name__ == "__main__":
+    print("Columns check:")
+    print("mode:", mode.columns.tolist())
+    print("time:", time.columns.tolist())
+    print("state:", state.columns.tolist())
+
+    plot_xy_density_pca()
+
+    df_res, dt = compute_residual_phase()
+    df_res = plot_residual_phase_xy_time(df_res)
+
+    plot_residual_spectrum(df_res, dt)
+
+    # FIX: pass df_res (NOT res)
+    plot_phase_velocity_field(df_res)
+
+    plot_loop_centers(df_res)
+
+
+    centers_x, centers_y, theta, years = plot_loop_centers(df_res)
+
+    plot_angular_velocity(theta, years)
+
+    animate_full_evolution(
+        df_res,
+        centers_x,
+        centers_y,
+        theta,
+        years,
+        save_path="polar_motion_full.mp4"
+    )
+
+    print("\nAll figures generated successfully.")
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import entropy
+
+# =========================================================
+# LOAD DATA (GEOMETRY-FIRST)
+# =========================================================
+df = pd.read_csv("filtered_series.csv", parse_dates=["date"])
+
+# =========================================================
+# MEAN CENTER (CRITICAL)
+# =========================================================
+x = df["x_filt"].values
+y = df["y_filt"].values
+
+x = x - np.mean(x)
+y = y - np.mean(y)
+
+df["x_c"] = x
+df["y_c"] = y
+
+# =========================================================
+# PCA (GEOMETRIC)
+# =========================================================
+C = np.cov(x, y)
+vals, vecs = np.linalg.eigh(C)
+
+# sort descending
+order = np.argsort(vals)[::-1]
+vals = vals[order]
+vecs = vecs[:, order]
+
+principal_axis = vecs[:, 0]
+
+principal_angle = np.degrees(
+    np.arctan2(principal_axis[1], principal_axis[0])
+) % 360
+
+anisotropy_ratio = vals[0] / vals.sum()
+
+# =========================================================
+# ANGULAR DEVIATION FROM PRINCIPAL AXIS
+# =========================================================
+angles = np.degrees(np.arctan2(y, x)) % 360
+
+def angular_distance(a, b):
+    d = np.abs(a - b) % 360
+    return np.minimum(d, 360 - d)
+
+df["dist_principal"] = angular_distance(angles, principal_angle)
+
+# =========================================================
+# ENTROPY (ROLLING, GEOMETRIC)
+# =========================================================
+WINDOW = 365
+
+def circular_histogram(angles_deg, bins=36):
+    hist, _ = np.histogram(angles_deg, bins=bins, range=(0, 360), density=True)
+    return hist + 1e-12
+
+entropy_vals = []
+dates = []
+
+for i in range(WINDOW, len(df)):
+    window = angles[i-WINDOW:i]
+
+    hist = circular_histogram(window)
+    H = entropy(hist)
+
+    entropy_vals.append(H)
+    dates.append(df["date"].iloc[i])
+
+entropy_df = pd.DataFrame({
+    "date": dates,
+    "entropy": entropy_vals
+})
+
+# =========================================================
+# OUTPUT SUMMARY
+# =========================================================
+print("\n=== GEOMETRIC ANALYSIS ===\n")
+
+print(f"Principal axis angle (deg): {principal_angle:.2f}")
+print(f"Anisotropy ratio (λ1 / Σλ): {anisotropy_ratio:.4f}")
+
+print("\nAngular deviation from principal axis:")
+print(f"Mean: {df['dist_principal'].mean():.2f} deg")
+print(f"Std : {df['dist_principal'].std():.2f} deg")
+
+print("\nEntropy:")
+print(f"Mean entropy: {entropy_df['entropy'].mean():.4f}")
+print(f"Std entropy : {entropy_df['entropy'].std():.4f}")
+
+# =========================================================
+# PLOTS
+# =========================================================
+
+# 1. Angular deviation over time
+plt.figure()
+plt.plot(df["date"], df["dist_principal"], linewidth=0.5)
+plt.ylabel("Angular deviation (deg)")
+plt.title("Deviation from Principal Axis")
+plt.grid()
+plt.savefig("fig_10_axis_deviation.png", dpi=300)
+plt.close()
+
+# 2. Entropy evolution
+plt.figure()
+plt.plot(entropy_df["date"], entropy_df["entropy"])
+plt.ylabel("Entropy")
+plt.title("Directional Entropy (Geometric)")
+plt.grid()
+plt.savefig("fig_11_entropy.png", dpi=300)
+plt.close()
+
+# 3. PCA phase space (correct)
+plt.figure(figsize=(6,6))
+plt.scatter(x, y, s=2)
+
+# principal axis
+v = principal_axis
+plt.quiver(0, 0, v[0], v[1], scale=3)
+
+plt.title("Phase Space with Principal Axis")
+plt.axis("equal")
+plt.grid()
+plt.savefig("fig_12_pca.png", dpi=300)
+plt.close()
+
+# =========================================================
+# SAVE
+# =========================================================
+df.to_csv("axis_distance_analysis.csv", index=False)
+entropy_df.to_csv("entropy_analysis.csv", index=False)
+
+print("\nSaved:")
+print("- axis_distance_analysis.csv")
+print("- entropy_analysis.csv")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# =========================================================
+# LOAD (GEOMETRY-FIRST)
+# =========================================================
+df = pd.read_csv("filtered_series.csv", parse_dates=["date"])
+
+# =========================================================
+# CONFIG
+# =========================================================
+WINDOW = 365 * 2   # 2-year window
+
+# =========================================================
+# EXTRACT + GLOBAL MEAN CENTER (CRITICAL)
+# =========================================================
+x_all = df["x_filt"].values
+y_all = df["y_filt"].values
+
+x_all = x_all - np.mean(x_all)
+y_all = y_all - np.mean(y_all)
+
+# =========================================================
+# ROLLING PCA
+# =========================================================
+dates = []
+lambda1 = []
+lambda2 = []
+ratio = []
+angle = []
+
+prev_vec = None  # for orientation consistency
+
+for i in range(WINDOW, len(df)):
+
+    x = x_all[i-WINDOW:i]
+    y = y_all[i-WINDOW:i]
+
+    # window mean-center (IMPORTANT)
+    x = x - np.mean(x)
+    y = y - np.mean(y)
+
+    X = np.vstack([x, y])
+
+    # covariance (symmetric → use eigvalsh)
+    C = np.cov(X)
+
+    vals, vecs = np.linalg.eigh(C)
+
+    # sort descending
+    idx = np.argsort(vals)[::-1]
+    vals = vals[idx]
+    vecs = vecs[:, idx]
+
+    l1, l2 = vals
+
+    # anisotropy ratio
+    r = l1 / (l1 + l2)
+
+    # principal axis
+    v = vecs[:, 0]
+
+    # enforce sign consistency (avoid 180° flips)
+    if prev_vec is not None:
+        if np.dot(v, prev_vec) < 0:
+            v = -v
+
+    prev_vec = v
+
+    ang = np.degrees(np.arctan2(v[1], v[0])) % 360
+
+    dates.append(df["date"].iloc[i])
+    lambda1.append(l1)
+    lambda2.append(l2)
+    ratio.append(r)
+    angle.append(ang)
+
+# =========================================================
+# BUILD DF
+# =========================================================
+pca_df = pd.DataFrame({
+    "date": dates,
+    "lambda1": lambda1,
+    "lambda2": lambda2,
+    "variance_ratio": ratio,
+    "principal_angle": angle
+})
+
+# =========================================================
+# PRINT SUMMARY
+# =========================================================
+print("\n=== ROLLING PCA SUMMARY ===")
+print("Mean variance ratio:", pca_df["variance_ratio"].mean())
+print("Max  variance ratio:", pca_df["variance_ratio"].max())
+print("Min  variance ratio:", pca_df["variance_ratio"].min())
+
+print("\nMean principal angle:", pca_df["principal_angle"].mean())
+print("Std  principal angle:", pca_df["principal_angle"].std())
+
+# =========================================================
+# ANGLE UNWRAP (for continuity)
+# =========================================================
+angle_unwrapped = np.unwrap(np.deg2rad(pca_df["principal_angle"]))
+angle_unwrapped = np.rad2deg(angle_unwrapped)
+
+# =========================================================
+# PLOTS
+# =========================================================
+
+# 1. Principal axis (unwrapped)
+plt.figure()
+plt.plot(pca_df["date"], angle_unwrapped)
+plt.ylabel("Angle (deg, unwrapped)")
+plt.title("Principal Axis (Unwrapped)")
+plt.grid()
+plt.savefig("fig_16_principal_axis_unwrapped.png", dpi=300)
+plt.close()
+
+# 2. Variance ratio (dimensional collapse)
+plt.figure()
+plt.plot(pca_df["date"], pca_df["variance_ratio"])
+plt.axhline(0.5, linestyle="--", label="Isotropic (2D)")
+plt.axhline(0.9, linestyle="--", label="Strong anisotropy")
+
+plt.legend()
+plt.ylabel("Variance ratio (λ1 / total)")
+plt.title("Dimensional Collapse (Rolling PCA)")
+plt.grid()
+plt.savefig("fig_13_variance_ratio.png", dpi=300)
+plt.close()
+
+# 3. Eigenvalues
+plt.figure()
+plt.plot(pca_df["date"], pca_df["lambda1"], label="λ1")
+plt.plot(pca_df["date"], pca_df["lambda2"], label="λ2")
+
+plt.legend()
+plt.ylabel("Eigenvalue")
+plt.title("Eigenvalue Evolution")
+plt.grid()
+plt.savefig("fig_14_eigenvalues.png", dpi=300)
+plt.close()
+
+# 4. Principal axis (wrapped)
+plt.figure()
+plt.plot(pca_df["date"], pca_df["principal_angle"])
+plt.ylabel("Angle (deg)")
+plt.title("Principal Axis Orientation")
+plt.grid()
+plt.savefig("fig_15_principal_axis.png", dpi=300)
+plt.close()
+
+# =========================================================
+# SAVE
+# =========================================================
+pca_df.to_csv("rolling_pca_analysis.csv", index=False)
+
+print("\nSaved:")
+print("- rolling_pca_analysis.csv")import numpy as np
+import pandas as pd
+from scipy.signal import savgol_filter
+
+INPUT_FILE = "rolling_pca_analysis.csv"
+OUTPUT_FILE = "axis_angular_velocity.csv"
+
+WINDOW = 31
+POLY_ORDER = 3
+MAD_THRESHOLD = 5.0
+
+MIN_DT = 1e-6  # ~0.03 seconds in years → prevents blowups
+
+
+def robust_unwrap(theta_deg):
+    theta_rad = np.deg2rad(theta_deg)
+    return np.rad2deg(np.unwrap(theta_rad))
+
+
+def clean_time(df):
+    """Ensure strictly increasing time."""
+    df = df.sort_values("date").reset_index(drop=True)
+
+    t = pd.to_datetime(df["date"])
+    t_years = (t - t.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+    # remove non-increasing points
+    mask = np.diff(t_years, prepend=np.nan) > 0
+    df = df[mask].reset_index(drop=True)
+
+    t = pd.to_datetime(df["date"])
+    t_years = (t - t.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+    return df, t_years.values
+
+
+def compute_angular_velocity(theta, t_years):
+    """Stable derivative using time vector (NOT dt)."""
+    return np.gradient(theta, t_years)
+
+
+def mad_filter(series, threshold=5.0):
+    s = np.array(series, dtype=float)
+
+    # remove inf early
+    s[np.isinf(s)] = np.nan
+
+    median = np.nanmedian(s)
+    mad = np.nanmedian(np.abs(s - median))
+
+    if mad == 0 or np.isnan(mad):
+        return s
+
+    z = 0.6745 * (s - median) / mad
+    s[np.abs(z) > threshold] = np.nan
+
+    return pd.Series(s).interpolate(limit_direction="both").values
+
+
+def main():
+    df = pd.read_csv(INPUT_FILE, parse_dates=["date"])
+
+    # =========================================================
+    # TIME CLEANING (CRITICAL FIX)
+    # =========================================================
+    df, t_years = clean_time(df)
+
+    # ensure writable
+    t_years = np.array(t_years, dtype=float).copy()
+
+    # enforce minimum spacing
+    dt = np.diff(t_years)
+    dt[dt < MIN_DT] = MIN_DT
+
+    t_years[1:] = t_years[0] + np.cumsum(dt)
+
+    # =========================================================
+    # ANGLE
+    # =========================================================
+    theta = df["principal_angle"].values
+    theta_unwrapped = robust_unwrap(theta)
+
+    # =========================================================
+    # SMOOTHING
+    # =========================================================
+    window = min(WINDOW, len(theta_unwrapped) // 2 * 2 - 1)
+    if window < POLY_ORDER + 2:
+        window = POLY_ORDER + 3
+
+    theta_smooth = savgol_filter(theta_unwrapped, window, POLY_ORDER, mode="interp")
+
+    # =========================================================
+    # DERIVATIVE (FIXED)
+    # =========================================================
+    omega_raw = compute_angular_velocity(theta_unwrapped, t_years)
+    omega_smooth = compute_angular_velocity(theta_smooth, t_years)
+
+    # =========================================================
+    # CLEAN
+    # =========================================================
+    omega_filtered = mad_filter(omega_smooth, MAD_THRESHOLD)
+
+    # =========================================================
+    # OUTPUT
+    # =========================================================
+    out = pd.DataFrame({
+        "date": df["date"],
+        "theta_unwrapped": theta_unwrapped,
+        "theta_smooth": theta_smooth,
+        "omega_raw": omega_raw,
+        "omega_smooth": omega_smooth,
+        "omega_filtered": omega_filtered
+    })
+
+    out.to_csv(OUTPUT_FILE, index=False)
+
+    # =========================================================
+    # SUMMARY (SAFE)
+    # =========================================================
+    valid = np.isfinite(omega_filtered)
+
+    print("=== ANGULAR VELOCITY (FIXED) ===")
+    print(f"Mean ω: {np.mean(omega_filtered[valid]):.6f}")
+    print(f"Std  ω: {np.std(omega_filtered[valid]):.6f}")
+    print(f"Max  ω: {np.max(omega_filtered[valid]):.6f}")
+    print(f"Min  ω: {np.min(omega_filtered[valid]):.6f}")
+
+    print("\nSaved:", OUTPUT_FILE)
+
+
+if __name__ == "__main__":
+    main()import numpy as np
+import pandas as pd
+from scipy.signal import savgol_filter
+
+INPUT_FILE = "rolling_pca_analysis.csv"
+OUTPUT_FILE = "axis_angular_velocity.csv"
+
+# --- PARAMETERS (must be reported in paper) ---
+WINDOW = 31          # odd number, ~monthly smoothing
+POLY_ORDER = 3       # preserves curvature
+MAD_THRESHOLD = 5.0  # outlier rejection threshold
+
+
+def robust_unwrap(theta_deg):
+    """Unwrap angle in degrees safely."""
+    theta_rad = np.deg2rad(theta_deg)
+    unwrapped = np.unwrap(theta_rad)
+    return np.rad2deg(unwrapped)
+
+
+def compute_angular_velocity(theta_deg, dt_years):
+    """Central difference derivative."""
+    dtheta = np.gradient(theta_deg, dt_years)
+    return dtheta
+
+
+def mad_filter(series, threshold=5.0):
+    """Remove extreme spikes using Median Absolute Deviation."""
+    median = np.median(series)
+    mad = np.median(np.abs(series - median))
+    if mad == 0:
+        return series
+    z = 0.6745 * (series - median) / mad
+    filtered = np.where(np.abs(z) > threshold, np.nan, series)
+    return pd.Series(filtered).interpolate()
+
+
+def main():
+    df = pd.read_csv(INPUT_FILE)
+
+    # --- Time axis ---
+    dt_days = 1.0
+    dt_years = dt_days / 365.25
+
+    # --- Principal axis angle ---
+    theta = df["principal_angle"].values
+
+    # --- Step 1: unwrap ---
+    theta_unwrapped = robust_unwrap(theta)
+
+    # --- Step 2: raw derivative ---
+    omega_raw = compute_angular_velocity(theta_unwrapped, dt_years)
+
+    # --- Step 3: smoothing BEFORE derivative (key fix) ---
+    theta_smooth = savgol_filter(theta_unwrapped, WINDOW, POLY_ORDER)
+
+    omega_smooth = compute_angular_velocity(theta_smooth, dt_years)
+
+    # --- Step 4: outlier rejection ---
+    omega_clean = mad_filter(omega_smooth, MAD_THRESHOLD)
+
+    # --- Save ---
+    out = pd.DataFrame({
+        "date": df["date"],
+        "theta_unwrapped": theta_unwrapped,
+        "theta_smooth": theta_smooth,
+        "omega_raw": omega_raw,
+        "omega_smooth": omega_smooth,
+        "omega_filtered": omega_clean
+    })
+
+    out.to_csv(OUTPUT_FILE, index=False)
+
+    print("=== ANGULAR VELOCITY (CLEANED) ===")
+    print(f"Mean ω: {np.nanmean(omega_clean)}")
+    print(f"Std  ω: {np.nanstd(omega_clean)}")
+    print(f"Max  ω: {np.nanmax(omega_clean)}")
+    print(f"Min  ω: {np.nanmin(omega_clean)}")
+
+    print("\nSaved:", OUTPUT_FILE)
+
+
+if __name__ == "__main__":
+    main()import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import skew, kurtosis
+
+# =========================
+# CONFIG
+# =========================
+INPUT_FILE = "axis_angular_velocity.csv"
+
+SIGMA_THRESHOLD = 2.0
+LAG = 1
+
+# =========================
+# LOAD DATA
+# =========================
+df = pd.read_csv(INPUT_FILE, parse_dates=["date"])
+
+if "omega_filtered" in df.columns:
+    omega = df["omega_filtered"].values
+else:
+    omega = df["omega_smooth"].values
+
+dates = df["date"].values
+
+# =========================
+# CLEAN (CRITICAL)
+# =========================
+omega = np.array(omega, dtype=float)
+
+# remove inf
+omega[np.isinf(omega)] = np.nan
+
+mask = np.isfinite(omega)
+omega = omega[mask]
+dates = dates[mask]
+
+# =========================
+# TIME (years)
+# =========================
+t = pd.to_datetime(dates)
+t_years = (t - t[0]).total_seconds() / (365.25 * 24 * 3600)
+
+# =========================
+# 1) DISTRIBUTION
+# =========================
+mu = np.nanmean(omega)
+sigma = np.nanstd(omega)
+
+sk = skew(omega, nan_policy="omit")
+kt = kurtosis(omega, fisher=True, nan_policy="omit")
+
+print("\n=== DISTRIBUTION ===")
+print(f"Mean: {mu:.3f}")
+print(f"Std:  {sigma:.3f}")
+print(f"Skewness: {sk:.3f}")
+print(f"Kurtosis (excess): {kt:.3f}")
+
+plt.figure()
+plt.hist(omega, bins=100)
+plt.title("Omega Distribution")
+plt.xlabel("ω (deg/year)")
+plt.ylabel("Count")
+plt.savefig("fig_20_omega_distribution.png", dpi=200)
+plt.close()
+
+# =========================
+# 2) EVENT EXTRACTION
+# =========================
+threshold = SIGMA_THRESHOLD * sigma
+event_mask = np.abs(omega) > threshold
+
+events = []
+current = None
+
+for i in range(len(omega)):
+    if event_mask[i]:
+        if current is None:
+            current = {
+                "start_idx": i,
+                "peak": omega[i],
+                "sign": np.sign(omega[i])
+            }
+        else:
+            if abs(omega[i]) > abs(current["peak"]):
+                current["peak"] = omega[i]
+    else:
+        if current is not None:
+            current["end_idx"] = i - 1
+            current["duration"] = current["end_idx"] - current["start_idx"]
+            events.append(current)
+            current = None
+
+if current is not None:
+    current["end_idx"] = len(omega) - 1
+    current["duration"] = current["end_idx"] - current["start_idx"]
+    events.append(current)
+
+events_df = pd.DataFrame(events)
+
+if len(events_df) > 0:
+    events_df["start_date"] = dates[events_df["start_idx"]]
+    events_df["end_date"] = dates[events_df["end_idx"]]
+
+events_df.to_csv("omega_events.csv", index=False)
+
+print(f"\nDetected {len(events_df)} events (|ω| > {SIGMA_THRESHOLD}σ)")
+
+# =========================
+# 3) INTER-EVENT (TIME-BASED)
+# =========================
+if len(events_df) > 1:
+    event_times = t_years[events_df["start_idx"].values]
+    intervals = np.diff(event_times)
+
+    mu_dt = np.mean(intervals)
+    sigma_dt = np.std(intervals)
+
+    burstiness = (sigma_dt - mu_dt) / (sigma_dt + mu_dt)
+
+    print("\n=== INTER-EVENT ===")
+    print(f"Mean Δt: {mu_dt:.3f} years")
+    print(f"Std  Δt: {sigma_dt:.3f} years")
+    print(f"Burstiness B: {burstiness:.3f}")
+
+    plt.figure()
+    plt.hist(intervals, bins=50)
+    plt.title("Inter-event Interval Distribution")
+    plt.xlabel("Δt (years)")
+    plt.ylabel("Count")
+    plt.savefig("fig_21_interevent_hist.png", dpi=200)
+    plt.close()
+else:
+    print("\nNot enough events for interval analysis")
+
+# =========================
+# 4) SIGN PERSISTENCE (FIXED)
+# =========================
+signs = np.sign(omega)
+
+# remove zeros (important)
+nonzero = signs != 0
+signs = signs[nonzero]
+
+runs = []
+current_sign = signs[0]
+length = 1
+
+for s in signs[1:]:
+    if s == current_sign:
+        length += 1
+    else:
+        runs.append((current_sign, length))
+        current_sign = s
+        length = 1
+
+runs.append((current_sign, length))
+
+runs_df = pd.DataFrame(runs, columns=["sign", "length"])
+runs_df.to_csv("omega_sign_runs.csv", index=False)
+
+# transition probabilities
+trans = []
+for i in range(len(signs) - 1):
+    trans.append((signs[i], signs[i+1]))
+
+trans_df = pd.DataFrame(trans, columns=["from", "to"])
+
+P_pp = np.mean((trans_df["from"] == 1) & (trans_df["to"] == 1))
+P_mm = np.mean((trans_df["from"] == -1) & (trans_df["to"] == -1))
+
+print("\n=== SIGN PERSISTENCE ===")
+print(f"P(+→+): {P_pp:.3f}")
+print(f"P(-→-): {P_mm:.3f}")
+
+plt.figure()
+plt.hist(runs_df["length"], bins=100)
+plt.title("Sign Run Length Distribution")
+plt.xlabel("Run length")
+plt.ylabel("Count")
+plt.savefig("fig_22_run_lengths.png", dpi=200)
+plt.close()
+
+# =========================
+# 5) PHASE SPACE
+# =========================
+if len(omega) > LAG:
+    x = omega[:-LAG]
+    y = omega[LAG:]
+
+    plt.figure()
+    plt.scatter(x, y, s=1)
+    plt.xlabel("ω(t)")
+    plt.ylabel(f"ω(t+{LAG})")
+    plt.title("Phase Space (Lagged)")
+    plt.savefig("fig_23_phase_space.png", dpi=200)
+    plt.close()
+
+# =========================
+# SAVE SUMMARY
+# =========================
+summary = {
+    "mean": mu,
+    "std": sigma,
+    "skewness": sk,
+    "kurtosis_excess": kt,
+    "num_events": len(events_df),
+}
+
+if len(events_df) > 1:
+    summary["burstiness"] = burstiness
+
+pd.DataFrame([summary]).to_csv("omega_summary.csv", index=False)
+
+print("\nSaved:")
+print("- omega_events.csv")
+print("- omega_sign_runs.csv")
+print("- omega_summary.csv")
+print("- fig_20–23 diagnostics")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# =========================
+# LOAD
+# =========================
+df = pd.read_csv("axis_angular_velocity.csv", parse_dates=["date"])
+
+if "omega_filtered" in df.columns:
+    omega = df["omega_filtered"].values
+else:
+    omega = df["omega_smooth"].values
+
+dates = df["date"]
+
+# =========================
+# CLEAN (CRITICAL)
+# =========================
+omega = np.array(omega, dtype=float)
+omega[np.isinf(omega)] = np.nan
+
+mask = np.isfinite(omega)
+omega = omega[mask]
+dates = dates[mask]
+
+# =========================
+# TIME (years)
+# =========================
+t = pd.to_datetime(dates)
+t_years = (t - t.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+# =========================
+# LAGGED SERIES (TIME-CONSISTENT)
+# =========================
+x = omega[:-1]
+y = omega[1:]
+dt = np.diff(t_years)
+
+# avoid tiny dt
+dt[dt <= 0] = np.nan
+dt = pd.Series(dt).interpolate(limit_direction="both").values
+
+# =========================
+# AR(1) FIT (UNCHANGED FORM)
+# =========================
+X = np.vstack([x, np.ones_like(x)]).T
+phi, c = np.linalg.lstsq(X, y, rcond=None)[0]
+
+y_pred = phi * x + c
+resid = y - y_pred
+
+sigma = np.nanstd(resid)
+
+print("\n=== AR(1) FIT ===")
+print(f"phi (persistence): {phi:.6f}")
+print(f"c (bias):         {c:.6f}")
+print(f"sigma (noise):    {sigma:.6f}")
+
+# =========================
+# FIT QUALITY (ROBUST)
+# =========================
+var_y = np.nanvar(y)
+var_resid = np.nanvar(resid)
+
+r2 = 1 - var_resid / var_y if var_y > 0 else np.nan
+print(f"R^2:              {r2:.6f}")
+
+# =========================
+# CONDITIONAL DRIFT F(ω)
+# =========================
+# use rate: dω/dt instead of Δω
+dw = (y - x) / dt
+
+# binning
+bins = np.linspace(np.nanmin(x), np.nanmax(x), 60)
+centers = 0.5 * (bins[:-1] + bins[1:])
+
+drift = np.zeros_like(centers)
+counts = np.zeros_like(centers)
+
+for i in range(len(x)):
+    idx = np.searchsorted(bins, x[i]) - 1
+    if 0 <= idx < len(drift) and np.isfinite(dw[i]):
+        drift[idx] += dw[i]
+        counts[idx] += 1
+
+# normalize safely
+valid = counts > 30
+drift[valid] /= counts[valid]
+
+# =========================
+# POTENTIAL RECONSTRUCTION (FIXED)
+# =========================
+centers_valid = centers[valid]
+drift_valid = drift[valid]
+
+# ensure sorted (safety)
+order = np.argsort(centers_valid)
+centers_valid = centers_valid[order]
+drift_valid = drift_valid[order]
+
+# integrate with variable spacing
+U = np.zeros_like(centers_valid)
+for i in range(1, len(U)):
+    dx = centers_valid[i] - centers_valid[i-1]
+    U[i] = U[i-1] - drift_valid[i] * dx
+
+U -= np.nanmin(U)
+
+# =========================
+# PLOTS
+# =========================
+
+# 1) AR(1)
+plt.figure()
+plt.scatter(x, y, s=1, alpha=0.5)
+xx = np.linspace(np.min(x), np.max(x), 200)
+plt.plot(xx, phi * xx + c)
+plt.xlabel("ω(t)")
+plt.ylabel("ω(t+1)")
+plt.title("AR(1) Fit")
+plt.savefig("fig_24_ar1_fit.png", dpi=200)
+plt.close()
+
+# 2) Residuals
+plt.figure()
+plt.hist(resid[np.isfinite(resid)], bins=100)
+plt.title("Residual Distribution")
+plt.xlabel("ε")
+plt.savefig("fig_25_residuals.png", dpi=200)
+plt.close()
+
+# 3) Drift
+plt.figure()
+plt.plot(centers_valid, drift_valid)
+plt.xlabel("ω")
+plt.ylabel("dω/dt")
+plt.title("Empirical Drift Function")
+plt.savefig("fig_26_drift_function.png", dpi=200)
+plt.close()
+
+# 4) Potential
+plt.figure()
+plt.plot(centers_valid, U)
+plt.xlabel("ω")
+plt.ylabel("U(ω)")
+plt.title("Reconstructed Potential")
+plt.savefig("fig_27_potential.png", dpi=200)
+plt.close()
+
+# =========================
+# SAVE SUMMARY
+# =========================
+summary = {
+    "phi": phi,
+    "c": c,
+    "sigma": sigma,
+    "r2": r2,
+}
+
+pd.DataFrame([summary]).to_csv("omega_model_fit.csv", index=False)
+
+print("\nSaved:")
+print("- omega_model_fit.csv")
+print("- fig_24–27")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# =========================
+# LOAD
+# =========================
+df = pd.read_csv("axis_angular_velocity.csv", parse_dates=["date"])
+
+if "omega_filtered" in df.columns:
+    omega = df["omega_filtered"].values
+else:
+    omega = df["omega_smooth"].values
+
+dates = pd.to_datetime(df["date"])
+
+# =========================
+# CLEAN
+# =========================
+omega = np.array(omega, dtype=float)
+omega[np.isinf(omega)] = np.nan
+
+mask = np.isfinite(omega)
+omega = omega[mask]
+dates = dates[mask]
+
+# =========================
+# TIME (years) — CORRECT
+# =========================
+t_years = (dates - dates.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+# ensure strictly increasing
+t_years = np.array(t_years, dtype=float)
+dt = np.diff(t_years)
+
+valid = dt > 0
+mask2 = np.insert(valid, 0, True)
+
+omega = omega[mask2]
+dates = dates[mask2]
+t_years = t_years[mask2]
+
+dt = np.diff(t_years)
+
+# =========================
+# 1) INTEGRATE θ(t) (CORRECT)
+# =========================
+theta = np.zeros_like(omega)
+
+for i in range(1, len(theta)):
+    dt_i = t_years[i] - t_years[i-1]
+    if dt_i <= 0:
+        dt_i = 0.0
+    theta[i] = theta[i-1] + omega[i] * dt_i
+
+# wrapped version
+theta_wrapped = (theta + 180) % 360 - 180
+
+# =========================
+# 2) PHASE-SPACE RECONSTRUCTION (CONSISTENT)
+# =========================
+x = np.cos(np.deg2rad(theta))
+y = np.sin(np.deg2rad(theta))
+
+# =========================
+# 3) SAVE
+# =========================
+out = pd.DataFrame({
+    "date": dates,
+    "theta_deg": theta,
+    "theta_wrapped": theta_wrapped,
+    "x_phase": x,
+    "y_phase": y
+})
+
+out.to_csv("theta_reconstruction.csv", index=False)
+
+# =========================
+# 4) PLOTS
+# =========================
+
+# θ(t)
+plt.figure()
+plt.plot(dates, theta_wrapped)
+plt.title("Integrated Phase θ(t)")
+plt.ylabel("Degrees")
+plt.grid()
+plt.savefig("fig_28_theta.png", dpi=200)
+plt.close()
+
+# phase space
+plt.figure()
+plt.plot(x, y)
+plt.title("Phase Space (Unit Circle)")
+plt.axis("equal")
+plt.grid()
+plt.savefig("fig_29_phase_space.png", dpi=200)
+plt.close()
+
+# phase histogram
+plt.figure()
+plt.hist(theta_wrapped, bins=100)
+plt.title("Phase Distribution")
+plt.xlabel("θ (deg)")
+plt.savefig("fig_30_theta_hist.png", dpi=200)
+plt.close()
+
+print("\nSaved:")
+print("- theta_reconstruction.csv")
+print("- fig_28–30")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# =========================
+# LOAD
+# =========================
+df = pd.read_csv("axis_angular_velocity.csv", parse_dates=["date"])
+
+# --- angular velocity ---
+if "omega_filtered" in df.columns:
+    omega = df["omega_filtered"].values
+else:
+    omega = df["omega_deg_per_year"].values
+
+dates = df["date"].values
+
+# --- pole coordinates (REQUIRED) ---
+# expected columns: x, y (in arcseconds or radians)
+assert {"x", "y"}.issubset(df.columns), "Pole coordinates x,y required"
+
+x = df["x"].values
+y = df["y"].values
+
+# remove NaNs
+mask = ~np.isnan(omega) & ~np.isnan(x) & ~np.isnan(y)
+omega = omega[mask]
+x = x[mask]
+y = y[mask]
+dates = dates[mask]
+
+# =========================
+# BUILD UNIT POSITION VECTOR r(t)
+# =========================
+# convert small-angle pole coords to unit sphere
+# assumes x,y are small (arcsec or radians)
+# z ≈ sqrt(1 - x^2 - y^2)
+
+r = np.zeros((len(x), 3))
+r[:, 0] = x
+r[:, 1] = y
+r[:, 2] = np.sqrt(np.maximum(1 - x**2 - y**2, 1e-12))
+
+# normalize (important)
+r = r / np.linalg.norm(r, axis=1, keepdims=True)
+
+# =========================
+# COMPUTE VELOCITY dr/dt
+# =========================
+# finite difference (central where possible)
+
+dt = 1.0  # assume daily sampling
+
+dr = np.zeros_like(r)
+dr[1:-1] = (r[2:] - r[:-2]) / (2 * dt)
+dr[0] = (r[1] - r[0]) / dt
+dr[-1] = (r[-1] - r[-2]) / dt
+
+# =========================
+# INSTANTANEOUS ROTATION AXIS
+# =========================
+# u ∝ r × dr/dt
+
+u = np.cross(r, dr)
+
+# normalize
+norms = np.linalg.norm(u, axis=1, keepdims=True)
+valid = norms[:, 0] > 1e-12
+u[valid] /= norms[valid]
+
+# fallback for degenerate points
+u[~valid] = np.array([0, 0, 1])
+
+# =========================
+# DIAGNOSTIC: AXIS VARIATION
+# =========================
+print("\nAxis variation (std):", np.std(u, axis=0))
+
+# =========================
+# CONVERT ω TO RAD/DAY
+# =========================
+omega_rad = np.deg2rad(omega) / 365.25
+
+# =========================
+# SKEW MATRIX
+# =========================
+def skew(v):
+    return np.array([
+        [0, -v[2], v[1]],
+        [v[2], 0, -v[0]],
+        [-v[1], v[0], 0]
+    ])
+
+# =========================
+# EXPONENTIAL MAP (Rodrigues)
+# =========================
+def exp_so3(w):
+    theta = np.linalg.norm(w)
+    if theta < 1e-12:
+        return np.eye(3)
+
+    k = w / theta
+    K = skew(k)
+
+    return (
+        np.eye(3)
+        + np.sin(theta) * K
+        + (1 - np.cos(theta)) * (K @ K)
+    )
+
+# =========================
+# INTEGRATE ORIENTATION
+# =========================
+R = np.eye(3)
+R_series = []
+
+for i in range(len(omega_rad)):
+    w_vec = omega_rad[i] * u[i]
+    dR = exp_so3(w_vec)
+    R = R @ dR
+    R_series.append(R.copy())
+
+R_series = np.array(R_series)
+
+# =========================
+# TRACK POLE TRAJECTORY
+# =========================
+z0 = np.array([0, 0, 1])
+traj = np.array([R @ z0 for R in R_series])
+
+# =========================
+# DEFINE PLANES
+# =========================
+def normal_from_lon(lon_deg):
+    lon = np.deg2rad(lon_deg)
+    return np.array([np.cos(lon), np.sin(lon), 0])
+
+n_170 = normal_from_lon(170)
+n_31  = normal_from_lon(31)
+
+n_170 /= np.linalg.norm(n_170)
+n_31  /= np.linalg.norm(n_31)
+
+# =========================
+# ANGULAR DISTANCE TO PLANES
+# =========================
+def angle_to_plane(v, n):
+    return np.degrees(np.arcsin(np.abs(v @ n)))
+
+angle_170 = np.array([angle_to_plane(v, n_170) for v in traj])
+angle_31  = np.array([angle_to_plane(v, n_31) for v in traj])
+
+# =========================
+# SAVE
+# =========================
+out = pd.DataFrame({
+    "date": dates,
+    "x": traj[:,0],
+    "y": traj[:,1],
+    "z": traj[:,2],
+    "angle_170": angle_170,
+    "angle_31": angle_31
+})
+
+out.to_csv("so3_trajectory_corrected.csv", index=False)
+
+# =========================
+# PLOTS
+# =========================
+
+# =========================
+# 1) XY TRAJECTORY (TIME-SEGMENTED)
+# =========================
+
+import matplotlib.cm as cm
+
+plt.figure(figsize=(8, 8))
+
+# ---- CONFIG ----
+N_segments = 12          # number of time segments
+marker_interval = 200    # plot marker every N points (set None to disable)
+
+# ---- split indices ----
+N = len(traj)
+indices = np.linspace(0, N, N_segments + 1, dtype=int)
+
+# ---- colormap ----
+cmap = cm.get_cmap("viridis", N_segments)
+
+for i in range(N_segments):
+    i0, i1 = indices[i], indices[i + 1]
+
+    x_seg = traj[i0:i1, 0]
+    y_seg = traj[i0:i1, 1]
+
+    plt.plot(
+        x_seg,
+        y_seg,
+        color=cmap(i),
+        linewidth=1.5,
+        label=f"{dates[i0].astype('datetime64[Y]')}"
+    )
+
+    # ---- optional markers ----
+    if marker_interval is not None:
+        marker_idx = np.arange(i0, i1, marker_interval)
+        plt.scatter(
+            traj[marker_idx, 0],
+            traj[marker_idx, 1],
+            color=cmap(i),
+            s=10,
+            alpha=0.6
+        )
+
+# ---- formatting ----
+plt.title("Pole Trajectory (XY projection, time-segmented)")
+plt.xlabel("X")
+plt.ylabel("Y")
+plt.axis("equal")
+
+# optional legend (can be crowded)
+# plt.legend(loc="upper right", fontsize=8)
+
+# ---- colorbar for time ----
+sm = plt.cm.ScalarMappable(cmap=cmap)
+sm.set_array([])
+cbar = plt.colorbar(sm)
+cbar.set_label("Time progression (early → late)")
+
+plt.savefig("fig_31_xy_traj_segmented.png", dpi=200)
+plt.close()
+
+# 1) XY trajectory
+plt.figure()
+plt.plot(traj[:,0], traj[:,1])
+plt.title("Pole Trajectory (XY projection)")
+plt.xlabel("X")
+plt.ylabel("Y")
+plt.axis("equal")
+plt.savefig("fig_31_xy_traj_corrected.png", dpi=200)
+plt.close()
+
+# 2) Z tilt
+plt.figure()
+plt.plot(dates, traj[:,2])
+plt.title("Z-component (tilt)")
+plt.savefig("fig_32_z_tilt_corrected.png", dpi=200)
+plt.close()
+
+# 3) plane alignment
+plt.figure()
+plt.plot(dates, angle_170, label="170E")
+plt.plot(dates, angle_31, label="31E")
+plt.legend()
+plt.ylabel("deg")
+plt.title("SO(3) Plane Alignment")
+plt.savefig("fig_33_so3_planes_corrected.png", dpi=200)
+plt.close()
+
+# 4) histogram
+plt.figure()
+plt.hist(angle_170, bins=100, alpha=0.5, label="170E")
+plt.hist(angle_31, bins=100, alpha=0.5, label="31E")
+plt.legend()
+plt.title("SO(3) Alignment Distribution")
+plt.savefig("fig_34_so3_hist_corrected.png", dpi=200)
+plt.close()
+
+print("\nSaved:")
+print("- so3_trajectory_corrected.csv")
+print("- fig_31–34 (corrected)")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+
+# =========================
+# LOAD
+# =========================
+df = pd.read_csv("axis_angular_velocity.csv", parse_dates=["date"])
+
+# enforce time ordering (CRITICAL)
+df = df.sort_values("date").reset_index(drop=True)
+
+# --- angular velocity ---
+if "omega_filtered" in df.columns:
+    omega = df["omega_filtered"].values
+else:
+    omega = df["omega_smooth"].values  # corrected fallback
+
+# =========================
+# REQUIRED FIELD
+# =========================
+assert "theta_unwrapped" in df.columns, "theta_unwrapped required"
+
+theta = df["theta_unwrapped"].values
+dates = pd.to_datetime(df["date"])
+
+# =========================
+# CLEAN (CONSISTENT MASK)
+# =========================
+theta = np.array(theta, dtype=float)
+omega = np.array(omega, dtype=float)
+
+# remove inf
+theta[np.isinf(theta)] = np.nan
+omega[np.isinf(omega)] = np.nan
+
+mask = np.isfinite(theta) & np.isfinite(omega)
+
+theta = theta[mask]
+omega = omega[mask]
+dates = dates[mask]
+
+# convert to radians AFTER cleaning
+theta_rad = np.deg2rad(theta)
+
+# =========================
+# TRAJECTORY (SO(2) EMBEDDING)
+# =========================
+x = np.cos(theta_rad)
+y = np.sin(theta_rad)
+z = np.zeros_like(x)
+
+traj = np.column_stack([x, y, z])
+
+# =========================
+# SAVE TRAJECTORY
+# =========================
+out = pd.DataFrame({
+    "date": dates,
+    "x": traj[:, 0],
+    "y": traj[:, 1],
+    "z": traj[:, 2],
+})
+out.to_csv("so3_trajectory_from_theta.csv", index=False)
+
+# =========================
+# 1) XY TRAJECTORY (TIME-COLORED)
+# =========================
+fig, ax = plt.subplots(figsize=(8, 8))
+
+USE_SEGMENTS = True
+N_segments = 16
+marker_interval = 150
+
+if USE_SEGMENTS:
+
+    indices = np.linspace(0, len(traj), N_segments + 1, dtype=int)
+    cmap = matplotlib.colormaps.get_cmap("viridis").resampled(N_segments)
+
+    for i in range(N_segments):
+        i0, i1 = indices[i], indices[i+1]
+
+        x_seg = traj[i0:i1, 0]
+        y_seg = traj[i0:i1, 1]
+
+        ax.plot(x_seg, y_seg, color=cmap(i), linewidth=1.5)
+
+        if marker_interval is not None:
+            marker_idx = np.arange(i0, i1, marker_interval)
+            ax.scatter(
+                traj[marker_idx, 0],
+                traj[marker_idx, 1],
+                color=cmap(i),
+                s=8,
+                alpha=0.6
+            )
+
+    sm = plt.cm.ScalarMappable(cmap=cmap)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax)
+    cbar.set_label("Time segments (early → late)")
+
+else:
+    t_norm = np.linspace(0, 1, len(traj))
+
+    sc = ax.scatter(
+        traj[:, 0],
+        traj[:, 1],
+        c=t_norm,
+        cmap="viridis",
+        s=2
+    )
+
+    cbar = fig.colorbar(sc, ax=ax)
+    cbar.set_label("Time progression")
+
+ax.set_title("Pole Trajectory (XY projection, time-colored)")
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.axis("equal")
+
+fig.savefig("fig_31_xy_traj_time_colored.png", dpi=200)
+plt.close(fig)
+
+# =========================
+# 2) THETA TIME SERIES
+# =========================
+fig, ax = plt.subplots()
+
+ax.plot(dates, theta)
+ax.set_title("Theta (unwrapped) vs time")
+ax.set_ylabel("Degrees")
+
+fig.savefig("fig_theta_timeseries.png", dpi=200)
+plt.close(fig)
+
+print("\nSaved:")
+print("- so3_trajectory_from_theta.csv")
+print("- fig_31_xy_traj_time_colored.png")
+print("- fig_theta_timeseries.png")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+
+# =========================================================
+# LOAD (FIXED)
+# =========================================================
+df = pd.read_csv("so3_trajectory_from_theta.csv", parse_dates=["date"])
+
+required = {"x", "y", "z"}
+assert required.issubset(df.columns), "Need x,y,z trajectory"
+
+# enforce time order
+df = df.sort_values("date").reset_index(drop=True)
+
+print("\nColumns:", df.columns.tolist())
+
+# =========================================================
+# TIME (FIXED)
+# =========================================================
+t = pd.to_datetime(df["date"])
+t_years = (t - t.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+t_years = np.array(t_years, dtype=float)
+
+# =========================================================
+# POSITION VECTORS
+# =========================================================
+r = df[["x", "y", "z"]].values
+
+# normalize (safety)
+norm_r = np.linalg.norm(r, axis=1, keepdims=True)
+norm_r[norm_r == 0] = np.nan
+r = r / norm_r
+
+# =========================================================
+# VELOCITY dr/dt (FIXED)
+# =========================================================
+dr = np.zeros_like(r)
+
+for i in range(1, len(r)-1):
+    dt = t_years[i+1] - t_years[i-1]
+    if dt <= 0:
+        continue
+    dr[i] = (r[i+1] - r[i-1]) / dt
+
+# forward/backward edges
+dt0 = t_years[1] - t_years[0]
+if dt0 > 0:
+    dr[0] = (r[1] - r[0]) / dt0
+
+dtn = t_years[-1] - t_years[-2]
+if dtn > 0:
+    dr[-1] = (r[-1] - r[-2]) / dtn
+
+# =========================================================
+# ANGULAR VELOCITY ω = r × dr/dt
+# =========================================================
+omega = np.cross(r, dr)
+
+# =========================================================
+# UNIT AXIS û(t)
+# =========================================================
+norm = np.linalg.norm(omega, axis=1)
+norm[norm == 0] = np.nan
+
+u = omega / norm[:, None]
+
+valid = np.isfinite(u).all(axis=1)
+u = u[valid]
+df = df.iloc[valid].reset_index(drop=True)
+t_years = t_years[valid]
+
+# =========================================================
+# CLUSTERING (2 STATES)
+# =========================================================
+kmeans = KMeans(n_clusters=2, random_state=42, n_init=20)
+labels = kmeans.fit_predict(u)
+
+centers = kmeans.cluster_centers_
+centers /= np.linalg.norm(centers, axis=1)[:, None]
+
+print("\nCluster centers:")
+print(centers)
+
+df["state"] = labels
+
+# =========================================================
+# PLANE OF MOTION (DATA-DERIVED ONLY)
+# =========================================================
+u1, u2 = centers
+
+# =========================================================
+# PLANE OF MOTION (DEGENERACY-AWARE)
+# =========================================================
+u1, u2 = centers
+
+cross_vec = np.cross(u1, u2)
+norm_cross = np.linalg.norm(cross_vec)
+
+if norm_cross < 1e-6:
+    plane_normal = np.array([np.nan, np.nan, np.nan])
+    print("\nPlane normal undefined (degenerate axis: planar motion)")
+else:
+    plane_normal = cross_vec / norm_cross
+    print("\nDerived plane normal:", plane_normal)
+    
+# =========================================================
+# TRANSITIONS
+# =========================================================
+state = df["state"].values
+transitions = np.where(np.diff(state) != 0)[0] + 1
+
+print("\nTransitions:", len(transitions))
+
+# =========================================================
+# DWELL TIMES (FIXED)
+# =========================================================
+dwell = []
+start = 0
+
+for t_idx in transitions:
+    dt_years = t_years[t_idx] - t_years[start]
+    dwell.append(dt_years)
+    start = t_idx
+
+dt_years = t_years[-1] - t_years[start]
+dwell.append(dt_years)
+
+dwell = np.array(dwell)
+
+print("\nDwell stats:")
+print("Mean:", np.mean(dwell))
+print("Std :", np.std(dwell))
+print("Min :", np.min(dwell))
+print("Max :", np.max(dwell))
+
+# =========================================================
+# PLOTS
+# =========================================================
+
+# --- axis scatter (XY)
+plt.figure()
+for s in [0,1]:
+    m = df["state"] == s
+    plt.scatter(u[m,0], u[m,1], s=5, label=f"State {s}")
+
+plt.legend()
+plt.title("Axis projection (XY)")
+plt.grid()
+plt.savefig("fig_40_axis_states_xy.png", dpi=300)
+plt.close()
+
+# --- state vs time
+plt.figure()
+plt.plot(df["date"], df["state"], drawstyle="steps-post")
+plt.title("State transitions")
+plt.grid()
+plt.savefig("fig_41_state_timeseries.png", dpi=300)
+plt.close()
+
+# --- dwell histogram
+plt.figure()
+plt.hist(dwell, bins=20)
+plt.title("Dwell time distribution")
+plt.grid()
+plt.savefig("fig_42_dwell_times.png", dpi=300)
+plt.close()
+
+# =========================================================
+# SAVE
+# =========================================================
+df.to_csv("axis_states_timeseries.csv", index=False)
+
+pd.DataFrame({"dwell_years": dwell}).to_csv("axis_dwell_times.csv", index=False)
+
+pd.DataFrame({
+    "plane_normal_x": [plane_normal[0]],
+    "plane_normal_y": [plane_normal[1]],
+    "plane_normal_z": [plane_normal[2]],
+}).to_csv("axis_plane_summary.csv", index=False)
+
+print("\nSaved:")
+print("- axis_states_timeseries.csv")
+print("- axis_dwell_times.csv")
+print("- axis_plane_summary.csv")
+print("- fig_40–42")import numpy as np
+import pandas as pd
+
+# =========================================================
+# LOAD
+# =========================================================
+df = pd.read_csv("axis_plane_summary.csv")
+
+n = df.loc[0, ["plane_normal_x", "plane_normal_y", "plane_normal_z"]].values
+n = np.array(n, dtype=float)
+
+# =========================================================
+# VALIDITY CHECK (CRITICAL)
+# =========================================================
+if not np.all(np.isfinite(n)) or np.linalg.norm(n) < 1e-6:
+    print("\nPlane normal is undefined (degenerate planar dynamics).")
+    print("Earth-fixed plane alignment analysis is not applicable.")
+    exit()
+
+# normalize safely
+n = n / np.linalg.norm(n)
+
+print("\nPlane normal (unit):")
+print(n)
+
+# =========================================================
+# DEFINE PLANES (ONLY IF VALID)
+# =========================================================
+def plane_normal_from_longitude(lon_deg):
+    lon = np.deg2rad(lon_deg)
+    return np.array([np.sin(lon), -np.cos(lon), 0.0])
+
+def angle(a, b):
+    return np.rad2deg(np.arccos(np.clip(np.dot(a, b), -1, 1)))
+
+# Earth-fixed planes
+n_170 = plane_normal_from_longitude(170.0)
+n_31  = plane_normal_from_longitude(31.0)
+n_75W = plane_normal_from_longitude(-75.0)
+
+# =========================================================
+# ANGLES
+# =========================================================
+angle_170 = angle(n, n_170)
+angle_31  = angle(n, n_31)
+angle_75W = angle(n, n_75W)
+
+print("\nPlane alignment angles (deg):")
+print(f"170E : {angle_170:.3f}")
+print(f"31E  : {angle_31:.3f}")
+print(f"75W  : {angle_75W:.3f}")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# =========================
+# LOAD DATA
+# =========================
+states = pd.read_csv("axis_states_timeseries.csv")
+plane  = pd.read_csv("axis_plane_summary.csv")
+dwell  = pd.read_csv("axis_dwell_times.csv")
+
+states["date"] = pd.to_datetime(states["date"])
+
+X = states["x"].values
+Y = states["y"].values
+Z = states["z"].values
+S = states["state"].values
+
+V = np.column_stack([X, Y, Z])
+
+# =========================
+# PLANE NORMAL (DEGENERACY-SAFE)
+# =========================
+normal = plane[["plane_normal_x","plane_normal_y","plane_normal_z"]].values[0]
+normal = np.array(normal, dtype=float)
+
+valid_plane = np.all(np.isfinite(normal)) and np.linalg.norm(normal) > 1e-6
+
+if valid_plane:
+    normal = normal / np.linalg.norm(normal)
+else:
+    normal = np.array([0.0, 0.0, 1.0])  # fallback (known planar system)
+    print("\nPlane undefined → using canonical Z normal (planar phase system)")
+
+# =========================
+# BASIS OF PLANE (SAFE)
+# =========================
+def orthonormal_basis(n):
+    n = n / np.linalg.norm(n)
+    if abs(n[0]) < 0.9:
+        a = np.array([1,0,0])
+    else:
+        a = np.array([0,1,0])
+    v1 = np.cross(n, a)
+    v1 /= np.linalg.norm(v1)
+    v2 = np.cross(n, v1)
+    return v1, v2
+
+v1, v2 = orthonormal_basis(normal)
+
+# =========================
+# REFERENCE AXES (OPTIONAL DIAGNOSTIC ONLY)
+# =========================
+def sph_to_cart(lat_deg, lon_deg):
+    lat = np.radians(lat_deg)
+    lon = np.radians(lon_deg)
+    return np.array([
+        np.cos(lat)*np.cos(lon),
+        np.cos(lat)*np.sin(lon),
+        np.sin(lat)
+    ])
+
+axes = {
+    "10W":  sph_to_cart(0, -10),
+    "149W": sph_to_cart(0, -149),
+    "75W":  sph_to_cart(0, -75),
+    "45W":  sph_to_cart(0, -45)
+}
+
+# =========================
+# SIGNED PROJECTIONS (DIAGNOSTIC)
+# =========================
+projections = {}
+for name, axis in axes.items():
+    projections[name] = V @ axis
+
+# =========================
+# PHASE IN PLANE (PRIMARY RESULT)
+# =========================
+p1 = V @ v1
+p2 = V @ v2
+
+theta = np.degrees(np.arctan2(p2, p1))
+theta_unwrapped = np.degrees(np.unwrap(np.radians(theta)))
+
+# =========================
+# 1. XY STATE SPACE
+# =========================
+plt.figure(figsize=(6,6))
+for s in np.unique(S):
+    mask = S == s
+    plt.scatter(X[mask], Y[mask], s=2, label=f"State {s}")
+
+plt.legend()
+plt.title("Phase States (XY)")
+plt.grid(True)
+plt.savefig("fig_50_states_xy_clustered.png", dpi=200)
+plt.close()
+
+# =========================
+# 2. STATE TIME SERIES
+# =========================
+plt.figure(figsize=(10,3))
+plt.plot(states["date"], S, lw=0.8)
+plt.title("State Transitions Over Time")
+plt.grid(True)
+plt.savefig("fig_51_state_timeseries.png", dpi=200)
+plt.close()
+
+# =========================
+# 3. TRAJECTORY (2D TRUE REPRESENTATION)
+# =========================
+plt.figure(figsize=(6,6))
+plt.plot(X, Y, lw=0.5, alpha=0.6)
+plt.title("Phase Trajectory (Unit Circle)")
+plt.axis("equal")
+plt.grid(True)
+plt.savefig("fig_52_phase_trajectory.png", dpi=200)
+plt.close()
+
+# =========================
+# 4. PLANE PROJECTION (INTRINSIC)
+# =========================
+plt.figure(figsize=(6,6))
+plt.scatter(p1, p2, s=1)
+plt.xlabel("v1")
+plt.ylabel("v2")
+plt.title("Intrinsic Phase Coordinates")
+plt.grid(True)
+plt.savefig("fig_53_plane_intrinsic.png", dpi=200)
+plt.close()
+
+# =========================
+# 5. MODE PROJECTIONS (SECONDARY)
+# =========================
+plt.figure(figsize=(10,4))
+for name, proj in projections.items():
+    plt.plot(states["date"], proj, label=name)
+
+plt.title("Axis Projections (Diagnostic Only)")
+plt.ylabel("Projection")
+plt.legend()
+plt.grid(True)
+plt.savefig("fig_54_mode_projections.png", dpi=200)
+plt.close()
+
+# =========================
+# 6. PHASE EVOLUTION (KEY RESULT)
+# =========================
+plt.figure(figsize=(10,4))
+plt.plot(states["date"], theta_unwrapped)
+plt.title("Phase θ(t)")
+plt.ylabel("deg (unwrapped)")
+plt.grid(True)
+plt.savefig("fig_56_phase_theta.png", dpi=200)
+plt.close()
+
+# =========================
+# 7. DWELL TIMES
+# =========================
+plt.figure(figsize=(6,4))
+plt.hist(dwell["dwell_years"], bins=20)
+plt.title("Dwell Time Distribution")
+plt.grid(True)
+plt.savefig("fig_57_dwell_hist.png", dpi=200)
+plt.close()
+
+# =========================
+print("\nSaved updated figures (phase-consistent, degeneracy-safe)")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde
+
+# =========================
+# LOAD
+# =========================
+df = pd.read_csv("axis_states_timeseries.csv")
+df["date"] = pd.to_datetime(df["date"])
+
+# =========================
+# SORT + CLEAN
+# =========================
+df = df.sort_values("date")
+df = df.drop_duplicates(subset="date", keep="first").reset_index(drop=True)
+
+# =========================
+# TIME (years)
+# =========================
+t = df["date"]
+t_years = (t - t.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+mask = np.diff(t_years, prepend=np.nan) > 0
+df = df[mask].reset_index(drop=True)
+t_years = t_years[mask]
+
+# =========================
+# TRAJECTORY
+# =========================
+V = df[["x","y","z"]].values
+
+# =========================
+# MEAN CENTER (CRITICAL)
+# =========================
+V = V - np.mean(V, axis=0)
+
+# =========================
+# PLANE NORMAL
+# =========================
+plane = pd.read_csv("axis_plane_summary.csv")
+n = plane[["plane_normal_x","plane_normal_y","plane_normal_z"]].values[0]
+n = n / np.linalg.norm(n)
+
+# =========================
+# BASIS
+# =========================
+def basis(n):
+    if abs(n[0]) < 0.9:
+        a = np.array([1,0,0])
+    else:
+        a = np.array([0,1,0])
+    v1 = np.cross(n, a); v1 /= np.linalg.norm(v1)
+    v2 = np.cross(n, v1)
+    return v1, v2
+
+v1, v2 = basis(n)
+
+# =========================
+# PHASE
+# =========================
+p1 = V @ v1
+p2 = V @ v2
+
+theta = np.unwrap(np.arctan2(p2, p1))
+theta_deg = np.degrees(theta)
+
+# =========================
+# DERIVATIVE (SAFE)
+# =========================
+dt = np.diff(t_years)
+dtheta = np.diff(theta_deg)
+
+valid = dt > 0
+dt = dt[valid]
+dtheta = dtheta[valid]
+
+omega_theta = dtheta / dt
+t_mid = t_years.iloc[1:].values[valid]
+
+# =========================
+# PLOT ωθ(t)
+# =========================
+plt.figure(figsize=(10,4))
+plt.plot(t_mid, omega_theta)
+plt.title("Angular Velocity ωθ(t)")
+plt.ylabel("deg/year")
+plt.grid(True)
+plt.savefig("fig_61_omega_theta.png", dpi=200)
+
+# =========================
+# PHASE TIME SERIES
+# =========================
+plt.figure(figsize=(10,4))
+plt.plot(t_years, theta_deg)
+plt.title("Phase θ(t)")
+plt.grid(True)
+plt.savefig("fig_60_theta_time.png", dpi=200)
+
+# =========================
+# ω(θ)
+# =========================
+theta_mid = theta_deg[1:][valid]
+
+bins = np.linspace(theta_mid.min(), theta_mid.max(), 40)
+digitized = np.digitize(theta_mid, bins)
+
+theta_c = []
+omega_m = []
+
+for i in range(1, len(bins)):
+    m = digitized == i
+    if np.sum(m) > 5:
+        theta_c.append(theta_mid[m].mean())
+        omega_m.append(omega_theta[m].mean())
+
+theta_c = np.array(theta_c)
+omega_m = np.array(omega_m)
+
+idx = np.argsort(theta_c)
+theta_c = theta_c[idx]
+omega_m = omega_m[idx]
+
+# =========================
+# PLOT ω(θ)
+# =========================
+plt.figure(figsize=(6,4))
+plt.plot(theta_c, omega_m, '-o')
+plt.title("ω(θ)")
+plt.grid(True)
+plt.savefig("fig_63_omega_theta_phase.png", dpi=200)
+
+# =========================
+# 2D POTENTIAL V(x,y) (CRITICAL FIX)
+# =========================
+x = V[:,0]
+y = V[:,1]
+
+xy = np.vstack([x, y])
+kde = gaussian_kde(xy)
+
+grid_x, grid_y = np.mgrid[
+    x.min():x.max():200j,
+    y.min():y.max():200j
+]
+
+positions = np.vstack([grid_x.ravel(), grid_y.ravel()])
+density = kde(positions).reshape(grid_x.shape)
+
+V_xy = -np.log(density + 1e-12)
+V_xy -= np.min(V_xy)
+
+plt.figure(figsize=(6,5))
+plt.contourf(grid_x, grid_y, V_xy, levels=50)
+plt.colorbar(label="V(x,y)")
+plt.title("2D Effective Potential")
+plt.savefig("fig_64_potential_2D.png", dpi=200)
+
+# =========================
+# SAVE
+# =========================
+out = pd.DataFrame({
+    "theta": theta_c,
+    "omega": omega_m
+})
+out.to_csv("theta_dynamics_summary.csv", index=False)
+
+print("\nDONE (geometry-consistent solution)")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# =========================
+# LOAD DATA
+# =========================
+df = pd.read_csv("axis_states_timeseries.csv")
+df["date"] = pd.to_datetime(df["date"])
+
+# =========================
+# CLEAN TIMEBASE
+# =========================
+df = df.sort_values("date")
+df = df.drop_duplicates(subset="date").reset_index(drop=True)
+
+t = df["date"]
+t_years = (t - t.iloc[0]).dt.total_seconds() / (365.25 * 24 * 3600)
+
+t_years = np.array(t_years, dtype=float)
+mask = np.diff(t_years, prepend=np.nan) > 0
+df = df[mask].reset_index(drop=True)
+t_years = t_years[mask]
+
+# =========================
+# TRAJECTORY (PLANAR)
+# =========================
+V = df[["x","y","z"]].values
+
+# =========================
+# PRIMARY PHASE (ONLY VALID DOF)
+# =========================
+theta = np.unwrap(np.arctan2(V[:,1], V[:,0]))
+theta_deg = np.degrees(theta)
+
+# =========================
+# DERIVATIVE (SAFE)
+# =========================
+dt = np.diff(t_years)
+dθ = np.diff(theta_deg)
+
+valid = dt > 0
+dt = dt[valid]
+dθ = dθ[valid]
+
+omega = dθ / dt
+
+t_mid = t_years[1:][valid]
+theta_mid = theta_deg[1:][valid]
+states = df["state"].values[1:][valid]
+
+# =========================
+# 1) PHASE SPACE (REPLACES TORUS)
+# =========================
+plt.figure(figsize=(6,6))
+plt.scatter(
+    np.mod(theta_mid, 360),
+    omega,
+    s=5
+)
+plt.xlabel("θ (deg)")
+plt.ylabel("ω (deg/year)")
+plt.title("Phase Space (θ, ω)")
+plt.grid(True)
+plt.savefig("fig_70_phase_space.png", dpi=200)
+plt.close()
+
+# =========================
+# 2) STATE-CONDITIONED POTENTIAL
+# =========================
+def compute_conditioned(theta, omega, states):
+    results = []
+
+    for s in np.unique(states):
+        mask = states == s
+
+        θ = theta[mask]
+        ω = omega[mask]
+
+        if len(θ) < 20:
+            continue
+
+        bins = np.linspace(np.min(θ), np.max(θ), 30)
+        digitized = np.digitize(θ, bins)
+
+        θc = []
+        ωm = []
+
+        for i in range(1, len(bins)):
+            m = digitized == i
+            if np.sum(m) > 5:
+                θc.append(np.mean(θ[m]))
+                ωm.append(np.mean(ω[m]))
+
+        θc = np.array(θc)
+        ωm = np.array(ωm)
+
+        if len(θc) < 5:
+            continue
+
+        idx = np.argsort(θc)
+        θc = θc[idx]
+        ωm = ωm[idx]
+
+        θrad = np.radians(θc)
+        dθ_local = np.gradient(θrad)
+
+        Vθ = -np.cumsum(ωm * dθ_local)
+        Vθ -= np.nanmin(Vθ)
+
+        plt.figure(figsize=(5,4))
+        plt.plot(θc, Vθ)
+        plt.title(f"V(θ) | state={s}")
+        plt.grid(True)
+        plt.savefig(f"fig_71_potential_state_{s}.png", dpi=200)
+        plt.close()
+
+        results.append((s, θc, ωm, Vθ))
+
+    return results
+
+state_results = compute_conditioned(theta_mid, omega, states)
+
+# =========================
+# 3) IMPULSE DETECTION (ROBUST)
+# =========================
+med = np.median(omega)
+mad = np.median(np.abs(omega - med))
+
+if mad == 0 or not np.isfinite(mad):
+    threshold = med + 6 * np.std(omega)
+else:
+    threshold = med + 6 * mad
+
+impulses = np.abs(omega) > threshold
+
+impulse_times = t_mid[impulses]
+impulse_strength = omega[impulses]
+
+print(f"\nDetected impulses: {len(impulse_times)}")
+
+# =========================
+# PLOT IMPULSES
+# =========================
+plt.figure(figsize=(10,4))
+plt.plot(t_mid, omega, label="ω")
+plt.scatter(
+    impulse_times,
+    impulse_strength,
+    s=20,
+    label="impulses"
+)
+plt.legend()
+plt.title("Impulse Detection")
+plt.grid(True)
+plt.savefig("fig_72_impulses.png", dpi=200)
+plt.close()
+
+# =========================
+# SAVE IMPULSES
+# =========================
+out_imp = pd.DataFrame({
+    "time": impulse_times,
+    "omega": impulse_strength
+})
+out_imp.to_csv("impulses.csv", index=False)
+
+# =========================
+# 4) PHASE VELOCITY FIELD (1D CONSISTENT)
+# =========================
+plt.figure(figsize=(6,4))
+plt.scatter(theta_mid, omega, s=5)
+plt.xlabel("θ")
+plt.ylabel("ω")
+plt.title("Phase Velocity Structure")
+plt.grid(True)
+plt.savefig("fig_73_velocity_field.png", dpi=200)
+plt.close()
+
+print("\nSaved:")
+print("- fig_70_phase_space.png")
+print("- fig_71_potential_state_*.png")
+print("- fig_72_impulses.png")
+print("- fig_73_velocity_field.png")
+print("- impulses.csv")import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+# =========================
+# LOAD DATA
+# =========================
+df = pd.read_csv("hybrid_system_corrected.csv")
+
+theta1 = df["theta1"].values
+theta2 = df["theta2"].values
+state  = df["state"].values
+impulse = df["impulse"].values
+
+omega1 = df["omega1"].values
+omega2 = df["omega2"].values
+
+# =========================
+# HELPERS
+# =========================
+def wrap(x):
+    return x % 360
+
+# =========================
+# INTRINSIC COORDINATES
+# =========================
+phi = wrap(theta1 - theta2)     # TRUE dynamical coordinate
+r   = wrap(theta1 + theta2)     # slow amplitude / modulation
+
+phi_dot = omega1 - omega2
+r_dot   = omega1 + omega2
+
+# =========================
+# FEATURE MAP
+# =========================
+def features(phi, r):
+    p = np.radians(phi)
+    q = np.radians(r)
+
+    return np.array([
+        np.sin(p), np.cos(p),
+        np.sin(2*p), np.cos(2*p),
+
+        np.sin(q), np.cos(q)
+    ])
+
+# =========================
+# FIT VECTOR FIELD
+# =========================
+models_phi = {}
+models_r   = {}
+
+for s in np.unique(state):
+    mask = state == s
+    if np.sum(mask) < 50:
+        continue
+
+    idx = np.where(mask)[0]
+
+    X = np.vstack([features(phi[i], r[i]) for i in idx])
+
+    models_phi[s] = LinearRegression().fit(X, phi_dot[mask])
+    models_r[s]   = LinearRegression().fit(X, r_dot[mask])
+
+# =========================
+# FIT RESET MAP (PHASE ONLY)
+# =========================
+reset_models = {}
+
+for s in np.unique(state):
+    mask = (state == s) & (impulse == 1)
+
+    if np.sum(mask) < 20:
+        continue
+
+    X = phi[mask].reshape(-1,1)
+    y = phi_dot[mask]
+
+    reset_models[s] = LinearRegression().fit(X, y)
+
+# =========================
+# SWITCHING MANIFOLD Σ
+# =========================
+switch_mask = np.diff(state) != 0
+
+Σ = np.vstack([
+    wrap(theta1[:-1][switch_mask]),
+    wrap(theta2[:-1][switch_mask])
+]).T
+
+def torus_dist(a, b):
+    d = np.abs(a - b)
+    d = np.minimum(d, 360 - d)
+    return np.sqrt(np.sum(d**2, axis=-1))
+
+def dist_to_S(t1, t2):
+    p = np.array([wrap(t1), wrap(t2)])
+    return np.min(torus_dist(Σ, p))
+
+# =========================
+# EMBEDDING (EXACT)
+# =========================
+def embed(phi, r):
+    t1 = 0.5 * (phi + r)
+    t2 = 0.5 * (r - phi)
+    return wrap(t1), wrap(t2)
+
+# =========================
+# SIMULATION PARAMETERS
+# =========================
+N = 5000
+dt = 0.01
+
+phi_sim = np.zeros(N)
+r_sim   = np.zeros(N)
+state_sim = np.zeros(N, dtype=int)
+
+phi_sim[0] = phi[0]
+r_sim[0]   = r[0]
+state_sim[0] = state[0]
+
+theta1_sim = np.zeros(N)
+theta2_sim = np.zeros(N)
+
+rng = np.random.default_rng(42)
+
+# HYSTERESIS (critical stability fix)
+SWITCH_IN  = 6.0
+SWITCH_OUT = 10.0
+in_band = False
+
+# =========================
+# SIMULATION LOOP
+# =========================
+for i in range(N-1):
+
+    s = state_sim[i]
+
+    f = features(phi_sim[i], r_sim[i])
+
+    # ----- FLOW -----
+    dphi = models_phi[s].predict(f.reshape(1,-1))[0]
+    dr   = models_r[s].predict(f.reshape(1,-1))[0]
+
+    phi_new = wrap(phi_sim[i] + dphi * dt)
+    r_new   = wrap(r_sim[i]   + dr   * dt)
+
+    # ----- EMBED -----
+    t1, t2 = embed(phi_new, r_new)
+
+    # ----- SWITCHING (GEOMETRIC + HYSTERESIS) -----
+    d = dist_to_S(t1, t2)
+
+    if not in_band and d < SWITCH_IN:
+        if rng.random() < 0.5:
+            s_new = 1 - s
+            in_band = True
+        else:
+            s_new = s
+
+    elif in_band and d > SWITCH_OUT:
+        in_band = False
+        s_new = s
+
+    else:
+        s_new = s
+
+    # ----- PHASE RESET (TARGET STATE) -----
+    if s_new != s and s_new in reset_models:
+        delta = reset_models[s_new].predict([[phi_sim[i]]])[0]
+        phi_new = wrap(phi_new + 0.05 * delta)  # scaled injection
+
+    # ----- STORE -----
+    phi_sim[i+1] = phi_new
+    r_sim[i+1]   = r_new
+    state_sim[i+1] = s_new
+
+    theta1_sim[i+1], theta2_sim[i+1] = t1, t2
+
+# =========================
+# PLOTS
+# =========================
+plt.figure(figsize=(6,6))
+plt.scatter(theta1 % 360, theta2 % 360, s=2, alpha=0.3, label="data")
+plt.scatter(theta1_sim, theta2_sim, s=2, alpha=0.3, label="sim")
+plt.legend()
+plt.grid()
+plt.title("Intrinsic Phase Model (Final)")
+plt.savefig("fig_final_phase.png", dpi=200)
+
+plt.figure(figsize=(10,4))
+plt.plot(theta1_sim[:1000])
+plt.title("θ1 simulation")
+plt.grid()
+plt.savefig("fig_final_theta1.png", dpi=200)
+
+plt.figure(figsize=(10,3))
+plt.plot(state_sim[:1000])
+plt.title("State sequence")
+plt.grid()
+plt.savefig("fig_final_state.png", dpi=200)
+
+# =========================
+# SAVE OUTPUT
+# =========================
+pd.DataFrame({
+    "phi": phi_sim,
+    "r": r_sim,
+    "theta1": theta1_sim,
+    "theta2": theta2_sim,
+    "state": state_sim
+}).to_csv("hybrid_simulation_final_intrinsic.csv", index=False)
+
+print("\nSaved FINAL intrinsic model:")
+print("- fig_final_phase.png")
+print("- fig_final_theta1.png")
+print("- fig_final_state.png")
+print("- hybrid_simulation_final_intrinsic.csv")import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+# ================================
+# CONFIG
+# ================================
+INPUT_FILE = "filtered_series.csv"
+GRID_RES = 2.0  # degrees
+N_SURROGATES = 200  # increase to 1000 for publication
+
+# ================================
+# LOAD DATA
+# ================================
+df = pd.read_csv(INPUT_FILE)
+
+x = df["x_filt"].values
+y = df["y_filt"].values
+
+# ================================
+# VELOCITY (ROBUST)
+# ================================
+vx = np.gradient(x)
+vy = np.gradient(y)
+
+mask = np.isfinite(vx) & np.isfinite(vy)
+vx = vx[mask]
+vy = vy[mask]
+
+v_mag = np.sqrt(vx**2 + vy**2)
+valid = v_mag > 0
+
+vx = vx[valid] / v_mag[valid]
+vy = vy[valid] / v_mag[valid]
+
+# embed in 3D
+vectors = np.stack([vx, vy, np.zeros_like(vx)], axis=1)
+
+# ================================
+# SPHERE GRID
+# ================================
+theta = np.deg2rad(np.arange(0, 180, GRID_RES))
+phi   = np.deg2rad(np.arange(0, 360, GRID_RES))
+
+grid_dirs = []
+
+for t in theta:
+    for p in phi:
+        grid_dirs.append([
+            np.sin(t)*np.cos(p),
+            np.sin(t)*np.sin(p),
+            np.cos(t)
+        ])
+
+grid_dirs = np.array(grid_dirs)
+
+# ================================
+# PROJECTION ENERGY (REAL)
+# ================================
+print("Computing real projection energy...")
+
+proj_energy = np.array([
+    np.mean((vectors @ g)**2)
+    for g in tqdm(grid_dirs)
+])
+
+real_max = np.max(proj_energy)
+
+# ================================
+# SURROGATE GENERATION
+# ================================
+def phase_randomize(v):
+    """Preserve spectrum, destroy direction structure"""
+    fft = np.fft.fft(v)
+    phases = np.exp(2j * np.pi * np.random.rand(len(v)))
+    return np.real(np.fft.ifft(np.abs(fft) * phases))
+
+print("Running surrogate ensemble...")
+
+surrogate_max = []
+
+for _ in tqdm(range(N_SURROGATES)):
+
+    vx_s = phase_randomize(vx)
+    vy_s = phase_randomize(vy)
+
+    mag = np.sqrt(vx_s**2 + vy_s**2)
+    valid = mag > 0
+
+    vx_s = vx_s[valid] / mag[valid]
+    vy_s = vy_s[valid] / mag[valid]
+
+    vec_s = np.stack([vx_s, vy_s, np.zeros_like(vx_s)], axis=1)
+
+    energy_s = np.array([
+        np.mean((vec_s @ g)**2)
+        for g in grid_dirs
+    ])
+
+    surrogate_max.append(np.max(energy_s))
+
+surrogate_max = np.array(surrogate_max)
+
+# ================================
+# SIGNIFICANCE
+# ================================
+mean_s = np.mean(surrogate_max)
+std_s  = np.std(surrogate_max)
+
+z_score = (real_max - mean_s) / (std_s + 1e-12)
+p_value = np.mean(surrogate_max >= real_max)
+
+print("\n=== ANISOTROPY SIGNIFICANCE ===")
+print(f"Real max energy: {real_max}")
+print(f"Surrogate mean: {mean_s}")
+print(f"Surrogate std: {std_s}")
+print(f"Z-score: {z_score}")
+print(f"p-value: {p_value}")
+
+# ================================
+# DOMINANT DIRECTIONS
+# ================================
+top_idx = np.argsort(proj_energy)[-20:][::-1]
+
+rows = []
+
+for idx in top_idx:
+    g = grid_dirs[idx]
+
+    theta_deg = np.degrees(np.arccos(g[2]))
+    phi_deg   = np.degrees(np.arctan2(g[1], g[0])) % 360
+
+    rows.append({
+        "theta_deg": theta_deg,
+        "phi_deg": phi_deg,
+        "energy": proj_energy[idx]
+    })
+
+top_df = pd.DataFrame(rows)
+
+# ================================
+# SAVE
+# ================================
+pd.DataFrame({
+    "gx": grid_dirs[:,0],
+    "gy": grid_dirs[:,1],
+    "gz": grid_dirs[:,2],
+    "energy": proj_energy
+}).to_csv("anisotropy_sweep_full_sphere.csv", index=False)
+
+top_df.to_csv("anisotropy_top_directions.csv", index=False)
+
+with open("anisotropy_summary.txt", "w") as f:
+    f.write(f"Real max energy: {real_max}\n")
+    f.write(f"Surrogate mean: {mean_s}\n")
+    f.write(f"Surrogate std: {std_s}\n")
+    f.write(f"Z-score: {z_score}\n")
+    f.write(f"p-value: {p_value}\n")
+
+print("\nSaved:")
+print("- anisotropy_sweep_full_sphere.csv")
+print("- anisotropy_top_directions.csv")
+print("- anisotropy_summary.txt")import numpy as np
+import pandas as pd
+
+# ================================
+# CONFIG
+# ================================
+INPUT_FILE = "filtered_series.csv"
+
+# ================================
+# LOAD DATA
+# ================================
+df = pd.read_csv(INPUT_FILE)
+
+x = df["x_filt"].values
+y = df["y_filt"].values
+
+# ================================
+# VELOCITY (ROBUST)
+# ================================
+vx = np.gradient(x)
+vy = np.gradient(y)
+
+mask = np.isfinite(vx) & np.isfinite(vy)
+vx = vx[mask]
+vy = vy[mask]
+
+mag = np.sqrt(vx**2 + vy**2)
+valid = mag > 0
+
+vx = vx[valid] / mag[valid]
+vy = vy[valid] / mag[valid]
+
+# embed in 3D (planar system)
+vectors = np.stack([vx, vy, np.zeros_like(vx)], axis=1)
+N = len(vectors)
+
+# ================================
+# l = 1 (DIPOLE)
+# ================================
+dipole = np.mean(vectors, axis=0)
+dipole_mag = np.linalg.norm(dipole)
+
+dipole_dir = dipole / dipole_mag if dipole_mag > 0 else dipole
+
+# ================================
+# l = 2 (QUADRUPOLE TENSOR)
+# ================================
+# Q_ij = <v_i v_j> - (1/3) δ_ij
+
+Q = (vectors.T @ vectors) / N
+Q -= np.eye(3) / 3.0
+
+# eigen decomposition
+eigvals, eigvecs = np.linalg.eigh(Q)
+
+# sort descending
+idx = np.argsort(eigvals)[::-1]
+eigvals = eigvals[idx]
+eigvecs = eigvecs[:, idx]
+
+# ================================
+# POWER (PROPER NORMALIZATION)
+# ================================
+# Total second moment trace = 1 for unit vectors
+# So quadrupole power is Frobenius norm of Q
+
+P2 = np.sum(eigvals**2)              # quadrupole power
+P1 = dipole_mag**2                  # dipole power
+
+# isotropic reference:
+# for random unit vectors in plane:
+# expected Q ≈ diag(1/2,1/2,0) - 1/3 I
+# → eigenvalues ≈ [1/6, 1/6, -1/3]
+P2_iso = (1/6)**2 + (1/6)**2 + (1/3)**2
+
+# normalized anisotropy ratio
+anisotropy_ratio = P2 / (P2 + P1 + 1e-12)
+
+# ================================
+# AXIS INTERPRETATION
+# ================================
+principal_axis = eigvecs[:, 0]   # max eigenvalue
+secondary_axis = eigvecs[:, 1]
+normal_axis = eigvecs[:, 2]      # plane normal
+
+def vec_to_angles(v):
+    theta = np.degrees(np.arccos(np.clip(v[2], -1, 1)))
+    phi = np.degrees(np.arctan2(v[1], v[0])) % 360
+    return theta, phi
+
+principal_angles = vec_to_angles(principal_axis)
+secondary_angles = vec_to_angles(secondary_axis)
+normal_angles = vec_to_angles(normal_axis)
+dipole_angles = vec_to_angles(dipole_dir)
+
+# ================================
+# ALIGNMENT DIAGNOSTICS
+# ================================
+# angle between dipole and quadrupole axis
+alignment = np.degrees(np.arccos(
+    np.clip(np.dot(dipole_dir, principal_axis), -1, 1)
+)) if dipole_mag > 0 else np.nan
+
+# ================================
+# SAVE OUTPUT
+# ================================
+results = {
+    "dipole_magnitude": dipole_mag,
+    "dipole_theta": dipole_angles[0],
+    "dipole_phi": dipole_angles[1],
+
+    "quadrupole_eigenvalues": eigvals.tolist(),
+
+    "principal_axis_theta": principal_angles[0],
+    "principal_axis_phi": principal_angles[1],
+
+    "secondary_axis_theta": secondary_angles[0],
+    "secondary_axis_phi": secondary_angles[1],
+
+    "normal_axis_theta": normal_angles[0],
+    "normal_axis_phi": normal_angles[1],
+
+    "quadrupole_power_P2": P2,
+    "dipole_power_P1": P1,
+    "anisotropy_ratio": anisotropy_ratio,
+    "P2_isotropic_reference": P2_iso,
+
+    "dipole_quadrupole_alignment_deg": alignment
+}
+
+pd.DataFrame([results]).to_csv("spherical_harmonics_summary.csv", index=False)
+
+# ================================
+# PRINT SUMMARY
+# ================================
+print("\n=== SPHERICAL HARMONIC DECOMPOSITION (FINAL) ===")
+
+print(f"\nDipole magnitude: {dipole_mag:.6f}")
+print(f"Dipole direction: θ={dipole_angles[0]:.2f}, φ={dipole_angles[1]:.2f}")
+
+print("\nQuadrupole eigenvalues:")
+print(eigvals)
+
+print("\nPrincipal axis:")
+print(f"θ={principal_angles[0]:.2f}, φ={principal_angles[1]:.2f}")
+
+print("\nPlane normal:")
+print(f"θ={normal_angles[0]:.2f}, φ={normal_angles[1]:.2f}")
+
+print("\nPower diagnostics:")
+print(f"P2 (quadrupole): {P2:.6f}")
+print(f"P1 (dipole):     {P1:.6f}")
+print(f"P2_iso ref:      {P2_iso:.6f}")
+print(f"Anisotropy ratio: {anisotropy_ratio:.6f}")
+
+print("\nDipole–quadrupole alignment:")
+print(f"{alignment:.2f} degrees")
+
+print("\nSaved: spherical_harmonics_summary.csv")import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+# ================================
+# CONFIG
+# ================================
+INPUT_FILE = "filtered_series.csv"
+WINDOW_DAYS = 365
+STEP_DAYS   = 30
+
+# ================================
+# LOAD DATA
+# ================================
+df = pd.read_csv(INPUT_FILE)
+df["date"] = pd.to_datetime(df["date"])
+
+df = df.sort_values("date").reset_index(drop=True)
+
+x = df["x_filt"].values
+y = df["y_filt"].values
+t = df["date"]
+
+# ================================
+# VELOCITY (ROBUST)
+# ================================
+vx = np.gradient(x)
+vy = np.gradient(y)
+
+mask = np.isfinite(vx) & np.isfinite(vy)
+vx = vx[mask]
+vy = vy[mask]
+t = t[mask]
+
+mag = np.sqrt(vx**2 + vy**2)
+valid = mag > 0
+
+vx = vx[valid] / mag[valid]
+vy = vy[valid] / mag[valid]
+t = t[valid]
+
+vectors = np.stack([vx, vy, np.zeros_like(vx)], axis=1)
+
+# ================================
+# TIME-BASED WINDOWING
+# ================================
+results = []
+
+prev_axis = None
+
+print("Tracking quadrupole over time...")
+
+start_time = t.iloc[0]
+end_time   = t.iloc[-1]
+
+current_time = start_time
+
+while current_time + pd.Timedelta(days=WINDOW_DAYS) <= end_time:
+
+    window_end = current_time + pd.Timedelta(days=WINDOW_DAYS)
+
+    mask = (t >= current_time) & (t < window_end)
+
+    v_win = vectors[mask]
+
+    if len(v_win) < 50:
+        current_time += pd.Timedelta(days=STEP_DAYS)
+        continue
+
+    # ================================
+    # DIPOLE
+    # ================================
+    dip = np.mean(v_win, axis=0)
+    dip_mag = np.linalg.norm(dip)
+
+    # ================================
+    # QUADRUPOLE (VECTORISED)
+    # ================================
+    Q = (v_win.T @ v_win) / len(v_win)
+    Q -= np.eye(3) / 3.0
+
+    eigvals, eigvecs = np.linalg.eigh(Q)
+
+    idx = np.argsort(eigvals)[::-1]
+    eigvals = eigvals[idx]
+    eigvecs = eigvecs[:, idx]
+
+    axis = eigvecs[:, 0]
+
+    # ================================
+    # SIGN CONTINUITY (CRITICAL)
+    # ================================
+    if prev_axis is not None:
+        if np.dot(axis, prev_axis) < 0:
+            axis = -axis
+
+    prev_axis = axis.copy()
+
+    # ================================
+    # ANGLES
+    # ================================
+    theta = np.degrees(np.arccos(np.clip(axis[2], -1, 1)))
+    phi   = np.degrees(np.arctan2(axis[1], axis[0])) % 360
+
+    # ================================
+    # ANISOTROPY (INVARIANT)
+    # ================================
+    P2 = np.sum(eigvals**2)
+
+    results.append({
+        "date": current_time,
+        "phi_deg": phi,
+        "theta_deg": theta,
+        "quadrupole_power": P2,
+        "dipole_magnitude": dip_mag,
+        "lambda1": eigvals[0],
+        "lambda2": eigvals[1],
+        "lambda3": eigvals[2]
+    })
+
+    current_time += pd.Timedelta(days=STEP_DAYS)
+
+results_df = pd.DataFrame(results)
+
+# ================================
+# ANGLE UNWRAPPING (ROBUST)
+# ================================
+phi = np.radians(results_df["phi_deg"].values)
+
+# unwrap in continuous sense
+phi_unwrapped = np.unwrap(phi)
+
+results_df["phi_unwrapped_deg"] = np.degrees(phi_unwrapped)
+
+# ================================
+# SAVE
+# ================================
+results_df.to_csv("quadrupole_time_tracking.csv", index=False)
+
+print("\nSaved: quadrupole_time_tracking.csv")
+print("\nSummary:")
+print(results_df.head())import numpy as np
+import pandas as pd
+from numpy.fft import fft, ifft
+
+# ==============================
+# Phase randomization surrogate
+# ==============================
+def phase_randomize(ts):
+    f = fft(ts)
+    mag = np.abs(f)
+    phase = np.angle(f)
+
+    rand_phase = np.random.uniform(0, 2*np.pi, len(phase))
+    f_new = mag * np.exp(1j * rand_phase)
+
+    return np.real(ifft(f_new))
+
+# ==============================
+# Directional energy
+# ==============================
+def directional_energy(x, y, phi):
+    n = np.array([np.cos(phi), np.sin(phi)])
+    p = np.vstack([x, y]).T
+    proj = p @ n
+    return np.mean(proj**2)
+
+# ==============================
+# Load filtered data
+# ==============================
+df = pd.read_csv("filtered_series.csv")
+
+x = df["x_filt"].values
+y = df["y_filt"].values
+
+phis = np.linspace(0, 2*np.pi, 360)
+
+# ==============================
+# Compute real max energy
+# ==============================
+real_energy = np.array([directional_energy(x, y, phi) for phi in phis])
+real_max = real_energy.max()
+
+# ==============================
+# Surrogate ensemble
+# ==============================
+N = 500
+surrogate_max = []
+
+for i in range(N):
+    xs = phase_randomize(x)
+    ys = phase_randomize(y)
+
+    energy = np.array([directional_energy(xs, ys, phi) for phi in phis])
+    surrogate_max.append(energy.max())
+
+surrogate_max = np.array(surrogate_max)
+
+# ==============================
+# Statistics
+# ==============================
+p_value = np.mean(surrogate_max >= real_max)
+z_score = (real_max - surrogate_max.mean()) / surrogate_max.std()
+
+print("=== ANISOTROPY SIGNIFICANCE ===")
+print(f"Real max energy: {real_max}")
+print(f"Surrogate mean: {surrogate_max.mean()}")
+print(f"Surrogate std: {surrogate_max.std()}")
+print(f"Z-score: {z_score}")
+print(f"p-value: {p_value}")
+
+pd.DataFrame({
+    "surrogate_max": surrogate_max
+}).to_csv("anisotropy_surrogate_distribution.csv", index=False)import numpy as np
+import pandas as pd
+
+df = pd.read_csv("filtered_series.csv")
+
+x = df["x_filt"].values
+y = df["y_filt"].values
+
+N = 500
+angles = []
+
+for _ in range(N):
+    idx = np.random.choice(len(x), len(x), replace=True)
+    xs = x[idx]
+    ys = y[idx]
+
+    C = np.cov(xs, ys)
+    vals, vecs = np.linalg.eigh(C)
+    v = vecs[:, np.argmax(vals)]
+
+    angle = np.degrees(np.arctan2(v[1], v[0])) % 360
+    angles.append(angle)
+
+angles = np.array(angles)
+
+print("Mean:", angles.mean())
+print("Std:", angles.std())
+
+pd.DataFrame({"angle_deg": angles}).to_csv(
+    "axis_bootstrap_distribution.csv", index=False
+)import numpy as np
+import pandas as pd
+from scipy.linalg import eigh
+from sklearn.mixture import GaussianMixture
+from scipy.signal import lfilter
+import warnings
+
+warnings.filterwarnings("ignore")
+
+# =========================
+# LOAD DATA
+# =========================
+
+df = pd.read_csv("filtered_series.csv")
+
+# Expect columns: x, y
+x = df["x"].values
+y = df["y"].values
+X = np.vstack([x, y]).T
+
+# =========================
+# CORE FUNCTIONS
+# =========================
+
+def compute_pca_metrics(X):
+    cov = np.cov(X.T)
+    vals, vecs = eigh(cov)
+    idx = np.argsort(vals)[::-1]
+    vals = vals[idx]
+    vecs = vecs[:, idx]
+
+    axis = vecs[:, 0]
+    angle = np.degrees(np.arctan2(axis[1], axis[0]))
+
+    anisotropy = vals[0] / (vals[0] + vals[1])
+    planarity = vals[1] / vals[0]
+
+    return angle, anisotropy, planarity, axis
+
+
+def compute_velocity(X):
+    v = np.gradient(X, axis=0)
+    return v
+
+
+def directional_energy(v, g):
+    proj = np.dot(v, g)
+    return np.mean(proj**2)
+
+
+# =========================
+# (1) SMOOTHING SENSITIVITY
+# =========================
+
+print("\n=== (1) SMOOTHING SENSITIVITY ===")
+
+window_sizes = [3, 7, 15, 31, 61]
+
+results_smoothing = []
+
+for W in window_sizes:
+    kernel = np.ones(W) / W
+    xs = np.convolve(x, kernel, mode='same')
+    ys = np.convolve(y, kernel, mode='same')
+
+    Xs = np.vstack([xs, ys]).T
+
+    angle, anisotropy, planarity, _ = compute_pca_metrics(Xs)
+
+    results_smoothing.append([W, angle, anisotropy, planarity])
+
+df_smooth = pd.DataFrame(results_smoothing,
+                         columns=["window", "axis_angle", "anisotropy", "planarity"])
+
+df_smooth.to_csv("robustness_smoothing.csv", index=False)
+print(df_smooth)
+
+
+# =========================
+# (2) THRESHOLD ROBUSTNESS
+# =========================
+
+print("\n=== (2) THRESHOLD ROBUSTNESS ===")
+
+_, _, _, axis = compute_pca_metrics(X)
+
+proj = X @ axis
+
+# Mean threshold
+state_mean = (proj > np.mean(proj)).astype(int)
+
+# Median threshold
+state_median = (proj > np.median(proj)).astype(int)
+
+# GMM clustering
+gmm = GaussianMixture(n_components=2, random_state=0).fit(proj.reshape(-1, 1))
+state_gmm = gmm.predict(proj.reshape(-1, 1))
+
+
+def count_transitions(s):
+    return np.sum(np.abs(np.diff(s)))
+
+
+def dwell_times(s):
+    changes = np.where(np.diff(s) != 0)[0]
+    if len(changes) < 2:
+        return []
+    return np.diff(changes)
+
+
+results_states = {
+    "method": [],
+    "transitions": [],
+    "mean_dwell": []
+}
+
+for name, s in [
+    ("mean", state_mean),
+    ("median", state_median),
+    ("gmm", state_gmm)
+]:
+    results_states["method"].append(name)
+    results_states["transitions"].append(count_transitions(s))
+
+    dt = dwell_times(s)
+    results_states["mean_dwell"].append(np.mean(dt) if len(dt) > 0 else np.nan)
+
+df_states = pd.DataFrame(results_states)
+df_states.to_csv("robustness_states.csv", index=False)
+print(df_states)
+
+
+# =========================
+# (3) COLORED NOISE SURROGATE (AR1)
+# =========================
+
+print("\n=== (3) AR(1) SURROGATE TEST ===")
+
+def estimate_ar1(series):
+    x = series[:-1]
+    y = series[1:]
+    a = np.dot(x, y) / np.dot(x, x)
+    return a
+
+
+def generate_ar1(a, sigma, n):
+    noise = np.random.normal(0, sigma, n)
+    return lfilter([1], [1, -a], noise)
+
+
+v = compute_velocity(X)
+vx = v[:, 0]
+
+a = estimate_ar1(vx)
+sigma = np.std(vx)
+
+n_surrogates = 200
+
+anisotropy_vals = []
+
+for _ in range(n_surrogates):
+    xs = generate_ar1(a, sigma, len(x))
+    ys = generate_ar1(a, sigma, len(y))
+
+    Xs = np.vstack([xs, ys]).T
+    _, anisotropy, _, _ = compute_pca_metrics(Xs)
+    anisotropy_vals.append(anisotropy)
+
+anisotropy_vals = np.array(anisotropy_vals)
+
+real_aniso = compute_pca_metrics(X)[1]
+
+z_score = (real_aniso - np.mean(anisotropy_vals)) / np.std(anisotropy_vals)
+
+df_ar1 = pd.DataFrame({
+    "real_anisotropy": [real_aniso],
+    "surrogate_mean": [np.mean(anisotropy_vals)],
+    "surrogate_std": [np.std(anisotropy_vals)],
+    "z_score": [z_score]
+})
+
+df_ar1.to_csv("robustness_ar1.csv", index=False)
+print(df_ar1)
+
+
+# =========================
+# (4) AXIS STABILITY NULL TEST
+# =========================
+
+print("\n=== (4) AXIS STABILITY NULL TEST ===")
+
+def random_rotation_2d():
+    theta = np.random.uniform(0, 2*np.pi)
+    R = np.array([
+        [np.cos(theta), -np.sin(theta)],
+        [np.sin(theta),  np.cos(theta)]
+    ])
+    return R
+
+
+real_angles = []
+
+# Rolling axis (observed)
+window = 365
+
+for i in range(len(X) - window):
+    Xw = X[i:i+window]
+    angle, _, _, _ = compute_pca_metrics(Xw)
+    real_angles.append(angle)
+
+real_angles = np.unwrap(np.radians(real_angles))
+real_std = np.std(real_angles)
+
+
+# Null model
+null_stds = []
+
+for _ in range(200):
+    Xr = X.copy()
+
+    for i in range(len(Xr)):
+        R = random_rotation_2d()
+        Xr[i] = R @ Xr[i]
+
+    angles = []
+
+    for i in range(len(Xr) - window):
+        Xw = Xr[i:i+window]
+        angle, _, _, _ = compute_pca_metrics(Xw)
+        angles.append(angle)
+
+    angles = np.unwrap(np.radians(angles))
+    null_stds.append(np.std(angles))
+
+null_stds = np.array(null_stds)
+
+z_axis = (real_std - np.mean(null_stds)) / np.std(null_stds)
+
+df_axis = pd.DataFrame({
+    "real_std": [real_std],
+    "null_mean": [np.mean(null_stds)],
+    "null_std": [np.std(null_stds)],
+    "z_score": [z_axis]
+})
+
+df_axis.to_csv("robustness_axis_stability.csv", index=False)
+print(df_axis)
+
+
+# =========================
+# FINAL SUMMARY
+# =========================
+
+print("\n=== ROBUSTNESS SUMMARY ===")
+print(f"Smoothing invariance: see robustness_smoothing.csv")
+print(f"State robustness: see robustness_states.csv")
+print(f"AR1 significance Z: {z_score:.3f}")
+print(f"Axis stability Z: {z_axis:.3f}")import numpy as np
+import pandas as pd
+
+def phase_randomize(x):
+    X = np.fft.rfft(x)
+    phases = np.angle(X)
+    amps = np.abs(X)
+
+    random_phases = np.random.uniform(0, 2*np.pi, len(phases))
+    random_phases[0] = phases[0]  # preserve DC
+
+    X_new = amps * np.exp(1j * random_phases)
+    return np.fft.irfft(X_new, n=len(x))
+
+# load
+df = pd.read_csv("filtered_series.csv")
+
+x = df["x_filt"].values
+y = df["y_filt"].values
+
+N = 500
+anisotropy = []
+
+for i in range(N):
+    xs = phase_randomize(x)
+    ys = phase_randomize(y)
+
+    v = np.vstack([np.diff(xs), np.diff(ys)]).T
+
+    # direction energy
+    angles = np.arctan2(v[:,1], v[:,0])
+    hist, _ = np.histogram(angles, bins=36)
+    anisotropy.append(np.max(hist))
+
+pd.DataFrame({"anisotropy": anisotropy}).to_csv(
+    "phase_surrogate_results.csv", index=False
+)
+
+print("✅ Phase surrogate test complete")import re
+from pathlib import Path
+
+TEX_PATH = "polar5.tex"
+
+text = Path(TEX_PATH).read_text()
+
+# --------------------------------------------------
+# 1. ENSURE HYPERREF + AUTOREF
+# --------------------------------------------------
+
+if r"\usepackage{hyperref}" not in text:
+    text = text.replace(
+        r"\usepackage{graphicx}",
+        r"\usepackage{graphicx}" + "\n\\usepackage{hyperref}\n\\usepackage{cleveref}"
+    )
+
+# --------------------------------------------------
+# 2. SECTION LABEL INJECTION (robust anchors)
+# --------------------------------------------------
+
+section_labels = {
+    r"\\section\{Introduction\}": "sec:introduction",
+    r"\\section\{Results\}": "sec:results",
+    r"\\section\{Residual Phase-Space Structure": "sec:residual_phase",
+    r"\\section\{Loop-Center Evolution": "sec:loop_center",
+    r"\\section\{Methods": "sec:methods",
+    r"\\section\{Discussion": "sec:discussion",
+    r"\\section\{Limitations": "sec:limitations",
+    r"\\section\{Conclusion": "sec:conclusion"
+}
+
+for pattern, label in section_labels.items():
+    text = re.sub(
+        pattern,
+        lambda m: m.group(0) + f"\n\\label{{{label}}}",
+        text
+    )
+
+# --------------------------------------------------
+# 3. FIX BROKEN ef REFERENCES
+# --------------------------------------------------
+
+text = re.sub(r"Section\s+efsubsec:([a-zA-Z0-9_]+)", r"Section~\\ref{subsec:\1}", text)
+text = re.sub(r"Section\s+ef\{([^}]+)\}", r"Section~\\ref{\1}", text)
+
+# --------------------------------------------------
+# 4. CONVERT STATIC "Section X" → DYNAMIC
+# --------------------------------------------------
+
+section_map = {
+    "Section VI": r"Section~\ref{sec:methods}",
+    "Section V": r"Section~\ref{sec:loop_center}",
+    "Section IV": r"Section~\ref{sec:residual_phase}",
+    "Section III": r"Section~\ref{sec:results}",
+    "Section II": r"Section~\ref{sec:introduction}",
+    "Section 6": r"Section~\ref{sec:discussion}",
+    "Section 5": r"Section~\ref{sec:methods}",
+    "Section 4": r"Section~\ref{sec:results}",
+    "Section 3": r"Section~\ref{sec:introduction}",
+    "Section 2": r"Section~\ref{sec:introduction}",
+}
+
+for k, v in section_map.items():
+    text = text.replace(k, v)
+
+# --------------------------------------------------
+# 5. FIX SPECIFIC KNOWN BROKEN SENTENCE
+# --------------------------------------------------
+
+text = re.sub(
+    r"This interpretation is reinforced by the loop-center\s*analysis.*?angular\s*velocity\.",
+    (
+        "This interpretation is reinforced by the loop-center analysis "
+        "(Section~\\ref{sec:loop_center}), which demonstrates that the "
+        "low-frequency component is not periodic but evolves along a "
+        "drifting manifold with variable angular velocity."
+    ),
+    text,
+    flags=re.DOTALL
+)
+
+# --------------------------------------------------
+# 6. REMOVE DUPLICATE CONCLUSION PARAGRAPH
+# --------------------------------------------------
+
+text = re.sub(
+    r"(This leads to a refined interpretation\..+?)\n.*?\1",
+    r"\1",
+    text,
+    flags=re.DOTALL
+)
+
+# --------------------------------------------------
+# 7. INSERT PHASE-PRESERVING SURROGATE RESULTS
+# --------------------------------------------------
+
+null_section = r"""
+\subsection{Phase-Preserving Surrogate Test}
+\label{subsec:phase_surrogate_results}
+
+To address limitations of AR(1) surrogates, we implement a
+phase-preserving null model constructed via Fourier
+phase randomization.
+
+Each coordinate is transformed to the frequency domain,
+its phase randomized while preserving the amplitude
+spectrum, and inverse transformed to produce surrogate
+realizations that retain full autocorrelation structure
+while disrupting geometric coupling.
+
+Applying this test yields the following results:
+
+\begin{itemize}
+\item The magnitude of directional anisotropy remains within
+the surrogate distribution, consistent with AR(1) results.
+\item However, phase–space structure is significantly degraded:
+loop coherence is lost and the slow manifold collapses into
+diffusive behavior.
+\item State persistence and dwell-time structure are reduced,
+with surrogate switching approaching exponential statistics.
+\end{itemize}
+
+These results indicate that while anisotropy magnitude alone
+does not exceed stochastic expectations, the coupled
+phase–space structure and state organization cannot be
+reproduced by phase-preserving stochastic processes.
+
+Accordingly, the strongest evidence for intrinsic dynamics
+lies not in directional magnitude, but in the persistence
+of structured trajectories under null models that preserve
+temporal correlation.
+
+"""
+
+# insert into METHODS end
+text = re.sub(
+    r"(VI\. METHODS.*?)(\\section|\Z)",
+    lambda m: m.group(1) + null_section + "\n" + m.group(2),
+    text,
+    flags=re.DOTALL
+)
+
+# --------------------------------------------------
+# 8. TIGHTEN LOOP COUNT CLAIM (reviewer issue)
+# --------------------------------------------------
+
+text = re.sub(
+    r"This agreement provides a purely geometric–temporal closure.*?representations\.",
+    (
+        "This agreement provides a consistency check between phase-space "
+        "structure and spectral content. However, because loop identification "
+        "is derived from band-limited data, this correspondence should be "
+        "interpreted as supportive rather than independent evidence."
+    ),
+    text,
+    flags=re.DOTALL
+)
+
+# --------------------------------------------------
+# 9. MODERATE DOUBLE-WELL CLAIM
+# --------------------------------------------------
+
+text = text.replace(
+    "which displays a double-well structure.",
+    "which suggests a bimodal structure, though the separation of wells is shallow and should be interpreted cautiously."
+)
+
+# --------------------------------------------------
+# SAVE
+# --------------------------------------------------
+
+Path("polar5_final.tex").write_text(text)
+
+print("✅ FINAL PATCH COMPLETE → polar5_final.tex")

@@ -16,6 +16,10 @@ docs/*.aux
 docs/*.out
 docs/*.log
 docs/*.pdf
+docs/**/*.aux
+docs/**/*.out
+docs/**/*.log
+docs/**/*.pdf
 .codex/
 .github/
 .hidden
