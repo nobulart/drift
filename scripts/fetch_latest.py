@@ -22,7 +22,8 @@ from data_paths import DATA_DIR, read_json, write_json
 
 
 FRESHNESS_WINDOWS = {
-    "eop": timedelta(hours=12),
+    "eop_daily": timedelta(hours=1),
+    "eop_full": timedelta(hours=12),
     "grace": timedelta(days=7),
     "gfz_kp": timedelta(hours=6),
 }
@@ -119,14 +120,13 @@ def should_rebuild_combined(output_filename, dependency_filenames):
     return output_path.stat().st_mtime < newest_dependency
 
 
-def fetch_latest_eop():
-    """Fetch latest IERS EOP data from finals.daily.json (true daily Bulletin A)."""
+def fetch_latest_eop(fetch_full=False):
+    """Fetch latest IERS EOP data from finals.daily.json, optionally refreshing finals.all.json."""
     print("Fetching latest IERS EOP data (daily)...")
 
      # finals.daily.json is updated with each Bulletin A cycle and contains
      # both confirmed (type=final) and predicted entries - we only want confirmed.
-     # We also fetch the full cumulative file and persist it for compatibility with
-     # build_eop.py which reads from it.
+     # The full cumulative file is much larger, so refresh it on its own slower gate.
     daily_url = "https://datacenter.iers.org/data/json/finals.daily.json"
     all_url = "https://datacenter.iers.org/data/json/finals.all.json"
     all_data = None
@@ -135,12 +135,13 @@ def fetch_latest_eop():
         with urllib.request.urlopen(daily_url) as response:
             daily_json = json.loads(response.read().decode("utf-8"))
 
-        # Also fetch the full cumulative file for historical continuity
-        try:
-            with urllib.request.urlopen(all_url) as response:
-                all_data = json.loads(response.read().decode("utf-8"))
-        except Exception as e:
-            print(f"  WARN: Could not fetch cumulative file ({e})")
+        if fetch_full:
+            print("  Refreshing full cumulative IERS EOP data ...")
+            try:
+                with urllib.request.urlopen(all_url) as response:
+                    all_data = json.loads(response.read().decode("utf-8"))
+            except Exception as e:
+                print(f"  WARN: Could not fetch cumulative file ({e})")
 
         daily_data = daily_json.get("EOP", {}).get("data", {}).get("timeSeries", [])
 
@@ -217,7 +218,10 @@ def fetch_latest_eop():
 
         final_list = list(reversed(result))
 
-        # Persist the full cumulative file for build_eop.py compatibility
+        if not final_list:
+            print("  WARNING: No confirmed daily EOP entries found; leaving local EOP files unchanged.")
+            return None
+
         if all_data is not None:
             write_json("finals.all.json", all_data)
             print("  Updated data/finals.all.json")
@@ -231,15 +235,15 @@ def fetch_latest_eop():
     except Exception as e:
         print(f"  WARNING: Could not fetch EOP data: {e}")
 
-         # Attempt cumulative fallback
-        try:
-            with urllib.request.urlopen(all_url) as response:
-                all_data = json.loads(response.read().decode("utf-8"))
-            write_json("finals.all.json", all_data)
-            print("  Fallback: saved finals.all.json")
-            return fetch_latest_eop_fallback(all_data)
-        except Exception as e2:
-            print(f"  Fallback also failed: {e2}")
+        if fetch_full:
+            try:
+                with urllib.request.urlopen(all_url) as response:
+                    all_data = json.loads(response.read().decode("utf-8"))
+                write_json("finals.all.json", all_data)
+                print("  Fallback: saved finals.all.json")
+                return fetch_latest_eop_fallback(all_data)
+            except Exception as e2:
+                print(f"  Fallback also failed: {e2}")
             return None
 
 
@@ -410,15 +414,16 @@ def main():
      # 1. eop_historic.json (rebuild from daily + all merged data)
     print("\n1. EOP Data (IERS)")
 
-          # Fetch latest confirmed data from daily JSON
-    eop_stale = is_stale("eop_latest.json", FRESHNESS_WINDOWS["eop"], now, args.force)
-    if eop_stale:
-        eop_data = fetch_latest_eop()
+          # Fetch latest confirmed data from daily JSON hourly; refresh full cumulative data less often.
+    eop_daily_stale = is_stale("eop_latest.json", FRESHNESS_WINDOWS["eop_daily"], now, args.force)
+    eop_full_stale = is_stale("finals.all.json", FRESHNESS_WINDOWS["eop_full"], now, args.force)
+    if eop_daily_stale or eop_full_stale:
+        eop_data = fetch_latest_eop(fetch_full=eop_full_stale)
         if eop_data is not None:
             save_json(os.path.join(output_dir, "eop_latest.json"), eop_data)
 
               # Rebuild eop_historic.json by merging daily + full all data
-              # fetch_latest_eop() already updates finals.all.json on disk
+              # build_eop.py uses the local cached finals.all.json when available.
             print("  Rebuilding eop_historic.json from merged daily + all data ...")
             try:
                 import subprocess
@@ -436,7 +441,11 @@ def main():
             except Exception as e:
                 print(f"  ERROR: Failed to rebuild eop_historic.json: {e}")
     else:
-        print(f"  Skipping EOP fetch; local eop_latest.json is fresh ({describe_freshness('eop_latest.json', FRESHNESS_WINDOWS['eop'], now)}).")
+        print(
+            "  Skipping EOP fetch; local files are fresh "
+            f"(daily {describe_freshness('eop_latest.json', FRESHNESS_WINDOWS['eop_daily'], now)}; "
+            f"full {describe_freshness('finals.all.json', FRESHNESS_WINDOWS['eop_full'], now)})."
+        )
 
      # Fetch GRACE
     print("\n2. GRACE Data")
