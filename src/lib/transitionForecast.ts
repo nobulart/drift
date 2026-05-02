@@ -17,7 +17,7 @@ export function getPhaseBin(theta: number, phase_bins: number[]): number {
  * @param state_now Current dynamical state (0=Stable, 1=Pre, 2=Transition, 3=Post)
  * @param lagKernel Normalized lag kernel
  * @param baseProb Base transition probability P0 (0-1)
- * @returns Transition forecast with probability curve and metrics
+ * @returns Transition probability curve and summary metrics
  */
 export function predictTransitionCurve(
   theta_now: number,
@@ -36,6 +36,8 @@ export function predictTransitionCurve(
       expected_time: NaN,
       peak_time: NaN,
       cumulative: [],
+      probability_level: 'UNKNOWN',
+      probability_message: 'No lag kernel data available',
       alert_level: 'UNKNOWN',
       alert_message: 'No lag kernel data available',
       phase_bin: 0,
@@ -94,7 +96,7 @@ export function predictTransitionCurve(
   
   const peak_time = lags[peak_idx];
   
-  // Determine alert level based on cumulative probability at 30 days
+  // Summarize cumulative transition probability at 30 days.
   let closest_idx = 0;
   let min_diff = Math.abs(lags[0] - 30);
   for (let i = 1; i < lags.length; i++) {
@@ -112,13 +114,13 @@ export function predictTransitionCurve(
   
   if (P_30d > 0.6) {
     alert_level = 'HIGH';
-    alert_message = `HIGH PROBABILITY SHIFT (30d): P=${P_30d.toFixed(2)}`;
+    alert_message = `HIGH TRANSITION PROBABILITY (30d): P=${P_30d.toFixed(2)}`;
   } else if (P_30d > 0.3) {
     alert_level = 'MODERATE';
-    alert_message = `MODERATE RISK (30d): P=${P_30d.toFixed(2)}`;
+    alert_message = `MODERATE TRANSITION PROBABILITY (30d): P=${P_30d.toFixed(2)}`;
   } else {
     alert_level = 'LOW';
-    alert_message = `LOW RISK (30d): P=${P_30d.toFixed(2)}`;
+    alert_message = `LOW TRANSITION PROBABILITY (30d): P=${P_30d.toFixed(2)}`;
   }
   
   return {
@@ -127,6 +129,8 @@ export function predictTransitionCurve(
     expected_time,
     peak_time,
     cumulative,
+    probability_level: alert_level,
+    probability_message: alert_message,
     alert_level,
     alert_message,
     phase_bin: phase_idx,
@@ -135,7 +139,7 @@ export function predictTransitionCurve(
 }
 
 /**
- * Complete transition forecast pipeline.
+ * Complete transition probability pipeline.
  * 
  * This is the main function to call from external code.
  */
@@ -182,7 +186,7 @@ export function getPhaseInterpolatedKernel(
 }
 
 /**
- * Get alert color based on alert level.
+ * Get probability color based on summary level.
  */
 export function getAlertColor(level: string): string {
   switch (level) {
@@ -198,7 +202,7 @@ export function getAlertColor(level: string): string {
 }
 
 /**
- * Get alert background color based on alert level.
+ * Get probability background color based on summary level.
  */
 export function getAlertBgColor(level: string): string {
   switch (level) {

@@ -32,7 +32,7 @@
 \maketitle
 
 \begin{abstract}
-DRIFT is a constraint-first dashboard for monitoring polar motion as a geometric dynamical system over the observed record. It emphasizes the strongest findings of the underlying paper---low-dimensional confinement, near-planar organization, and robust two-state structure---while treating directional alignment and geomagnetic comparison more cautiously. The system combines automated data retrieval, cache-aware preprocessing, rolling diagnostics, exploratory transition forecasting, and interactive visualization in a single deployable application. This white paper describes the dashboard's guiding principles, its frame of reference, the ingestion and caching pipeline, and the interpretation of the major panels presented to end users.
+DRIFT is a constraint-first dashboard for monitoring polar motion as a geometric dynamical system over the observed record. It emphasizes the strongest findings of the underlying paper---low-dimensional confinement, near-planar organization, and robust two-state structure---while treating directional alignment and geomagnetic comparison more cautiously. The system combines automated data retrieval, cache-aware preprocessing, rolling diagnostics, experimental transition-probability diagnostics, and interactive visualization in a single deployable application. This white paper describes the dashboard's guiding principles, its frame of reference, the ingestion and caching pipeline, and the interpretation of the major panels presented to end users.
 \end{abstract}
 
 \section{Purpose}
@@ -44,7 +44,7 @@ The dashboard therefore emphasizes four design goals:
   \item \textbf{Physical anchoring.} Visual outputs should be tied to a stable Earth-referenced frame rather than arbitrary mathematical rotations.
   \item \textbf{Operational freshness.} Automated retrieval and caching should keep the displayed state aligned with the latest available source data.
   \item \textbf{Interpretability.} Each panel should report a specific aspect of system state, with concise guides explaining what the viewer should look for.
-  \item \textbf{Cross-panel coherence.} The 2D charts, forecast layer, and 3D view should all describe the same underlying state without conflicting conventions.
+  \item \textbf{Cross-panel coherence.} The 2D charts, transition-probability layer, and 3D view should all describe the same underlying state without conflicting conventions.
 \end{enumerate}
 
 \section{System Overview}
@@ -77,7 +77,7 @@ The dashboard is intentionally multi-panel. No single metric is treated as a com
   \item drift-axis longitude and angular diagnostics,
   \item orthogonal deviation and phase structure,
   \item geomagnetic alignment and geomagnetic activity as contextual comparisons,
-  \item short-horizon transition forecasts as exploratory summaries.
+  \item short-horizon transition probabilities as experimental summaries.
 \end{itemize}
 
 This design encourages the user to read persistent changes across panels rather than react to isolated spikes.
@@ -105,7 +105,7 @@ The current dashboard integrates several source families:
 Earth orientation & IERS EOP products & Daily / rapid updates & Polar motion and related orientation time series \\
 Geomagnetic activity & GFZ Kp service and related indices & Sub-daily upstream, normalized daily in cache & Activity forcing context and dipole-strength proxy \\
 Gravity / inertia products & GRACE-derived or processed inertia artifacts & Episodic / batch refresh & Principal frame and orthogonal structure diagnostics \\
-Derived rolling diagnostics & Local Python computation & On rebuild / on demand & Drift axis, angular relations, conditional lag response, and forecast inputs \\
+Derived rolling diagnostics & Local Python computation & On rebuild / on demand & Drift axis, angular relations, conditional lag response, and transition-probability inputs \\
 \bottomrule
 \end{longtable}
 
@@ -136,34 +136,34 @@ These geomagnetic products are included as timing and comparison context. Agreem
 \subsection{Orthogonal Deviation Ratio}
 The orthogonal deviation ratio $R(t)$ summarizes how balanced or elongated the inferred structure is. Values nearer one indicate a more even distribution across orthogonal directions, while lower values indicate a more anisotropic or elongated state. The panel is intended as a regime-structure indicator rather than a direct event detector.
 
-\subsection{Transition Forecasting}
-Rather than reducing the forecast to a single probability, DRIFT computes a time-resolved forecast curve. This allows the user to inspect:
+\subsection{Transition Probability}
+Rather than reducing the experimental layer to a single probability, DRIFT computes a time-resolved transition-probability curve. This allows the user to inspect:
 \begin{itemize}[leftmargin=1.5em]
-  \item the most likely transition horizon,
-  \item the expected time to transition,
+  \item the highest-density transition-probability horizon,
+  \item the expected probability horizon,
   \item the cumulative likelihood within a chosen horizon,
   \item the active state conditioning used by the model.
 \end{itemize}
 
-This early-warning framing is especially useful when probability remains modest but the expected time is contracting. The forecast should be interpreted as a lag-conditioned summary of how the present state compares with earlier transition-like episodes, not as a deterministic event prediction.
+This framing is especially useful when probability remains modest but the expected horizon is contracting. The panel should be interpreted as a lag-conditioned summary of how the present state compares with earlier transition-like episodes, not as a deterministic event prediction.
 
 \section{Dashboard Outputs}
 The default panel order is tuned to support a top-down reading of system state. The opening sequence places the most decision-oriented outputs first:
 \begin{enumerate}[leftmargin=1.5em]
-  \item \textbf{Transition Forecast}
+  \item \textbf{Transition Probability$^{\mathrm{experimental}}$}
   \item \textbf{3D Vector View}
   \item \textbf{Polar Motion}
 \end{enumerate}
 
 Other panels expand the interpretation space around these primary views.
 
-\subsection{Transition Forecast}
+\subsection{Transition Probability$^{\mathrm{experimental}}$}
 This panel reports the forward probability curve for a state transition. The key summary cards are:
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Peak Time:} the horizon of highest forecast density,
-  \item \textbf{Expected Time:} the mean forecast delay, now also shown as a projected calendar date,
-  \item \textbf{$P(\leq 30d)$ or equivalent windowed probability:} near-term cumulative risk,
-  \item \textbf{Alert Level:} a compact severity cue.
+  \item \textbf{Peak Time:} the horizon of highest probability density,
+  \item \textbf{Expected Time:} the mean probability horizon, now also shown as a projected calendar date,
+  \item \textbf{$P(\leq 30d)$ or equivalent windowed probability:} near-term cumulative probability,
+  \item \textbf{Transition Probability:} a compact LOW/MODERATE/HIGH probability cue.
 \end{itemize}
 
 \subsection{3D Vector View}
@@ -214,13 +214,13 @@ The dashboard is not intended to provide deterministic causal claims from a sing
   \item begin with Polar Motion, Drift Direction, and Orthogonal Deviation to assess the geometry itself,
   \item inspect the phase panels for loop structure, bursts, and fast-slow organization,
   \item use the 3D and overlay panels for contextual comparison,
-  \item read the Transition Forecast as an exploratory summary of transition-like risk in the current state.
+  \item read Transition Probability$^{\mathrm{experimental}}$ and the Phase-Locked Escape Model$^{\mathrm{experimental}}$ as exploratory summaries of transition-like structure in the current state.
 \end{enumerate}
 
 \section{Current Limitations}
 Several limits are important:
 \begin{itemize}[leftmargin=1.5em]
-  \item forecast outputs depend on the quality and stability of the rolling diagnostic layer,
+  \item transition-probability outputs depend on the quality and stability of the rolling diagnostic layer,
   \item directional alignment and apparent axis stability are weaker claims than the geometric structure itself,
   \item auxiliary context panels provide comparison evidence rather than standalone proof of causation,
   \item daily normalization of some source products improves coherence but can suppress higher-frequency detail,

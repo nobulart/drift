@@ -1,8 +1,8 @@
 export const PANEL_GUIDES: Record<string, string> = {
   forecast:
-    'Exploratory transition-risk view derived from lag-conditioned historical structure. Rising probability or earlier peaks suggest the current state resembles past transition episodes, but this is not a deterministic forecast.',
+    'Experimental transition-probability view derived from lag-conditioned historical structure. Rising probability or earlier peaks suggest the current state resembles past transition episodes, but this is a comparative similarity diagnostic rather than a deterministic prediction.',
   phaseEscape:
-    'Phase-conditioned metastable escape diagnostic built from internal DRIFT state and DE442 torque-proxy phases. Use it to inspect residual phase misalignment, phase drift, curvature, stability, barrier ratio, and the Kramers-like comparative risk index without reading the composite as a deterministic driver.',
+    'Experimental phase-conditioned metastable escape diagnostic built from internal DRIFT state and DE442 torque-proxy phases. Use it to inspect residual phase misalignment, phase drift, curvature, stability, barrier ratio, and the Kramers-like comparative index without reading the composite as a deterministic driver.',
   sphere:
     'Compare the drift axis and principal frame in one Earth-fixed view. Use it to inspect geometry and reorientation across the observed record.',
   polar:
@@ -27,10 +27,16 @@ export const PANEL_GUIDES: Record<string, string> = {
     'Maps lag response by phase/state so you can see whether the system reacts differently in different parts of the cycle. Localized hotspots support phase-dependent dynamics.',
 };
 
-export const DOCS_PANEL_GUIDES = [
+interface DocsPanelGuide {
+  title: string;
+  guide: string;
+  experimental?: boolean;
+}
+
+export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: '3D Vector View', guide: PANEL_GUIDES.sphere },
-  { title: 'Transition Forecast', guide: PANEL_GUIDES.forecast },
-  { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape },
+  { title: 'Transition Probability', guide: PANEL_GUIDES.forecast, experimental: true },
+  { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape, experimental: true },
   { title: 'Polar Motion (XP, YP)', guide: PANEL_GUIDES.polar },
   { title: 'Drift Direction', guide: PANEL_GUIDES.drift },
   { title: 'Phase Portrait', guide: PANEL_GUIDES.phase },
@@ -81,21 +87,21 @@ export const DOCS_OUTPUTS = [
       'The 3D Vector View and overlays place the geometric diagnostics next to any available external context. Fullscreen views preserve the same controls, selected traces, ranges, and guide text as their dashboard panels, which keeps timing comparisons and cross-checks consistent while causal interpretation remains conservative.',
   },
   {
-    title: 'Exploratory transition monitoring',
+    title: 'Experimental transition probability',
     body:
-      'The Transition Forecast turns the current state and lag-conditioned history into a forward-looking risk curve. It is most useful as an alerting and prioritization layer that tells you when the present geometry resembles earlier transition-like behavior.',
+      'The Transition Probability panel turns the current state and lag-conditioned history into a forward probability curve. It is most useful as an experimental similarity layer that shows when the present geometry resembles earlier transition-like behavior.',
   },
   {
-    title: 'Phase-conditioned escape-energy diagnostics',
+    title: 'Experimental phase-conditioned escape-energy diagnostics',
     body:
-      'The Phase-Locked Escape Model reports phase-dependent escape probability, residual phase drift, curvature, stability, barrier ratio, and a Kramers-like index that uses R(t) as a noise proxy. Treat these as comparative risk diagnostics, not deterministic transition claims.',
+      'The Phase-Locked Escape Model reports phase-dependent escape probability, residual phase drift, curvature, stability, barrier ratio, and a Kramers-like index that uses R(t) as a noise proxy. Treat these as comparative diagnostics, not deterministic transition claims.',
   },
 ];
 
 export const DOCS_LIMITATIONS = [
   'The paper supports low-dimensional geometry and bistable structure more strongly than it supports any fixed Earth-aligned direction or external driver.',
   'The dashboard’s geomagnetic comparisons are contextual; they should not be read as standalone evidence of coupling or causation.',
-  'Forecast outputs depend on rolling diagnostics and conditional lag structure, so they are exploratory indicators rather than validated predictive guarantees.',
+  'Transition Probability outputs depend on rolling diagnostics and conditional lag structure, so they are exploratory indicators rather than validated predictive guarantees.',
   'Phase-Locked Escape Model outputs are phase-conditioned diagnostics; barrier ratio and Kramers-like index values are comparative indicators and should not be interpreted as physical joules, literal thermal escape rates, or deterministic timing.',
   'All conclusions are tied to the observational window represented in the available data and may not generalize outside that interval.',
   'Source freshness is bounded by upstream publication cadence, service availability, local timestamp-based refresh windows, and the daily normalization used for some inputs.',

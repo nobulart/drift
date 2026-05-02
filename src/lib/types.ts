@@ -92,6 +92,8 @@ export interface TransitionForecast {
   expected_time: number;
   peak_time: number;
   cumulative: number[];
+  probability_level: 'LOW' | 'MODERATE' | 'HIGH' | 'UNKNOWN';
+  probability_message: string;
   alert_level: 'LOW' | 'MODERATE' | 'HIGH' | 'UNKNOWN';
   alert_message: string;
   phase_bin: number;

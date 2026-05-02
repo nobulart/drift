@@ -11,7 +11,7 @@
 \maketitle
 
 \begin{abstract}
-We present the DRIFT (Directional Rotational Inference and Forecasting Toolkit) dashboard, a phase-space–based monitoring system for Earth’s polar motion. Departing from conventional additive forcing models, DRIFT adopts a geometry-first approach, identifying invariant structure directly from observational data. The system reveals a low-dimensional organization of polar motion, characterized by a dominant axis and a two-state regime structure. By embedding this structure into a real-time diagnostic and forecasting framework, DRIFT enables early detection of rotational transitions through phase-space deviations and lag-response structure. This work formalizes both the theoretical basis and implementation of DRIFT, and provides a panel-by-panel interpretation of its analytical components.
+We present the DRIFT (Directional Rotational Inference and Forecasting Toolkit) dashboard, a phase-space–based monitoring system for Earth’s polar motion. Departing from conventional additive forcing models, DRIFT adopts a geometry-first approach, identifying invariant structure directly from observational data. The system reveals a low-dimensional organization of polar motion, characterized by a dominant axis and a two-state regime structure. By embedding this structure into a real-time diagnostic framework with experimental transition-probability panels, DRIFT helps compare current phase-space deviations and lag-response structure with earlier transition-like episodes. This work formalizes both the theoretical basis and implementation of DRIFT, and provides a panel-by-panel interpretation of its analytical components.
 \end{abstract}
 
 \section{Introduction}
@@ -26,7 +26,7 @@ In contrast, this work inverts the problem. Rather than assuming causes, we firs
 \item Intermittent switching between two dynamical states
 \end{itemize}
 
-The DRIFT framework operationalizes these findings into a monitoring and forecasting system.
+The DRIFT framework operationalizes these findings into a monitoring and experimental transition-probability system.
 
 \section{Conceptual Framework}
 
@@ -74,18 +74,18 @@ Each panel represents a projection of the system into a diagnostic subspace.
 
 \section{Panel-by-Panel Description}
 
-\subsection{1. Transition Forecast}
+\subsection{1. Transition Probability$^{\mathrm{experimental}}$}
 
 This panel estimates the probability of an upcoming regime transition.
 
 \begin{itemize}
 \item The probability curve represents a forward convolution of lag-response structure.
-\item Peak time indicates expected transition horizon.
-\item Cumulative probability tracks integrated risk.
+\item Peak time indicates the highest-density transition-probability horizon.
+\item Cumulative probability tracks integrated probability.
 \end{itemize}
 
 Interpretation:
-High early probability indicates imminent transition; delayed peaks suggest latent instability.
+High early probability indicates near-horizon transition similarity; delayed peaks suggest longer-horizon transition similarity.
 
 \subsection{2. 3D Vector View}
 
@@ -192,12 +192,12 @@ Phase-conditioned lag structure.
 Interpretation:
 Confirms that system response depends on phase state, not just event occurrence.
 
-\section{Forecasting Framework}
+\section{Transition-Probability Framework}
 
-DRIFT forecasting emerges from:
+DRIFT transition-probability summaries emerge from:
 
 \begin{itemize}
-\item Detection of phase instability
+\item Detection of phase reorganization
 \item Lag-response amplification
 \item Alignment degradation
 \end{itemize}
@@ -222,7 +222,7 @@ suggests the presence of an underlying weakly coupled rotational system.
 
 \section{Conclusion}
 
-The DRIFT dashboard transforms polar motion analysis into a real-time diagnostic and forecasting tool. By grounding inference in geometry and phase-space structure, it provides a robust framework for identifying and anticipating rotational regime shifts.
+The DRIFT dashboard transforms polar motion analysis into a real-time diagnostic tool with experimental transition-probability summaries. By grounding inference in geometry and phase-space structure, it provides a robust framework for identifying and comparing rotational regime shifts.
 
 \section*{Future Work}
 

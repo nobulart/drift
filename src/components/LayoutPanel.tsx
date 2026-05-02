@@ -12,6 +12,7 @@ interface PanelProps {
   className?: string;
   style?: React.CSSProperties;
   visible?: boolean;
+  experimental?: boolean;
   collapsed?: boolean;
   onToggleVisibility?: () => void;
   onToggleCollapse?: () => void;
@@ -26,6 +27,7 @@ export default function Panel({
   className,
   style,
   visible = true,
+  experimental = false,
   collapsed = false,
   onToggleVisibility,
   onToggleCollapse,
@@ -152,7 +154,7 @@ export default function Panel({
       )}
        <div
          ref={panelRef}
-         className={`bg-[#111827] p-4 rounded-xl shadow-lg border border-[#374151] flex flex-col transition-all duration-300 ${
+         className={`${experimental ? 'bg-[#101923] border-[#38bdf8]/60 shadow-cyan-950/20' : 'bg-[#111827] border-[#374151]'} p-4 rounded-xl shadow-lg border flex flex-col transition-all duration-300 ${
            isModalOpen
              ? 'fixed left-1/2 top-1/2 z-[9999] max-h-[90vh] w-[min(85vw,1920px)] -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 duration-200'
              : 'h-full'
@@ -162,6 +164,11 @@ export default function Panel({
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <h3 className="text-sm font-bold text-[#e5e7eb] uppercase tracking-wider truncate pr-2">
             {isModalOpen ? `${title} Fullscreen` : title}
+            {experimental && (
+              <sup className="ml-1 align-super text-[9px] font-semibold lowercase tracking-normal text-[#38bdf8]">
+                experimental
+              </sup>
+            )}
           </h3>
           <div className="flex items-center gap-1 flex-shrink-0">
             {onToggleCollapse && !isModalOpen && (
@@ -201,8 +208,8 @@ export default function Panel({
         </div>
 
         {!effectiveCollapsed && guide && (
-          <div className="mb-4 rounded-lg border border-[#243041] bg-[#0b1220] px-3 py-2 text-xs leading-5 text-[#9fb0c6]">
-            <span className="mr-2 font-semibold uppercase tracking-[0.18em] text-[#60a5fa]">Guide</span>
+          <div className={`mb-4 rounded-lg border px-3 py-2 text-xs leading-5 text-[#9fb0c6] ${experimental ? 'border-[#38bdf8]/40 bg-[#082f49]/30' : 'border-[#243041] bg-[#0b1220]'}`}>
+            <span className={`mr-2 font-semibold uppercase tracking-[0.18em] ${experimental ? 'text-[#38bdf8]' : 'text-[#60a5fa]'}`}>Guide</span>
             {guide}
           </div>
         )}

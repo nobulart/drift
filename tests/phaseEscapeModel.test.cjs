@@ -5,6 +5,7 @@ const {
   DEFAULT_PHASE_ESCAPE_MODELS,
   angularDiff,
   angularDistanceDegrees,
+  classifyBasinOccupancy,
   classifyEnergyState,
   classifyPhaseDirection,
   classifyPhaseRegion,
@@ -14,22 +15,29 @@ const {
   computePhaseAcceleration,
   compositePhase,
   computePhaseDrift,
+  countZeroCrossings,
   detectOscillatory,
   energyBarrierRatio,
   degreesToRadians,
   estimateTimeToAlignmentDays,
+  estimateBasinAmplitude,
+  estimateNoiseProxy,
+  estimateOscillationFrequency,
   escapeEnergyBarrier,
   escapeGradient,
   escapeProbability,
   instabilityIndicator,
+  localKramersIndex,
   kramersLikeEscapeIndex,
   movingAverage,
   phaseKineticEnergy,
   phaseMisalignment,
   phasePotentialEnergy,
   phaseTotalEnergy,
+  rms,
   smoothExp,
   stabilityScore,
+  std,
   wrapDegrees,
   wrapPhase,
 } = require('/private/tmp/drift-phase-test/phaseEscapeModel.js');
@@ -197,6 +205,57 @@ test('energy state thresholds and Kramers-like index are ordered', () => {
 
   const low = kramersLikeEscapeIndex(0.1, 1, 0.2);
   const high = kramersLikeEscapeIndex(0.9, 1, 0.2);
+  assert.ok(low !== null && high !== null);
+  assert.ok(high > low);
+});
+
+test('basin amplitude and noise helpers handle empty, flat, and wider oscillations', () => {
+  assert.equal(rms([]), 0);
+  assert.equal(std([]), 0);
+  assert.equal(estimateBasinAmplitude([]), 0);
+  assert.equal(estimateBasinAmplitude([12, 12, 12, 12]), 0);
+  assert.ok(estimateBasinAmplitude([-30, 0, 30, 0, -30]) > estimateBasinAmplitude([-5, 0, 5, 0, -5]));
+  assert.equal(estimateNoiseProxy([], []), 0);
+});
+
+test('zero crossings and oscillation frequency use cycles per window day', () => {
+  assert.equal(countZeroCrossings([-1, 1, -1, 1]), 3);
+  assert.equal(estimateOscillationFrequency([1, -1, 1, -1, 1], 10), 0.2);
+  assert.equal(estimateOscillationFrequency([1, -1, 1], 10), null);
+});
+
+test('basin occupancy and local Kramers diagnostics classify expected states', () => {
+  assert.equal(classifyBasinOccupancy({
+    dphi: 8,
+    d2phi: 8,
+    barrierRatio: 0.2,
+    oscillationFrequency: 0,
+    basinAmplitude: 70,
+  }), 'deep basin');
+  assert.equal(classifyBasinOccupancy({
+    dphi: 1,
+    d2phi: 1,
+    barrierRatio: 0.4,
+    oscillationFrequency: 0,
+    basinAmplitude: 10,
+  }), 'quiescent basin');
+  assert.equal(classifyBasinOccupancy({
+    dphi: 3,
+    d2phi: 6,
+    barrierRatio: 0.4,
+    oscillationFrequency: 0.03,
+    basinAmplitude: 20,
+  }), 'oscillatory basin');
+  assert.equal(classifyBasinOccupancy({
+    dphi: 12,
+    d2phi: 12,
+    barrierRatio: 0.9,
+    oscillationFrequency: 0.04,
+    basinAmplitude: 20,
+  }), 'near escape boundary');
+
+  const low = localKramersIndex(0.1, 1, 30);
+  const high = localKramersIndex(0.9, 1, 30);
   assert.ok(low !== null && high !== null);
   assert.ok(high > low);
 });

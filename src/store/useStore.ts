@@ -144,8 +144,8 @@ function normalizePanelOrder(value: unknown): string[] {
 
   const mergedOrder = [...uniqueOrderedPanels, ...missingPanels];
   return [
-    'phaseEscape',
     ...mergedOrder.filter((panelId) => panelId !== 'phaseEscape'),
+    'phaseEscape',
   ];
 }
 

@@ -120,25 +120,25 @@ Returns the cached DE442-derived Earth-geocentric overlay dataset.
 Computes or serves cached rolling DRIFT diagnostics, lag models, and transition-state inputs.
 
 ### `/api/transition-forecast`
-Returns the exploratory lag-conditioned transition probability summary.
+Returns the experimental lag-conditioned transition probability summary.
 
 ### `/api/phase-escape`
-Returns Phase-Locked Escape Model state derived from internal DRIFT EOP state and DE442 composite phases. The panel computes residual phase misalignment, phase drift, phase acceleration, escape probability, barrier ratio, phase stability, and a Kramers-like comparative risk index from this internal state.
+Returns Phase-Locked Escape Model state derived from internal DRIFT EOP state and DE442 composite phases. The experimental panel computes residual phase misalignment, phase drift, phase acceleration, escape probability, barrier ratio, phase stability, and a Kramers-like comparative index from this internal state.
 
 ## Phase-Locked Escape Model
 
-The Phase-Locked Escape Model is an operational dashboard diagnostic introduced in v1.4.7. It uses internal DRIFT state and DE442-derived torque-proxy analytic phases to compute residual phase misalignment against registered planetary composites.
+The Phase-Locked Escape Model is an experimental dashboard diagnostic introduced in v1.4.7. It uses internal DRIFT state and DE442-derived torque-proxy analytic phases to compute residual phase misalignment against registered planetary composites.
 
 Runtime behavior:
 
 - No production code reads `docs/drift.csv`.
 - No production code reads `docs/outputs/*`.
 - The panel consumes `/api/phase-escape`, which is backed by internal EOP/DRIFT state plus DE442 cache data.
-- The model reports phase-dependent escape probability, phase drift, phase acceleration, curvature signal, phase stability, escape-energy diagnostic values, barrier ratio, and a Kramers-like comparative risk index.
+- The model reports phase-dependent escape probability, phase drift, phase acceleration, curvature signal, phase stability, escape-energy diagnostic values, barrier ratio, and a Kramers-like comparative index.
 
 Interpretation constraints:
 
-- Treat the output as a phase-conditioned metastable escape-risk diagnostic.
+- Treat the output as a phase-conditioned metastable escape diagnostic.
 - Treat `R(t)` as a noise proxy for the Kramers-like index, not as literal thermal noise.
 - Do not interpret energy values as physical joules or deterministic transition timing.
 - Do not interpret DE442 phase composites as planetary triggers.

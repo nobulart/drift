@@ -207,7 +207,7 @@ export default function TransitionForecastPanel() {
   if (!rollingStats || loadingKernel) {
     return (
       <div className="p-4 bg-[#0b1220]">
-        <p className="text-[#9ca3af]">Loading transition forecast...</p>
+        <p className="text-[#9ca3af]">Loading transition probability...</p>
       </div>
     );
   }
@@ -223,7 +223,7 @@ export default function TransitionForecastPanel() {
   if (!lagKernel || !forecast) {
     return (
       <div className="p-4 bg-[#0b1220]">
-        <p className="text-[#9ca3af]">No transition forecast is available from the current lag model.</p>
+        <p className="text-[#9ca3af]">No transition probability curve is available from the current lag model.</p>
       </div>
     );
   }
@@ -265,20 +265,20 @@ export default function TransitionForecastPanel() {
         </div>
       </div>
 
-  {/* Forecast Plot */}
+  {/* Probability Plot */}
   <div className="mb-6">
     {forecast && forecast.lags.length > 0 ? (
       <Plot
         key={`${currentState}-${baseProb}-${forecast.phase_bin}-${forecast.expected_time.toFixed(3)}`}
         data={plotData as any}
         layout={forecastLayout as any}
-        config={createCsvExportConfig('transition-forecast.csv', { displayModeBar: true, responsive: true })}
+        config={createCsvExportConfig('transition-probability.csv', { displayModeBar: true, responsive: true })}
         style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler
       />
     ) : (
       <div className="h-40 flex items-center justify-center">
-        <p className="text-[#9ca3af]">Waiting for forecast data...</p>
+        <p className="text-[#9ca3af]">Waiting for probability data...</p>
       </div>
     )}
   </div>
@@ -312,17 +312,14 @@ export default function TransitionForecastPanel() {
             </p>
           </div>
           
-          <div className={`p-4 rounded-lg border ${getAlertBgColor(forecast.alert_level)}`}>
-            <p className="text-xs text-[#9ca3af] uppercase tracking-wider">Alert Level</p>
+          <div className={`p-4 rounded-lg border ${getAlertBgColor(forecast.probability_level)}`}>
+            <p className="text-xs text-[#9ca3af] uppercase tracking-wider">Transition Probability</p>
             <div className="flex items-center gap-2 mt-1">
-              <div className={`w-3 h-3 rounded-full ${getAlertDotColor(forecast.alert_level)}`} />
+              <div className={`w-3 h-3 rounded-full ${getAlertDotColor(forecast.probability_level)}`} />
               <p className="text-2xl font-bold">
-                {forecast.alert_level}
+                {forecast.probability_level}
               </p>
             </div>
-            <p className="text-xs text-[#e5e7eb] mt-2">
-              {forecast.alert_message}
-            </p>
           </div>
         </div>
       )}
@@ -334,9 +331,9 @@ export default function TransitionForecastPanel() {
             Interpretation Guide
           </h4>
           <div className="text-xs text-[#d1d5db] space-y-1">
-            <p>• <span className="text-cyan-400">High P0 + early lag peak</span> → <span className="text-emerald-400">imminent shift</span></p>
-            <p>• <span className="text-cyan-400">High P0 + late lag peak</span> → <span className="text-amber-400">latent transition</span></p>
-            <p>• <span className="text-cyan-400">Low P0 + flat lag kernel</span> → <span className="text-gray-400">stable regime</span></p>
+            <p>• <span className="text-cyan-400">High P0 + early lag peak</span> → <span className="text-emerald-400">near-horizon transition similarity</span></p>
+            <p>• <span className="text-cyan-400">High P0 + late lag peak</span> → <span className="text-amber-400">longer-horizon transition similarity</span></p>
+            <p>• <span className="text-cyan-400">Low P0 + flat lag kernel</span> → <span className="text-gray-400">weak transition-like structure</span></p>
           </div>
         </div>
         

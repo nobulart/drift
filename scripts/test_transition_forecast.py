@@ -2,7 +2,7 @@
 """
 test_transition_forecast.py
 
-Test the transition forecast implementation with sample data.
+Test the transition probability implementation with sample data.
 """
 
 import sys
@@ -87,8 +87,8 @@ def test_transition_curve():
         print(f"\nState {state} (Pre-Transition):")
         print(f"  Peak time: {forecast['peak_time']:.1f} days")
         print(f"  Expected time: {forecast['expected_time']:.1f} days")
-        print(f"  Alert level: {forecast['alert_level']}")
-        print(f"  Alert message: {forecast['alert_message']}")
+        print(f"  Probability summary: {forecast['probability_level']}")
+        print(f"  Probability message: {forecast['probability_message']}")
 
         # Verify P_tau sums to 1
         p_sum = sum(forecast["P_tau"])
@@ -116,15 +116,15 @@ def test_integration():
                 conditional_result = data.get("conditionalLagModel", data)
                 kernel = extract_lag_kernel(conditional_result)
 
-                # Test forecast
+                # Test transition probability
                 forecast = compute_transition_forecast(
                     theta_now=0.0, state_now=1, lag_kernel=kernel, base_prob=0.5
                 )
 
-                print(f"\nForecast Results:")
+                print(f"\nProbability Results:")
                 print(f"  Expected time: {forecast['expected_time']:.1f} days")
                 print(f"  Peak time: {forecast['peak_time']:.1f} days")
-                print(f"  Alert: {forecast['alert_message']}")
+                print(f"  Summary: {forecast['probability_message']}")
 
                 return True
     except Exception as e:

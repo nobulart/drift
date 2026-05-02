@@ -2,11 +2,11 @@
 """
 transition_forecast.py
 
-Compute transition forecast from conditional lag model:
+Compute transition probability from conditional lag model:
 - Extract positive lag kernel
 - Normalize per phase bin
 - Generate transition probability curves
-- Calculate forecast metrics and alerts
+- Calculate probability summary metrics
 """
 
 import json
@@ -99,7 +99,7 @@ def predict_transition_curve(
         base_prob: Base transition probability P0 (0-1)
 
     Returns:
-        Forecast dictionary with probability curve and metrics
+        Dictionary with probability curve and metrics
     """
     lags = lag_kernel.get("lags", [])
     kernel = np.array(lag_kernel.get("kernel", []))
@@ -112,6 +112,8 @@ def predict_transition_curve(
             "expected_time": float("nan"),
             "peak_time": float("nan"),
             "cumulative": [],
+            "probability_level": "UNKNOWN",
+            "probability_message": "No lag kernel data available",
             "alert_level": "UNKNOWN",
             "alert_message": "No lag kernel data available",
         }
@@ -148,20 +150,20 @@ def predict_transition_curve(
     peak_idx = int(np.argmax(P_tau))
     peak_time = float(lags[peak_idx])
 
-    # Determine alert level based on cumulative probability at 30 days
+    # Summarize cumulative transition probability at 30 days.
     # Find index closest to 30 days
     closest_idx = min(range(len(lags)), key=lambda i: abs(lags[i] - 30))
     P_30d = float(cumulative[closest_idx])
 
     if P_30d > 0.6:
         alert_level = "HIGH"
-        alert_message = f"HIGH PROBABILITY SHIFT (30d): P={P_30d:.2%}"
+        alert_message = f"HIGH TRANSITION PROBABILITY (30d): P={P_30d:.2%}"
     elif P_30d > 0.3:
         alert_level = "MODERATE"
-        alert_message = f"MODERATE RISK (30d): P={P_30d:.2%}"
+        alert_message = f"MODERATE TRANSITION PROBABILITY (30d): P={P_30d:.2%}"
     else:
         alert_level = "LOW"
-        alert_message = f"LOW RISK (30d): P={P_30d:.2%}"
+        alert_message = f"LOW TRANSITION PROBABILITY (30d): P={P_30d:.2%}"
 
     return {
         "lags": lags,
@@ -169,6 +171,8 @@ def predict_transition_curve(
         "expected_time": expected_time,
         "peak_time": peak_time,
         "cumulative": cumulative.tolist(),
+        "probability_level": alert_level,
+        "probability_message": alert_message,
         "alert_level": alert_level,
         "alert_message": alert_message,
         "phase_bin": phase_idx,
@@ -180,7 +184,7 @@ def compute_transition_forecast(
     theta_now: float, state_now: int, lag_kernel: Dict[str, Any], base_prob: float = 0.5
 ) -> Dict[str, Any]:
     """
-    Complete transition forecast pipeline.
+    Complete transition probability pipeline.
 
     This is the main function to call from external code.
 
@@ -191,7 +195,7 @@ def compute_transition_forecast(
         base_prob: Base transition probability (typically 0.3-0.7)
 
     Returns:
-        Full forecast with all metrics and alerts
+        Full probability summary with all metrics
     """
     return predict_transition_curve(
         theta_now=theta_now,
@@ -220,7 +224,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Compute transition forecast from conditional lag model"
+        description="Compute transition probability from conditional lag model"
     )
     parser.add_argument("--input", "-i", required=True, help="Input stats JSON file")
     parser.add_argument("--output", "-o", required=True, help="Output lag kernel JSON")
@@ -251,8 +255,8 @@ if __name__ == "__main__":
     print(f"✓ Saved {kernel['n_lags']} lags × {kernel['n_phases']} phases")
     print(f"  Phase bins: {kernel['phase_bins']}")
 
-    # Demo forecast
-    print("\nDemo forecast:")
+    # Demo probability summary
+    print("\nDemo probability summary:")
     for state in range(4):
         forecast = compute_transition_forecast(
             theta_now=0.0, state_now=state, lag_kernel=kernel, base_prob=args.base_prob
@@ -260,5 +264,5 @@ if __name__ == "__main__":
         print(
             f"  State {state}: Peak={forecast['peak_time']:.1f}d, "
             f"Expected={forecast['expected_time']:.1f}d, "
-            f"{forecast['alert_message']}"
+            f"{forecast['probability_message']}"
         )

@@ -176,8 +176,9 @@ export default function Home() {
     forecast: (
       <Panel
         panelId="forecast"
-        title="Transition Forecast"
+        title="Transition Probability"
         guide={PANEL_GUIDES.forecast}
+        experimental
         visible={!hiddenPanels.has('forecast')}
         collapsed={collapsedPanels.has('forecast')}
         onToggleVisibility={() => togglePanelVisibility('forecast')}
@@ -191,6 +192,7 @@ export default function Home() {
         panelId="phaseEscape"
         title="Phase-Locked Escape Model"
         guide={PANEL_GUIDES.phaseEscape}
+        experimental
         visible={!hiddenPanels.has('phaseEscape')}
         collapsed={collapsedPanels.has('phaseEscape')}
         onToggleVisibility={() => togglePanelVisibility('phaseEscape')}

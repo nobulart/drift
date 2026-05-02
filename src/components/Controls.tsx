@@ -73,7 +73,7 @@ export default function Controls({
     {
       name: 'Framework Paper',
       description: 'constraint-first interpretation basis for the dashboard.',
-      href: 'https://www.academia.edu/165468224/Planar_Structure_and_Regime_Dynamics_in_Modern_Polar_Motion',
+      href: 'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion',
     },
   ];
 

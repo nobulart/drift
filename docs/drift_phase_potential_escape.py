@@ -13,7 +13,7 @@ Purpose:
     1. estimates empirical phase potential V(theta) = -log P(theta)
     2. identifies stable wells and barriers
     3. detects escape events from well changes
-    4. tests whether planetary composite phase misalignment modulates escape risk
+    4. tests whether planetary composite phase misalignment modulates escape probability
 
 Usage:
   python drift_phase_potential_escape.py \

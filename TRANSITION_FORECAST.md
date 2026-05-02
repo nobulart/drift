@@ -1,8 +1,8 @@
-# Transition Forecast Engine
+# Transition Probability Engine
 
 ## Overview
 
-This implementation adds a **time-resolved transition forecast** to the DRIFT dashboard. Instead of a single probability, you now get a complete probability curve showing how the likelihood of a state transition evolves over time (days ahead).
+This implementation adds an **experimental time-resolved transition-probability** panel to the DRIFT dashboard. Instead of a single probability, you get a complete probability curve showing how the current state resembles prior transition-like episodes over time (days ahead).
 
 ## Model Architecture
 
@@ -21,9 +21,9 @@ L(τ | phase, state)
 ```
 
 Encodes when responses typically occur:
-- Early peaks → imminent shift
-- Late peaks → latent transition
-- Flat response → stable regime
+- Early peaks → near-horizon transition similarity
+- Late peaks → longer-horizon transition similarity
+- Flat response → weak transition-like structure
 
 ### Final Model
 
@@ -54,10 +54,10 @@ Normalized across τ to form a proper probability distribution.
 
 **Returns:**
 - `P_tau`: Probability distribution over lag values
-- `expected_time`: Mean days to shift
+- `expected_time`: Mean probability horizon in days
 - `peak_time`: Most likely lag (days)
 - `cumulative`: Cumulative probability up to each lag
-- `alert_level`: LOW/MODERATE/HIGH
+- probability summary: LOW/MODERATE/HIGH
 
 ### 3. API Endpoint
 
@@ -77,20 +77,20 @@ Normalized across τ to form a proper probability distribution.
   "expected_time": 23.5,
   "peak_time": 15.0,
   "cumulative": [0.01, 0.05, ..., 0.72],
-  "alert_level": "MODERATE",
-  "alert_message": "MODERATE RISK (30d): P=0.45"
+  "probability_level": "MODERATE",
+  "probability_message": "MODERATE TRANSITION PROBABILITY (30d): P=0.45"
 }
 ```
 
-## Alert System
+## Probability Summary
 
 Based on cumulative probability at 30 days:
 
-| Threshold | Alert Level | Meaning |
+| Threshold | Summary | Meaning |
 |-----------|-------------|---------|
-| P(≤30d) > 0.6 | HIGH | High probability shift within 30 days |
-| P(≤30d) > 0.3 | MODERATE | Some risk of shift within 30 days |
-| Else | LOW | Low risk of imminent shift |
+| P(≤30d) > 0.6 | HIGH | High near-term transition probability |
+| P(≤30d) > 0.3 | MODERATE | Moderate near-term transition probability |
+| Else | LOW | Low near-term transition probability |
 
 ## UI Components
 
@@ -105,7 +105,7 @@ Based on cumulative probability at 30 days:
   - Peak time
   - Expected time
   - P(≤30d)
-  - Alert level (color-coded badge)
+  - Transition probability summary (color-coded badge)
 
 **Controls:**
 - State selector (Stable, Pre, Transition, Post)
@@ -124,12 +124,12 @@ Based on cumulative probability at 30 days:
    - Loads cached rolling stats
    - Extracts lag kernel
    - Applies smoothing if requested
-   - Computes transition forecast
+   - Computes transition probability
 
 3. **Frontend** (React)
-   - Fetches forecast from API
+   - Fetches transition-probability data from API
    - Displays probability curve
-   - Shows metrics and alerts
+   - Shows probability summary metrics
 
 ### Phase Mapping
 
@@ -141,29 +141,29 @@ States map to phase bins as follows:
 
 ## Usage in Dashboard
 
-1. Enable the "Transition Forecast" panel in the sidebar
+1. Enable the "Transition Probability" panel in the sidebar
 2. Select current state from dropdown
 3. Adjust base probability if needed
-4. View forecast curve with metrics
+4. View probability curve with metrics
 
 ## Interpretation
 
-### Scenario 1: Immediate Instability
+### Scenario 1: Near-Horizon Similarity
 ```
 High P₀ + early lag peak
-→ Imminent shift (within days)
+→ Near-horizon transition similarity
 ```
 
-### Scenario 2: Delayed Instability
+### Scenario 2: Longer-Horizon Similarity
 ```
 High P₀ + late lag peak
-→ Latent transition building
+→ Longer-horizon transition similarity
 ```
 
-### Scenario 3: Stable Regime
+### Scenario 3: Weak Transition-Like Structure
 ```
 Low P₀ + flat lag kernel
-→ No structured transition pattern
+→ Weak transition-like structure in the calibration record
 ```
 
 ## Validation
@@ -171,7 +171,7 @@ Low P₀ + flat lag kernel
 ### Backtesting
 For each time t:
 1. Compute P_tau
-2. Check if shift occurs within predicted window
+2. Check if transition-like behavior occurs within the evaluated window
 3. Evaluate calibration and sharpness
 
 ### Calibration
@@ -185,12 +185,12 @@ Bin predicted probabilities vs actual frequency of shifts.
 
 ### Future Work
 1. Include geomagnetic forcing: `P(shift | state, phase, Kp, dKp/dt)`
-2. Add ensemble forecasting with uncertainty bands
+2. Add ensemble probability curves with uncertainty bands
 3. Real-time updates with streaming data
 4. Historical backtest visualization
 
-### Multi-Horizon Forecasting
-Extend to predict transitions at multiple lead times:
+### Multi-Horizon Probability
+Extend to summarize transition probability at multiple lead times:
 - Short-term (0-30d)
 - Medium-term (30-90d)
 - Long-term (90-180d)

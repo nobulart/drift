@@ -451,6 +451,132 @@ export function kramersLikeEscapeIndex(totalEnergy: number, barrier: number, noi
   return Math.exp(-(barrier - totalEnergy) / diffusionProxy);
 }
 
+export function rms(values: number[]): number {
+  const finite = values.filter(Number.isFinite);
+  if (finite.length === 0) {
+    return 0;
+  }
+
+  return Math.sqrt(finite.reduce((sum, value) => sum + value * value, 0) / finite.length);
+}
+
+export function mean(values: number[]): number {
+  const finite = values.filter(Number.isFinite);
+  if (finite.length === 0) {
+    return 0;
+  }
+
+  return finite.reduce((sum, value) => sum + value, 0) / finite.length;
+}
+
+export function std(values: number[]): number {
+  const finite = values.filter(Number.isFinite);
+  if (finite.length < 2) {
+    return 0;
+  }
+
+  const average = mean(finite);
+  return Math.sqrt(finite.reduce((sum, value) => sum + (value - average) ** 2, 0) / (finite.length - 1));
+}
+
+export function countZeroCrossings(series: number[]): number {
+  const finite = series.filter(Number.isFinite);
+  let count = 0;
+
+  for (let index = 1; index < finite.length; index++) {
+    const previousSign = Math.sign(finite[index - 1]);
+    const currentSign = Math.sign(finite[index]);
+    if (previousSign !== 0 && currentSign !== 0 && previousSign !== currentSign) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+export function estimateOscillationFrequency(dphiSeries: number[], windowDays: number): number | null {
+  const finite = dphiSeries.filter(Number.isFinite);
+  if (finite.length < 5 || windowDays <= 0) {
+    return null;
+  }
+
+  const crossings = countZeroCrossings(finite);
+  const cycles = crossings / 2;
+  return cycles / windowDays;
+}
+
+export function estimateBasinAmplitude(phiSeries: number[]): number {
+  const finite = phiSeries.filter(Number.isFinite);
+  if (finite.length < 3) {
+    return 0;
+  }
+
+  const average = mean(finite);
+  const centered = finite.map(value => angularDiff(value, average));
+  return rms(centered);
+}
+
+export function estimateNoiseProxy(phiSeries: number[], dphiSeries: number[]): number {
+  const phiNoise = std(phiSeries);
+  const velocityNoise = std(dphiSeries);
+  return Math.sqrt(phiNoise * phiNoise + velocityNoise * velocityNoise);
+}
+
+export function classifyBasinOccupancy(args: {
+  dphi: number;
+  d2phi: number;
+  barrierRatio: number | null;
+  oscillationFrequency: number | null;
+  basinAmplitude: number;
+}): string {
+  const { dphi, d2phi, barrierRatio, oscillationFrequency, basinAmplitude } = args;
+
+  if (barrierRatio === null) {
+    return 'unknown';
+  }
+  if (barrierRatio > 0.8) {
+    return 'near escape boundary';
+  }
+  if (Math.abs(dphi) < 2.0 && Math.abs(d2phi) < 5.0 && barrierRatio < 0.5) {
+    return 'quiescent basin';
+  }
+  if ((oscillationFrequency ?? 0) > 0.02 && basinAmplitude < 45 && barrierRatio < 0.5) {
+    return 'oscillatory basin';
+  }
+  if (barrierRatio < 0.25) {
+    return 'deep basin';
+  }
+  return 'transient phase corridor';
+}
+
+export function localKramersIndex(totalEnergy: number, barrier: number, localNoiseProxy: number): number | null {
+  if (!Number.isFinite(totalEnergy) || !Number.isFinite(barrier) || !Number.isFinite(localNoiseProxy)) {
+    return null;
+  }
+
+  const diffusionProxy = Math.max(0.001, localNoiseProxy / 180);
+  return Math.exp(-(barrier - totalEnergy) / diffusionProxy);
+}
+
+export function isBasinEntry(args: {
+  barrierRatio: number | null;
+  dphi: number;
+  d2phi: number;
+  basinAmplitude: number;
+  oscillationFrequency: number | null;
+}): boolean {
+  const { barrierRatio, dphi, d2phi, basinAmplitude, oscillationFrequency } = args;
+
+  return (
+    barrierRatio !== null &&
+    barrierRatio < 0.35 &&
+    Math.abs(dphi) < 10 &&
+    Math.abs(d2phi) < 10 &&
+    basinAmplitude < 60 &&
+    (oscillationFrequency ?? 0) > 0.01
+  );
+}
+
 export function escapeGradient(phiDeg: number, betaCos: number, betaSin: number): number {
   const phi = degreesToRadians(phiDeg);
   return -betaCos * Math.sin(phi) + betaSin * Math.cos(phi);

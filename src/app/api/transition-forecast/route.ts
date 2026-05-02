@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       lagKernel = applyGaussianSmooth(lagKernel, params.smoothSigma);
     }
     
-    // Compute transition forecast
+    // Compute transition probability
     const phase_idx = phase_bins.length > 1
       ? getPhaseBin(params.theta, phase_bins)
       : Math.min(params.currentState, n_phases - 1);
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
     
     const peak_time = lags[peak_idx];
     
-    // Alert level
+    // Cumulative transition probability summary.
     let closest_idx = 0;
     let min_diff = Math.abs(lags[0] - 30);
     for (let i = 1; i < lags.length; i++) {
@@ -177,13 +177,13 @@ export async function GET(request: NextRequest) {
     
     if (P_30d > 0.6) {
       alert_level = 'HIGH';
-      alert_message = `HIGH PROBABILITY SHIFT (30d): P=${P_30d.toFixed(2)}`;
+      alert_message = `HIGH TRANSITION PROBABILITY (30d): P=${P_30d.toFixed(2)}`;
     } else if (P_30d > 0.3) {
       alert_level = 'MODERATE';
-      alert_message = `MODERATE RISK (30d): P=${P_30d.toFixed(2)}`;
+      alert_message = `MODERATE TRANSITION PROBABILITY (30d): P=${P_30d.toFixed(2)}`;
     } else {
       alert_level = 'LOW';
-      alert_message = `LOW RISK (30d): P=${P_30d.toFixed(2)}`;
+      alert_message = `LOW TRANSITION PROBABILITY (30d): P=${P_30d.toFixed(2)}`;
     }
     
     return NextResponse.json({
@@ -192,6 +192,8 @@ export async function GET(request: NextRequest) {
       expected_time,
       peak_time,
       cumulative,
+      probability_level: alert_level,
+      probability_message: alert_message,
       alert_level,
       alert_message,
       phase_bin: phase_idx,
@@ -199,9 +201,9 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error computing transition forecast:', error);
+    console.error('Error computing transition probability:', error);
     return NextResponse.json(
-      { error: 'Failed to compute transition forecast' },
+      { error: 'Failed to compute transition probability' },
       { status: 500 }
     );
   }

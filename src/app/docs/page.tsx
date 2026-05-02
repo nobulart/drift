@@ -37,12 +37,15 @@ const sourceRows = [
   },
 ];
 
+const sourcePaperHref =
+  'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion';
+
 const pipelineSteps = [
   'Fetch upstream geodetic and geomagnetic source files only when local caches may be stale.',
   'Normalize and cache the source products into local JSON artifacts.',
   'Extract daily Earth-geocentric DE442 ephemeris overlays for the tracked bodies.',
   'Aggregate GFZ geomagnetic inputs into dashboard-friendly daily records.',
-  'Compute drift, rolling diagnostics, lag models, and forecast inputs.',
+  'Compute drift, rolling diagnostics, lag models, and transition-probability inputs.',
   'Serve combined artifacts through API routes and prebuilt data files.',
   'Render synchronized interactive panels in the browser.',
 ];
@@ -95,8 +98,8 @@ const apiRows = [
   },
   {
     route: '/api/transition-forecast',
-    purpose: 'Forward transition probability summary derived from conditional lag structure.',
-    fields: 'lags, P_tau, expected_time, peak_time, cumulative, alert_level',
+    purpose: 'Experimental forward transition-probability summary derived from conditional lag structure.',
+    fields: 'lags, P_tau, expected_time, peak_time, cumulative, probability summary',
   },
   {
     route: '/api/phase-escape',
@@ -146,6 +149,14 @@ export default function DocsPage() {
               Its main job is to expose geometric structure, fast-slow behavior, and transition-like episodes in one place, while using geomagnetic series as
               comparison context rather than as a proved explanatory driver.
             </p>
+            <a
+              href={sourcePaperHref}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex text-sm font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/50 underline-offset-2 transition-colors hover:text-white"
+            >
+              Source paper
+            </a>
           </div>
 
           <div className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
@@ -154,8 +165,8 @@ export default function DocsPage() {
               <li>1. Start with Polar Motion, Drift Direction, and Orthogonal Deviation to judge whether the geometry is narrow, stable, and organized.</li>
               <li>2. Use Phase Portrait and Phase Diagnostics to inspect the fast cyclic structure and any bursts, slowdowns, or loop distortion.</li>
               <li>3. Compare the 3D view, overlays, and any available geomagnetic context for timing context, but keep causal interpretation conservative.</li>
-              <li>4. Use the Phase-Locked Escape Model to inspect phase-conditioned escape probability, drift, curvature, barrier ratio, and comparative escape-energy diagnostics.</li>
-              <li>5. Read Transition Forecast last as an exploratory summary of whether the present state resembles earlier transition-like episodes.</li>
+              <li>4. Use the Phase-Locked Escape Model<sup className="ml-0.5 text-[10px] lowercase text-[#38bdf8]">experimental</sup> to inspect phase-conditioned escape probability, drift, curvature, barrier ratio, and comparative escape-energy diagnostics.</li>
+              <li>5. Read Transition Probability<sup className="ml-0.5 text-[10px] lowercase text-[#38bdf8]">experimental</sup> last as an exploratory summary of whether the present state resembles earlier transition-like episodes.</li>
             </ol>
           </div>
         </section>
@@ -166,7 +177,7 @@ export default function DocsPage() {
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.7 Escape Energy</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                The Phase-Locked Escape Model now includes phase drift, curvature, stability, an escape-energy diagnostic, barrier ratio, and a Kramers-like comparative risk index from internal DRIFT state plus DE442-derived phase composites.
+                The Phase-Locked Escape Model now includes phase drift, curvature, stability, an escape-energy diagnostic, barrier ratio, and a Kramers-like comparative index from internal DRIFT state plus DE442-derived phase composites.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
@@ -178,7 +189,7 @@ export default function DocsPage() {
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.5 Real Data Only</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Synthetic fallback series were removed from the active pipeline, the unstable Angle Diagnostics and Alignment panels were taken out of the UI, and the forecast/lag tooling now reads only the current real-data cache.
+                Synthetic fallback series were removed from the active pipeline, the unstable Angle Diagnostics and Alignment panels were taken out of the UI, and the transition-probability/lag tooling now reads only the current real-data cache.
               </p>
             </article>
           </div>
@@ -307,12 +318,20 @@ export default function DocsPage() {
         <section className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
           <h2 className="text-lg font-bold text-white">Panel Guide Reference</h2>
           <p className="mt-3 text-sm leading-6 text-[#9ca3af]">
-            These are the live reading guides used across the dashboard. Each one is written to say what the panel shows, what to watch for, and what the behavior means.
+            These are the live reading guides used across the dashboard. Experimental panels are marked with a cyan border and an experimental superscript.
           </p>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             {DOCS_PANEL_GUIDES.map((panel) => (
-              <article key={panel.title} className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-                <h3 className="text-sm font-semibold text-white">{panel.title}</h3>
+              <article
+                key={panel.title}
+                className={`rounded-xl border p-4 ${panel.experimental ? 'border-[#38bdf8]/50 bg-[#082f49]/30' : 'border-[#243041] bg-[#0b1220]/70'}`}
+              >
+                <h3 className="text-sm font-semibold text-white">
+                  {panel.title}
+                  {panel.experimental && (
+                    <sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup>
+                  )}
+                </h3>
                 <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">{panel.guide}</p>
               </article>
             ))}
@@ -321,11 +340,13 @@ export default function DocsPage() {
 
         <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
-            <h2 className="text-lg font-bold text-white">Transition Forecast Model</h2>
+            <h2 className="text-lg font-bold text-white">
+              Transition Probability Model<sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup>
+            </h2>
             <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
-              The forecast layer converts lag-conditioned response structure into a forward probability curve over days ahead. It combines the current state,
+              The transition-probability layer converts lag-conditioned response structure into a forward probability curve over days ahead. It combines the current state,
               phase-conditioned lag response, and a base transition probability into a normalized distribution. The most useful outputs are the expected time,
-              peak time, short-horizon cumulative probability, and alert level, but they should be read as model-based summaries of historical structure rather than certified event predictions.
+              peak time, and short-horizon cumulative probability, but they should be read as model-based summaries of historical structure rather than certified event predictions.
             </p>
             <div className="mt-4 rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4 text-sm leading-7 text-[#cbd5e1]">
               <p className="font-mono text-[#93c5fd]">P(shift at tau) = P0 x L(tau | current phase, selected state)</p>

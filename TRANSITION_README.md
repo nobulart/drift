@@ -1,12 +1,12 @@
-# Transition Forecast Implementation
+# Transition Probability Implementation
 
 ## Quick Start
 
-The transition forecast engine has been implemented and integrated into the DRIFT dashboard.
+The experimental transition-probability engine has been implemented and integrated into the DRIFT dashboard.
 
 ### What's New
 
-1. **Time-resolved forecast curves** - Instead of single probabilities, you get full probability distributions over time
+1. **Time-resolved probability curves** - Instead of single probabilities, you get full probability distributions over time
 2. **Lag kernel extraction** - Automatically extracts and normalizes lag responses from conditional lag model
 3. **Transition probability prediction** - Computes P(shift at τ | state, phase, lag dynamics)
 
@@ -28,16 +28,16 @@ The transition forecast engine has been implemented and integrated into the DRIF
 ### How to Use
 
 1. **Restart the dev server** to load the new components
-2. **Enable the panel** in the sidebar (checking "Transition Forecast")
-3. **View the forecast** showing:
+2. **Enable the panel** in the sidebar (checking "Transition Probability")
+3. **View the probability curve** showing:
    - Probability curve over time
    - Cumulative probability
    - Key metrics (peak time, expected time)
-   - Alert level (LOW/MODERATE/HIGH)
+   - Transition probability summary (LOW/MODERATE/HIGH)
 
 ### Model Format
 
-The forecast model computes:
+The probability model computes:
 
 ```
 P(shift at τ) = P₀ × L(τ | phase, state)
@@ -48,7 +48,7 @@ Where:
 - `L(τ)` = Lag response kernel (probability distribution over time)
 - `τ` = Time ahead (days)
 
-### Alert Thresholds
+### Probability Thresholds
 
 - **HIGH**: P(transition within 30 days) > 60%
 - **MODERATE**: P(transition within 30 days) > 30%
@@ -56,9 +56,9 @@ Where:
 
 ### Interpretation
 
-- **Early peak** + **high P₀** → Imminent shift
-- **Late peak** + **high P₀** → Building transition
-- **Flat kernel** + **low P₀** → Stable regime
+- **Early peak** + **high P₀** → near-horizon transition similarity
+- **Late peak** + **high P₀** → longer-horizon transition similarity
+- **Flat kernel** + **low P₀** → weak transition-like structure
 
 ## Testing
 
@@ -72,8 +72,8 @@ python3 scripts/test_transition_forecast.py
 ### Frontend
 
 1. Open dashboard at `http://localhost:3000`
-2. Check "Transition Forecast" in sidebar
-3. Interact with controls to see different forecasts
+2. Check "Transition Probability" in sidebar
+3. Interact with controls to see different probability curves
 
 ## API Usage
 

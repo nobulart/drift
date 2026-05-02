@@ -11,6 +11,7 @@ import {
   TWO_WELL_CALIBRATION,
   angularDistanceDegrees,
   assignMetastablePhaseWell,
+  classifyBasinOccupancy,
   classifyEnergyState,
   classifyPhaseDirection,
   classifyPhaseRegion,
@@ -26,7 +27,13 @@ import {
   escapeEnergyBarrier,
   escapeGradient,
   escapeProbability,
+  estimateBasinAmplitude,
+  estimateNoiseProxy,
+  estimateOscillationFrequency,
+  isBasinEntry,
   kramersLikeEscapeIndex,
+  localKramersIndex,
+  movingAverage,
   phaseKineticEnergy,
   phasePotentialEnergy,
   phaseTotalEnergy,
@@ -58,6 +65,9 @@ interface PhaseEscapeDataset {
 }
 
 const COMPOSITE_OPTIONS = Object.keys(DEFAULT_PHASE_ESCAPE_MODELS) as PhaseEscapeCompositeKey[];
+const BASIN_WINDOW_DAYS = 21;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const EXPANDED_CHART_HEIGHT = 'min(calc(86vh - 112px), calc(49.5vw - 18px), 1062px)';
 
 function formatDegrees(rad?: number | null) {
   if (rad === null || rad === undefined || !Number.isFinite(rad)) {
@@ -85,7 +95,28 @@ function percentile(values: number[], q: number) {
   return valid[index];
 }
 
-function StatCard({ label, value, title, tone = 'default' }: { label: string; value: string; title?: string; tone?: 'default' | 'green' | 'brightGreen' | 'orange' | 'purple' | 'cyan' }) {
+function shiftIsoDate(date: string | null, days: number) {
+  if (!date) {
+    return null;
+  }
+
+  const timestamp = new Date(`${date}T00:00:00Z`).getTime();
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  return new Date(timestamp + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+function maxIsoDate(a: string | null, b: string | null) {
+  if (!a) return b;
+  if (!b) return a;
+  return a > b ? a : b;
+}
+
+type StatTone = 'default' | 'green' | 'brightGreen' | 'orange' | 'purple' | 'cyan' | 'blue' | 'red' | 'grey';
+
+function StatCard({ label, value, title, tone = 'default' }: { label: string; value: string; title?: string; tone?: StatTone }) {
   const toneClass = {
     default: 'border-[#243041] bg-[#111827] text-[#e5e7eb]',
     green: 'border-[#166534] bg-[#052e16] text-[#bbf7d0]',
@@ -93,6 +124,9 @@ function StatCard({ label, value, title, tone = 'default' }: { label: string; va
     orange: 'border-[#92400e] bg-[#451a03] text-[#fed7aa]',
     purple: 'border-[#7e22ce] bg-[#2e1065] text-[#e9d5ff]',
     cyan: 'border-[#0891b2] bg-[#083344] text-[#a5f3fc]',
+    blue: 'border-[#1d4ed8] bg-[#172554] text-[#bfdbfe]',
+    red: 'border-[#b91c1c] bg-[#450a0a] text-[#fecaca]',
+    grey: 'border-[#4b5563] bg-[#1f2937] text-[#d1d5db]',
   }[tone];
 
   return (
@@ -291,6 +325,52 @@ export default function PhaseEscapeModelPanel() {
   const barrierRatio = energyBarrierRatio(totalEnergy, barrier);
   const energyState = classifyEnergyState(barrierRatio);
   const escapeEnergyIndex = kramersLikeEscapeIndex(totalEnergy, barrier, latest?.rRatio ?? NaN);
+  const basinWindow = useMemo(() => {
+    const startIndex = Math.max(0, enrichedRecords.length - BASIN_WINDOW_DAYS);
+    const slice = enrichedRecords.slice(startIndex);
+    const dphi = phaseDriftSeries.slice(startIndex);
+    const d2phi = phaseAccelerationSeries.slice(startIndex);
+    const phi = slice.map(record => (
+      typeof record.phi === 'number' && Number.isFinite(record.phi)
+        ? radiansToDegrees(record.phi)
+        : NaN
+    ));
+    const energy = slice.map((record, index) => {
+      const phiDeg = typeof record.phi === 'number' && Number.isFinite(record.phi)
+        ? radiansToDegrees(record.phi)
+        : NaN;
+      return phaseTotalEnergy(phiDeg, model.phi0Deg, dphi[index], model.alpha);
+    });
+
+    return {
+      startDate: slice[0]?.t ?? null,
+      endDate: slice[slice.length - 1]?.t ?? null,
+      phi,
+      dphi,
+      d2phi,
+      energy,
+      barrierRatio: energy.map(value => energyBarrierRatio(value, barrier) ?? NaN),
+    };
+  }, [barrier, enrichedRecords, model.alpha, model.phi0Deg, phaseAccelerationSeries, phaseDriftSeries]);
+  const basinAmplitude = estimateBasinAmplitude(basinWindow.phi);
+  const oscillationFrequency = estimateOscillationFrequency(basinWindow.dphi, BASIN_WINDOW_DAYS);
+  const oscillationPeriodDays = oscillationFrequency && oscillationFrequency > 0 ? 1 / oscillationFrequency : null;
+  const localNoiseProxy = estimateNoiseProxy(basinWindow.phi, basinWindow.dphi);
+  const basinState = classifyBasinOccupancy({
+    dphi: dphiNow,
+    d2phi: d2phiNow,
+    barrierRatio,
+    oscillationFrequency,
+    basinAmplitude,
+  });
+  const localKramers = localKramersIndex(totalEnergy, barrier, localNoiseProxy);
+  const basinEntry = isBasinEntry({
+    barrierRatio,
+    dphi: dphiNow,
+    d2phi: d2phiNow,
+    basinAmplitude,
+    oscillationFrequency,
+  });
   const directionTone = directionLabel.includes('oscillatory')
     ? 'purple'
     : phaseDirection === 'approaching'
@@ -306,6 +386,15 @@ export default function PhaseEscapeModelPanel() {
       : curvatureState === 'curving away'
         ? 'orange'
         : 'default';
+  const basinTone: StatTone = basinState === 'deep basin' || basinState === 'quiescent basin'
+    ? 'blue'
+    : basinState === 'oscillatory basin'
+      ? 'purple'
+      : basinState === 'transient phase corridor'
+        ? 'orange'
+        : basinState === 'near escape boundary'
+          ? 'red'
+          : 'grey';
 
   const curveData = useMemo(() => {
     const x = Array.from({ length: 361 }, (_, index) => -180 + index);
@@ -398,9 +487,14 @@ export default function PhaseEscapeModelPanel() {
       dphi: dphiSlice,
       d2phi: phaseAccelerationSeries.slice(startIndex),
       energy,
+      energySmooth: movingAverage(energy, BASIN_WINDOW_DAYS),
       barrierRatio: energy.map(value => energyBarrierRatio(value, currentBarrier) ?? NaN),
     };
   }, [daysShown, enrichedRecords, model.alpha, model.phi0Deg, phaseAccelerationSeries, phaseDriftSeries]);
+  const recentFirstDate = recentSeries.dates[0] ?? null;
+  const recentLastDate = recentSeries.dates[recentSeries.dates.length - 1] ?? null;
+  const basinOverlayEndDate = recentLastDate;
+  const basinOverlayStartDate = maxIsoDate(recentFirstDate, shiftIsoDate(basinOverlayEndDate, -BASIN_WINDOW_DAYS));
 
   const timeSeriesData = useMemo(() => {
     const traces: Plotly.Data[] = [
@@ -473,6 +567,17 @@ export default function PhaseEscapeModelPanel() {
         yaxis: 'y4',
         line: { color: '#2dd4bf', width: 1.2 },
       });
+      traces.push({
+        x: recentSeries.dates,
+        y: recentSeries.energySmooth,
+        type: 'scatter',
+        mode: 'lines',
+        name: '21d energy',
+        yaxis: 'y4',
+        showlegend: false,
+        line: { color: '#99f6e4', width: 1.4, dash: 'dot' },
+        hovertemplate: '21d energy: %{y:.4f}<extra></extra>',
+      });
     }
 
     if (showBarrierRatioSeries) {
@@ -530,7 +635,14 @@ export default function PhaseEscapeModelPanel() {
   const timeSeriesLayout = useMemo(() => ({
     title: { text: `Recent ${daysShown} Days` },
     template: 'plotly_dark',
-    xaxis: { title: { text: 'Date' }, gridcolor: '#374151', domain: [0.07, 0.90] },
+    xaxis: {
+      title: { text: 'Date' },
+      gridcolor: '#374151',
+      domain: [0.07, 0.90],
+      range: recentFirstDate && recentLastDate ? [recentFirstDate, recentLastDate] : undefined,
+      autorange: false,
+      constrain: 'domain',
+    },
     yaxis: { title: { text: 'R(t) / Escape probability' }, gridcolor: '#374151', side: 'left', range: [0, 1] },
     yaxis2: {
       title: { text: 'Phi (deg)', font: { color: '#c084fc', size: 11 }, standoff: 2 },
@@ -573,6 +685,33 @@ export default function PhaseEscapeModelPanel() {
       showgrid: false,
       zeroline: false,
     },
+    shapes: basinOverlayStartDate && basinOverlayEndDate ? [
+      {
+        type: 'rect',
+        xref: 'x',
+        yref: 'paper',
+        x0: basinOverlayStartDate,
+        x1: basinOverlayEndDate,
+        y0: 0,
+        y1: 1,
+        fillcolor: 'rgba(96, 165, 250, 0.10)',
+        line: { width: 0 },
+        layer: 'below',
+      },
+    ] : [],
+    annotations: basinOverlayStartDate && basinOverlayEndDate ? [
+      {
+        x: basinOverlayStartDate,
+        y: 1,
+        xref: 'x',
+        yref: 'paper',
+        text: 'basin diagnostic window',
+        showarrow: false,
+        xanchor: 'left',
+        yanchor: 'bottom',
+        font: { color: '#93c5fd', size: 10 },
+      },
+    ] : [],
     legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
     margin: { l: 92, r: 112, t: 48, b: 70 },
     plot_bgcolor: '#111827',
@@ -580,7 +719,7 @@ export default function PhaseEscapeModelPanel() {
     font: { color: '#e5e7eb' },
     height: plotHeight,
     autosize: true,
-  }), [daysShown, plotHeight]);
+  }), [basinOverlayEndDate, basinOverlayStartDate, daysShown, plotHeight, recentFirstDate, recentLastDate]);
 
   if (loading && !dataset) {
     return (
@@ -639,7 +778,7 @@ export default function PhaseEscapeModelPanel() {
         <StatCard label="Composite phase" value={formatDegrees(latest.composites[selectedComposite])} title="Equal-weight circular composite of DE442 torque-proxy analytic phases." />
         <StatCard label="Residual phi" value={formatDegrees(latest.phi)} title="Residual phase misalignment phi = wrap(theta_res - composite phase)." />
         <StatCard label="Escape probability" value={`${(latest.escapeProbability * 100).toFixed(1)}%`} title="Phase-dependent escape probability from the harmonic logistic model." />
-        <StatCard label="Preferred phi0" value={`${model.phi0Deg.toFixed(1)} deg`} title="Phase of maximum fitted escape-risk modulation." />
+        <StatCard label="Preferred phi0" value={`${model.phi0Deg.toFixed(1)} deg`} title="Phase of maximum fitted escape-probability modulation." />
         <StatCard label="Alpha" value={model.alpha.toFixed(3)} title="Modulation amplitude sqrt(beta_cos^2 + beta_sin^2)." />
         <StatCard label="Max/min ratio" value={model.maxMinEscapeProbabilityRatio.toFixed(3)} />
       </div>
@@ -670,6 +809,16 @@ export default function PhaseEscapeModelPanel() {
           value={escapeEnergyIndex !== null ? escapeEnergyIndex.toExponential(2) : 'N/A'}
           title="Kramers-style relative escape index using R(t) as a noise proxy. Interpret comparatively, not as an absolute probability."
         />
+        <StatCard label="Basin state" value={basinState} tone={basinTone} />
+        <StatCard label="Basin amplitude" value={`${basinAmplitude.toFixed(1)} deg`} />
+        <StatCard label="Oscillation period" value={oscillationPeriodDays ? `${oscillationPeriodDays.toFixed(1)} days` : 'N/A'} />
+        <StatCard label="Local noise proxy" value={localNoiseProxy.toFixed(2)} />
+        <StatCard
+          label="Local Kramers index"
+          value={localKramers !== null ? localKramers.toExponential(2) : 'N/A'}
+          title="Local Kramers-style index using recent phase-noise variance as the noise proxy. Interpret comparatively, not as absolute probability."
+        />
+        <StatCard label="Basin entry" value={basinEntry ? 'yes' : 'no'} tone={basinEntry ? 'blue' : 'grey'} />
       </div>
 
       <div className="mb-4">
@@ -681,7 +830,7 @@ export default function PhaseEscapeModelPanel() {
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#93c5fd]">Metastable phase-well state</span>
           <span className="text-sm text-[#e5e7eb]">{currentWell?.label ?? 'n/a'}</span>
           <span className="text-sm text-[#9ca3af]">
-            {nearHighRiskRegime ? 'Near a high-R escape-risk regime' : 'Not currently in a high-R escape-risk regime'}
+            {nearHighRiskRegime ? 'Near a high-R escape-favorable regime' : 'Not currently in a high-R escape-favorable regime'}
           </span>
         </div>
       </div>
@@ -765,13 +914,16 @@ export default function PhaseEscapeModelPanel() {
         <div className="rounded-lg border border-[#243041] bg-[#111827] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#93c5fd]">Interpretation</p>
           <p className="mt-3 text-sm leading-6 text-[#d1d5db]">
-            The phase-locked escape model estimates whether the current DRIFT state lies near a phase relation historically associated with elevated transition probability. It is a metastable escape-risk diagnostic, not a deterministic forecast. In the calibration run, the Venus-Mars composite produced the strongest phase modulation of escape probability, while broad all-planet composites diluted the signal.
+            The phase-locked escape model estimates whether the current DRIFT state lies near a phase relation historically associated with elevated transition probability. It is an experimental metastable escape diagnostic, not a deterministic prediction. In the calibration run, the Venus-Mars composite produced the strongest phase modulation of escape probability, while broad all-planet composites diluted the signal.
           </p>
           <p className="mt-3 text-sm leading-6 text-[#d1d5db]">
             Phase drift indicates whether the system is moving toward or away from the phase region historically associated with elevated transition probability. Estimated time-to-alignment reflects geometric proximity under current phase velocity and does not imply deterministic timing.
           </p>
           <p className="mt-3 text-sm leading-6 text-[#d1d5db]">
             The escape-energy formulation treats residual phase motion as movement in a modulated phase potential. Kinetic energy is estimated from phase velocity, potential energy from angular offset relative to the preferred escape phase, and the barrier ratio gives a normalized indication of proximity to an escape-favorable state. The Kramers-like index uses R(t) as a noise proxy and should be interpreted comparatively rather than as an absolute escape probability.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-[#d1d5db]">
+            Basin diagnostics characterize recent low-energy phase motion. Oscillation amplitude, period, and local noise proxy estimate whether the system is resting in a metastable basin or moving through a transient phase corridor. The local Kramers index uses recent phase variability as a noise proxy and is intended for relative comparison only.
           </p>
           <p className="mt-3 text-xs text-[#9ca3af]">
             Source: internal DRIFT EOP state plus DE442 {dataset?.source?.ephemerisKernel ?? 'ephemeris'} cache; {dataset?.source?.smoothDays ?? 31}-day smoothing before analytic phase extraction.
@@ -817,7 +969,7 @@ export default function PhaseEscapeModelPanel() {
                   expandedChart === 'curve' ? 'phase-escape-curve.csv' : 'phase-escape-timeseries.csv',
                   { displayModeBar: true, responsive: true }
                 )}
-                style={{ width: '100%', height: 'calc(86vh - 112px)' }}
+                style={{ width: '100%', height: EXPANDED_CHART_HEIGHT }}
                 useResizeHandler
               />
             </div>
