@@ -771,54 +771,54 @@ export default function PhaseEscapeModelPanel() {
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <StatCard label="Latest date" value={latest.t} />
-        <StatCard label="R(t)" value={formatNumber(latest.rRatio)} />
+        <StatCard label="Latest date" value={latest.t} title="Most recent dated sample available in the phase-escape dataset." />
+        <StatCard label="R(t)" value={formatNumber(latest.rRatio)} title="Orthogonal deviation ratio from the rolling DRIFT geometry; lower values indicate stronger directional organization." />
         <StatCard label="Theta raw" value={formatDegrees(latest.thetaRaw)} title="Raw DRIFT phase angle from the rolling state-space pipeline." />
-        <StatCard label="Theta residual" value={formatDegrees(latest.thetaResidual)} title="theta_res = wrap(theta raw - solar analytic phase)." />
-        <StatCard label="Composite phase" value={formatDegrees(latest.composites[selectedComposite])} title="Equal-weight circular composite of DE442 torque-proxy analytic phases." />
-        <StatCard label="Residual phi" value={formatDegrees(latest.phi)} title="Residual phase misalignment phi = wrap(theta_res - composite phase)." />
-        <StatCard label="Escape probability" value={`${(latest.escapeProbability * 100).toFixed(1)}%`} title="Phase-dependent escape probability from the harmonic logistic model." />
-        <StatCard label="Preferred phi0" value={`${model.phi0Deg.toFixed(1)} deg`} title="Phase of maximum fitted escape-probability modulation." />
-        <StatCard label="Alpha" value={model.alpha.toFixed(3)} title="Modulation amplitude sqrt(beta_cos^2 + beta_sin^2)." />
-        <StatCard label="Max/min ratio" value={model.maxMinEscapeProbabilityRatio.toFixed(3)} />
+        <StatCard label="Theta residual" value={formatDegrees(latest.thetaResidual)} title="Solar-residual DRIFT phase: theta_res = wrap(theta raw - solar analytic phase)." />
+        <StatCard label="Composite phase" value={formatDegrees(latest.composites[selectedComposite])} title="Equal-weight circular composite of the selected DE442 torque-proxy analytic phases." />
+        <StatCard label="Residual phi" value={formatDegrees(latest.phi)} title="Residual phase misalignment: phi = wrap(theta_res - selected composite phase)." />
+        <StatCard label="Escape probability" value={`${(latest.escapeProbability * 100).toFixed(1)}%`} title="Phase-dependent escape probability from the harmonic logistic model for the selected composite." />
+        <StatCard label="Preferred phi0" value={`${model.phi0Deg.toFixed(1)} deg`} title="Residual phase angle where the fitted model reaches maximum escape-probability modulation." />
+        <StatCard label="Alpha" value={model.alpha.toFixed(3)} title="Harmonic modulation amplitude, sqrt(beta_cos^2 + beta_sin^2); larger values imply stronger phase dependence." />
+        <StatCard label="Max/min ratio" value={model.maxMinEscapeProbabilityRatio.toFixed(3)} title="Ratio between the fitted maximum and minimum escape probabilities across residual phase." />
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Phase drift rate" value={Number.isFinite(dphiNow) ? `${dphiNow.toFixed(2)} deg/day` : 'n/a'} />
-        <StatCard label="Phase direction" value={directionLabel} tone={directionTone} />
-        <StatCard label="Alignment status" value={alignmentStatus} />
-        <StatCard label="Distance to phi0" value={Number.isFinite(deltaPhi) ? `${deltaPhi.toFixed(1)} deg (${deltaPhiNorm.toFixed(2)} pi)` : 'n/a'} />
+        <StatCard label="Phase drift rate" value={Number.isFinite(dphiNow) ? `${dphiNow.toFixed(2)} deg/day` : 'n/a'} title="Current first derivative of residual phase misalignment, expressed in degrees per day." />
+        <StatCard label="Phase direction" value={directionLabel} tone={directionTone} title="Classifies whether residual phase is moving toward, away from, or oscillating around the preferred phase." />
+        <StatCard label="Alignment status" value={alignmentStatus} title="Qualitative proximity of current residual phase to the preferred phase phi0." />
+        <StatCard label="Distance to phi0" value={Number.isFinite(deltaPhi) ? `${deltaPhi.toFixed(1)} deg (${deltaPhiNorm.toFixed(2)} pi)` : 'n/a'} title="Smallest angular separation between current residual phase and preferred phase phi0." />
         <StatCard
           label="Local linear time to phi0"
           value={timeToAlignmentDays !== null ? `${timeToAlignmentDays.toFixed(1)} days` : phaseDirection === 'receding' ? 'N/A (receding)' : 'N/A'}
           title="Assumes constant phase velocity; does not account for curvature or oscillation in phi(t)."
         />
-        <StatCard label="Escape trend" value={escapeTrend} tone={escapeTrend === 'increasing' ? 'green' : 'orange'} />
-        <StatCard label="Phase region" value={phaseRegion} />
-        <StatCard label="Phase acceleration" value={Number.isFinite(d2phiNow) ? `${d2phiNow.toFixed(2)} deg/day² (${(d2phiNow / 360).toFixed(4)} rev/day²)` : 'n/a'} />
-        <StatCard label="Phase acceleration state" value={accelerationState} tone={accelerationTone} />
-        <StatCard label="Phase curvature signal" value={curvatureState} tone={curvatureTone} />
-        <StatCard label="Phase stability" value={Number.isFinite(stability) ? stability.toFixed(3) : 'n/a'} />
-        <StatCard label="Phase kinetic energy" value={Number.isFinite(kineticEnergy) ? kineticEnergy.toFixed(4) : 'n/a'} />
-        <StatCard label="Phase potential energy" value={Number.isFinite(potentialEnergy) ? potentialEnergy.toFixed(4) : 'n/a'} />
-        <StatCard label="Total phase energy" value={Number.isFinite(totalEnergy) ? totalEnergy.toFixed(4) : 'n/a'} />
-        <StatCard label="Barrier ratio" value={barrierRatio !== null ? barrierRatio.toFixed(3) : 'N/A'} />
-        <StatCard label="Energy state" value={energyState} />
+        <StatCard label="Escape trend" value={escapeTrend} tone={escapeTrend === 'increasing' ? 'green' : 'orange'} title="Direction of change in fitted escape probability implied by current phase motion." />
+        <StatCard label="Phase region" value={phaseRegion} title="Classifies the current residual phase location relative to the fitted preferred escape phase." />
+        <StatCard label="Phase acceleration" value={Number.isFinite(d2phiNow) ? `${d2phiNow.toFixed(2)} deg/day² (${(d2phiNow / 360).toFixed(4)} rev/day²)` : 'n/a'} title="Current second derivative of residual phase, showing whether phase drift is speeding up or bending." />
+        <StatCard label="Phase acceleration state" value={accelerationState} tone={accelerationTone} title="Qualitative class for the latest phase acceleration value." />
+        <StatCard label="Phase curvature signal" value={curvatureState} tone={curvatureTone} title="Indicates whether recent phase curvature is turning toward, away from, or across the preferred phase." />
+        <StatCard label="Phase stability" value={Number.isFinite(stability) ? stability.toFixed(3) : 'n/a'} title="Recent phase-stability score; larger values indicate more variable residual-phase motion." />
+        <StatCard label="Phase kinetic energy" value={Number.isFinite(kineticEnergy) ? kineticEnergy.toFixed(4) : 'n/a'} title="Relative kinetic term from residual phase velocity in the escape-energy model." />
+        <StatCard label="Phase potential energy" value={Number.isFinite(potentialEnergy) ? potentialEnergy.toFixed(4) : 'n/a'} title="Relative potential term from angular offset from the preferred phase in the modulated phase potential." />
+        <StatCard label="Total phase energy" value={Number.isFinite(totalEnergy) ? totalEnergy.toFixed(4) : 'n/a'} title="Sum of phase kinetic and potential terms; used for barrier-ratio and Kramers-like summaries." />
+        <StatCard label="Barrier ratio" value={barrierRatio !== null ? barrierRatio.toFixed(3) : 'N/A'} title="Total phase energy normalized by the empirical modulation barrier; values near or above 1 approach the modeled boundary." />
+        <StatCard label="Energy state" value={energyState} title="Qualitative class derived from the current barrier ratio." />
         <StatCard
           label="Kramers-like index"
           value={escapeEnergyIndex !== null ? escapeEnergyIndex.toExponential(2) : 'N/A'}
           title="Kramers-style relative escape index using R(t) as a noise proxy. Interpret comparatively, not as an absolute probability."
         />
-        <StatCard label="Basin state" value={basinState} tone={basinTone} />
-        <StatCard label="Basin amplitude" value={`${basinAmplitude.toFixed(1)} deg`} />
-        <StatCard label="Oscillation period" value={oscillationPeriodDays ? `${oscillationPeriodDays.toFixed(1)} days` : 'N/A'} />
-        <StatCard label="Local noise proxy" value={localNoiseProxy.toFixed(2)} />
+        <StatCard label="Basin state" value={basinState} tone={basinTone} title="Classifies recent low-energy phase behavior as basin occupancy, corridor motion, or boundary proximity." />
+        <StatCard label="Basin amplitude" value={`${basinAmplitude.toFixed(1)} deg`} title="Recent residual-phase swing over the basin diagnostic window." />
+        <StatCard label="Oscillation period" value={oscillationPeriodDays ? `${oscillationPeriodDays.toFixed(1)} days` : 'N/A'} title="Estimated period of recent residual-phase oscillation from phase-drift sign changes." />
+        <StatCard label="Local noise proxy" value={localNoiseProxy.toFixed(2)} title="Recent phase-variability proxy used by the local Kramers-style index." />
         <StatCard
           label="Local Kramers index"
           value={localKramers !== null ? localKramers.toExponential(2) : 'N/A'}
           title="Local Kramers-style index using recent phase-noise variance as the noise proxy. Interpret comparatively, not as absolute probability."
         />
-        <StatCard label="Basin entry" value={basinEntry ? 'yes' : 'no'} tone={basinEntry ? 'blue' : 'grey'} />
+        <StatCard label="Basin entry" value={basinEntry ? 'yes' : 'no'} tone={basinEntry ? 'blue' : 'grey'} title="Flags whether the current motion satisfies the recent-entry conditions for a metastable basin." />
       </div>
 
       <div className="mb-4">
