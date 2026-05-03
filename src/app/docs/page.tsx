@@ -129,7 +129,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.7
+                Version v1.4.8
               </span>
               <Link
                 href="/"
@@ -162,7 +162,7 @@ export default function DocsPage() {
           <div className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
             <h2 className="text-lg font-bold text-white">How to Read It</h2>
             <ol className="mt-3 space-y-3 text-sm leading-6 text-[#cbd5e1]">
-              <li>1. Start with Polar Motion, Drift Direction, and Orthogonal Deviation to judge whether the geometry is narrow, stable, and organized.</li>
+              <li>1. Start with the 3D Vector View, Residual Polar Motion, and Polar Motion Trajectory to read the IERS frame consistently: x_pole north/up along Greenwich and y_pole west/left toward 90°W.</li>
               <li>2. Use Phase Portrait and Phase Diagnostics to inspect the fast cyclic structure and any bursts, slowdowns, or loop distortion.</li>
               <li>3. Compare the 3D view, overlays, and any available geomagnetic context for timing context, but keep causal interpretation conservative.</li>
               <li>4. Use the Phase-Locked Escape Model<sup className="ml-0.5 text-[10px] lowercase text-[#38bdf8]">experimental</sup> to inspect phase-conditioned escape probability, drift, curvature, barrier ratio, and comparative escape-energy diagnostics.</li>
@@ -175,9 +175,9 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.7 Escape Energy</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.8 IERS XY Frame</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                The Phase-Locked Escape Model now includes phase drift, curvature, stability, an escape-energy diagnostic, barrier ratio, and a Kramers-like comparative index from internal DRIFT state plus DE442-derived phase composites.
+                Added square residual and trajectory polar-motion panels, aligned their fullscreen modals, and made the 3D Vector View use the same north-up/west-left IERS orientation with clear direction labels and drift longitude.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">

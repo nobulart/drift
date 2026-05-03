@@ -17,6 +17,7 @@ interface PanelProps {
   onToggleVisibility?: () => void;
   onToggleCollapse?: () => void;
   onFullscreen?: () => void;
+  fullscreenAspect?: 'wide' | 'square';
 }
 
 export default function Panel({
@@ -31,7 +32,8 @@ export default function Panel({
   collapsed = false,
   onToggleVisibility,
   onToggleCollapse,
-  onFullscreen
+  onFullscreen,
+  fullscreenAspect = 'wide'
 }: PanelProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,13 @@ export default function Panel({
   }, [isModalOpen]);
 
   const effectiveCollapsed = collapsed && !isModalOpen;
+  const modalSizingStyle = fullscreenAspect === 'square'
+    ? {
+        maxHeight: '90vh',
+        width: 'min(90vw, 90vh)',
+        height: 'min(90vw, 90vh)',
+      }
+    : {};
 
   useEffect(() => {
     if (!shouldRenderContent || effectiveCollapsed || typeof window === 'undefined') {
@@ -159,7 +168,7 @@ export default function Panel({
              ? 'fixed left-1/2 top-1/2 z-[9999] max-h-[90vh] w-[min(85vw,1920px)] -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 duration-200'
              : 'h-full'
          } ${className || ''}`}
-         style={{ ...(isModalOpen ? {} : { minHeight: effectiveCollapsed ? 'auto' : '500px' }), ...style }}
+         style={{ ...(isModalOpen ? modalSizingStyle : { minHeight: effectiveCollapsed ? 'auto' : '500px' }), ...style }}
        >
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <h3 className="text-sm font-bold text-[#e5e7eb] uppercase tracking-wider truncate pr-2">

@@ -4,11 +4,18 @@ Constraint-first polar-motion diagnostics dashboard for geometry, phase structur
 
 Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Locked Planetary Torque Coupling in Polar Motion](https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion)
 
-![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.7.png)
+![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.8.png)
 
-Current release: `v1.4.7`
+Current release: `v1.4.8`
 
 ## Release Notes
+
+### v1.4.8
+
+- Added the Residual Polar Motion (XY) panel and Polar Motion Trajectory panel, both with square plot geometry and chronological path coloring.
+- Standardized the polar-motion displays against the IERS EOP convention: `x_pole` is shown north/up along the Greenwich meridian and `y_pole` is shown west/left toward 90°W.
+- Aligned the 3D Vector View with the same frame, including unambiguous vector labels, drift longitude in E/W notation, and clearer label placement.
+- Enlarged and corrected square fullscreen modals so the residual, trajectory, and 3D views can use the available browser window efficiently.
 
 ### v1.4.7
 

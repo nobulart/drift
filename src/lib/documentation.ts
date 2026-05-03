@@ -4,9 +4,13 @@ export const PANEL_GUIDES: Record<string, string> = {
   phaseEscape:
     'Experimental phase-conditioned metastable escape diagnostic built from internal DRIFT state and DE442 torque-proxy phases. Use it to inspect residual phase misalignment, phase drift, curvature, stability, barrier ratio, and the Kramers-like comparative index without reading the composite as a deterministic driver.',
   sphere:
-    'Compare the drift axis and principal frame in one Earth-fixed view. Use it to inspect geometry and reorientation across the observed record.',
+    'Compare the drift axis and IERS polar-motion frame in one Earth-fixed view. The display is north-up/west-left: x_pole points upward along the Greenwich meridian and y_pole points left toward 90°W.',
   polar:
     'Observed polar-motion trajectory in xp-yp space. Look for narrow-band confinement, turning points, loop structure, and changes in clustering or excursion shape.',
+  residualPolar:
+    'Reproduces the paper residual polar-motion XY phase-space view from the live EOP series. The panel removes the secular xp/yp trend, integrates the detrended residual components, overlays a one-year rolling centroid, and fits the residual drift axis in a north-up/west-left IERS orientation: x_res upward along Greenwich and y_res left toward 90°W.',
+  polarTrajectory:
+    'Reproduces the paper polar-motion trajectory view from the live EOP series in a north-up/west-left IERS orientation: x_pole upward along Greenwich and y_pole left toward 90°W. Chronological coloring follows the residual XY panel so the long-loop evolution can be read as a path rather than a static cloud.',
   drift:
     'Tracks the longitude of the dominant drift axis through time. For each selected window, the polar-motion samples are read in the active frame, the dominant direction of the recent xp-yp trajectory is fit from that local cloud, and the planar angle of that direction is reported as drift longitude. Smooth migration indicates a persistent geometric trend, while flattening, reversals, or abrupt bends can mark reorganization.',
   angle:
@@ -38,6 +42,8 @@ export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: 'Transition Probability', guide: PANEL_GUIDES.forecast, experimental: true },
   { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape, experimental: true },
   { title: 'Polar Motion (XP, YP)', guide: PANEL_GUIDES.polar },
+  { title: 'Residual Polar Motion (XY)', guide: PANEL_GUIDES.residualPolar },
+  { title: 'Polar Motion Trajectory', guide: PANEL_GUIDES.polarTrajectory },
   { title: 'Drift Direction', guide: PANEL_GUIDES.drift },
   { title: 'Phase Portrait', guide: PANEL_GUIDES.phase },
   { title: 'Phase Diagnostics', guide: PANEL_GUIDES.phaseDiag },

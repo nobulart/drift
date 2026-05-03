@@ -5,10 +5,10 @@ import { OrbitControls, Text, PerspectiveCamera } from "@react-three/drei";
 import { memo, useState, useMemo, useRef, useEffect, useDeferredValue } from "react";
 import * as THREE from "three";
 import { useStore } from '@/store/useStore';
-import { computePhysicalBasis, driftAxisLongitude, rotateZ, toSpherical, vectorLongitudeChart } from '@/lib/transforms';
+import { computePhysicalBasis, toSpherical } from '@/lib/transforms';
 import { RollingStats } from '@/lib/rollingStats';
 
-THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+THREE.Object3D.DEFAULT_UP.set(0, 1, 0);
 
 type AxesHelperProps = {
   args?: [number];
@@ -126,6 +126,30 @@ function unwrapLongitudes(lons: number[]) {
   }
 
   return out;
+}
+
+function formatLongitudeHemisphere(lon: number) {
+  const normalized = ((lon % 360) + 360) % 360;
+  const eastWestLon = normalized > 180 ? normalized - 360 : normalized;
+  const hemisphere = eastWestLon < 0 ? 'W' : 'E';
+  const magnitude = Math.abs(eastWestLon);
+
+  return `${magnitude.toFixed(1)}°${hemisphere}`;
+}
+
+function eopVectorToNorthUpWestLeft(vector: Vec3): Vec3 {
+  return [-vector[1], vector[0], vector[2]];
+}
+
+function eopDisplayLongitude(vector: Vec3) {
+  return Math.atan2(-vector[1], vector[0]) * (180 / Math.PI);
+}
+
+function transformPathToDisplay(samples?: PathSample[]): PathSample[] {
+  return samples?.map((sample) => ({
+    ...sample,
+    vector: eopVectorToNorthUpWestLeft(sample.vector),
+  })) ?? [];
 }
 
 function stabilizeOrientation(samples: PathSample[], allowFlip: boolean): PathSample[] {
@@ -353,13 +377,43 @@ const VectorArrow = memo(function VectorArrow({
   const [hovered, setHovered] = useState(false);
   const vecArray = vector as number[];
   const offset = positionOffset as [number, number, number];
+  const labelPosition = useMemo(() => {
+    const direction = new THREE.Vector3(vecArray[0], vecArray[1], vecArray[2]);
+    const length = direction.length();
+
+    if (length < 1e-10) {
+      return new THREE.Vector3(0, 1.32, 0);
+    }
+
+    direction.normalize();
+    const tangent = new THREE.Vector3(-direction.y, direction.x, 0);
+    if (tangent.lengthSq() < 1e-10) {
+      tangent.set(1, 0, 0);
+    } else {
+      tangent.normalize();
+    }
+
+    const labelShift = label.startsWith('x_pole')
+      ? 0.22
+      : label.startsWith('y_pole')
+        ? -0.28
+        : label === 'Drift'
+          ? -0.18
+          : 0.16;
+
+    return direction
+      .multiplyScalar(label === 'Drift' ? 1.33 : 1.38)
+      .add(tangent.multiplyScalar(labelShift))
+      .add(new THREE.Vector3(0, hovered ? 0.08 : 0, 0));
+  }, [hovered, label, vecArray]);
+  const valueLabelPosition = useMemo(() => labelPosition.clone().add(new THREE.Vector3(0, -0.12, 0)), [labelPosition]);
   const pathGeometry = useMemo(() => {
     if (!pathData || pathData.length <= 1) {
       return null;
     }
 
     const geometry = buildDiagnosticPath(pathData, {
-      allowFlip: label === 'e1' || label === 'e2',
+      allowFlip: label === 'e1' || label === 'e2' || label.startsWith('x_pole') || label.startsWith('y_pole'),
       maxAngleDeg: label === 'Geomagnetic Dipole' ? 14 : 22,
       targetPoints: isAnimating ? 18 : 30,
       lift: label === 'Geomagnetic Dipole' ? 1.025 : 1.015,
@@ -392,15 +446,15 @@ const VectorArrow = memo(function VectorArrow({
         <meshStandardMaterial color={color} />
       </mesh>
       <Text
-        position={[vecArray[0] * 1.2, vecArray[1] * 1.2 + (hovered ? 0.15 : 0), vecArray[2] * 1.2]}
-        color="white" fontSize={0.09} anchorX="center" anchorY="middle" outlineWidth={0.015} outlineColor="black"
+        position={labelPosition}
+        color="white" fontSize={0.07} anchorX="center" anchorY="middle" outlineWidth={0.012} outlineColor="black"
       >
         {label}
       </Text>
       {hovered && (
         <Text
-          position={[vecArray[0] * 1.2, vecArray[1] * 1.2 - 0.1, vecArray[2] * 1.2]}
-          color="#ffff00" fontSize={0.065} anchorX="center" anchorY="middle"
+          position={valueLabelPosition}
+          color="#ffff00" fontSize={0.052} anchorX="center" anchorY="middle"
         >
           [{vecArray[0].toFixed(3)}, {vecArray[1].toFixed(3)}, {vecArray[2].toFixed(3)}]
         </Text>
@@ -452,7 +506,7 @@ const Scene = memo(function Scene({
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[0, 0, 3]} fov={50} />
+      <PerspectiveCamera makeDefault position={[0, 0, 3]} up={[0, 1, 0]} fov={50} />
       <OrbitControls enableDamping dampingFactor={0.05} autoRotate={autoRotate} autoRotateSpeed={rotationSpeed} />
       <AxesHelper args={[1.5]} />
       <Graticules />
@@ -463,8 +517,8 @@ const Scene = memo(function Scene({
         <sphereGeometry args={[0.5, 32, 32]} />
         <meshStandardMaterial color="#1a365d" roughness={0.3} metalness={0.1} wireframe />
       </mesh>
-      <VectorArrow vector={e1} color="#ff5555" label="e1" visible={showE1} pathData={paths['e1']} isAnimating={isPlaying} />
-      <VectorArrow vector={e2} color="#55ff55" label="e2" visible={showE2} pathData={paths['e2']} isAnimating={isPlaying} />
+      <VectorArrow vector={e1} color="#ff5555" label="x_pole (Greenwich)" visible={showE1} pathData={paths['e1']} isAnimating={isPlaying} />
+      <VectorArrow vector={e2} color="#55ff55" label="y_pole (90°W)" visible={showE2} pathData={paths['e2']} isAnimating={isPlaying} />
       <VectorArrow vector={e3} color="#5555ff" label="e3 (Rotation)" visible={showE3} pathData={paths['e3']} isAnimating={isPlaying} />
       <VectorArrow vector={driftDisplayAxis} color="#ffaa00" label="Drift" visible={showDrift} pathData={paths['drift']} isAnimating={isPlaying} />
     </>
@@ -544,8 +598,7 @@ export default function SphereView({
   const currentSample = data[currentTimeIndex];
   const timestamp = currentSample ? currentSample.t : 'N/A';
   const displayDriftAxis = (driftAxisTimeSeries[currentTimeIndex] || currentSample?.driftAxis || driftAxis) as [number, number, number];
-  const driftSpherical = toSpherical(displayDriftAxis);
-  const driftLongitude = driftAxisLongitude(displayDriftAxis);
+  const driftLongitude = eopDisplayLongitude(displayDriftAxis);
   // Geomagnetic calculations disabled - not currently used in the pipeline
   const stepBy = (delta: number) => {
     if (data.length === 0) {
@@ -567,13 +620,13 @@ export default function SphereView({
   // Use fixed basis as placeholder
   const physicalBasis = useMemo(() => {
     return {
-      e1: [0, 1, 0] as [number, number, number],
-      e2: [1, 0, 0] as [number, number, number],
+      e1: eopVectorToNorthUpWestLeft([1, 0, 0]),
+      e2: eopVectorToNorthUpWestLeft([0, 1, 0]),
       e3: [0, 0, 1] as [number, number, number],
     };
   }, []);
 
-  const driftDisplayAxis = rotateZ(displayDriftAxis, 90) as [number, number, number];
+  const driftDisplayAxis = eopVectorToNorthUpWestLeft(displayDriftAxis);
 
   const precomputedPaths = rollingStats?.paths;
   
@@ -611,7 +664,7 @@ export default function SphereView({
       series.drift.push({
         t: sampleTime,
         vector: driftVector && driftVector.length === 3
-          ? rotateZ(driftVector as [number, number, number], 90) as [number, number, number]
+          ? driftVector as [number, number, number]
           : [1, 0, 0],
       });
       if (sample.geomagnetic_axis && sample.geomagnetic_axis.length === 3) {
@@ -641,11 +694,11 @@ export default function SphereView({
     const end = deferredTimeIndex + 1;
 
     return {
-      e1: pathSeries.e1.slice(start, end),
-      e2: pathSeries.e2.slice(start, end),
-      e3: pathSeries.e3.slice(start, end),
-      drift: pathSeries.drift.slice(start, end),
-      geomagnetic: pathSeries.geomagnetic.slice(start, end),
+      e1: transformPathToDisplay(pathSeries.e1.slice(start, end)),
+      e2: transformPathToDisplay(pathSeries.e2.slice(start, end)),
+      e3: transformPathToDisplay(pathSeries.e3.slice(start, end)),
+      drift: transformPathToDisplay(pathSeries.drift.slice(start, end)),
+      geomagnetic: transformPathToDisplay(pathSeries.geomagnetic.slice(start, end)),
     };
   }, [deferredTimeIndex, pathSeries]);
 
@@ -664,8 +717,10 @@ export default function SphereView({
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
           <span className="text-gray-400">Timestamp</span>
           <span>{timestamp}</span>
-          <span className="text-gray-400">Drift Lon / Lat</span>
-          <span>{driftLongitude.toFixed(1)}° / {driftSpherical.lat.toFixed(1)}°</span>
+          <span className="text-gray-400">Drift Lon.</span>
+          <span>{formatLongitudeHemisphere(driftLongitude)}</span>
+          <span className="text-gray-400">Frame</span>
+          <span>x_pole up, y_pole west-left</span>
         </div>
       </div>
       <div className={`absolute z-10 rounded-xl border border-gray-700 bg-gray-900/80 p-4 backdrop-blur-sm ${isMobileViewport ? 'bottom-4 left-4 right-4 flex flex-col gap-3' : 'bottom-6 left-1/2 flex w-3/4 -translate-x-1/2 items-center gap-6'}`}>

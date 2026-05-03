@@ -14,6 +14,8 @@ const PolarPlot = dynamic(() => import('@/components/PolarPlot'), { ssr: false }
 const DriftDirectionPlot = dynamic(() => import('@/components/DriftDirectionPlot'), { ssr: false });
 const SphereView = dynamic(() => import('@/components/SphereView'), { ssr: false });
 const PhasePortrait = dynamic(() => import('@/components/PhasePortrait'), { ssr: false });
+const ResidualPolarMotionPlot = dynamic(() => import('@/components/ResidualPolarMotionPlot'), { ssr: false });
+const PolarMotionTrajectoryPlot = dynamic(() => import('@/components/PolarMotionTrajectoryPlot'), { ssr: false });
 const ThetaOmegaPlots = dynamic(() => import('@/components/ThetaOmegaPlots'), { ssr: false });
 const OrthogonalDeviationPlot = dynamic(() => import('@/components/OrthogonalDeviationPlot'), { ssr: false });
 const OverlayPlot = dynamic(() => import('@/components/OverlayPlot'), { ssr: false });
@@ -206,6 +208,7 @@ export default function Home() {
         panelId="sphere"
         title="3D Vector View"
         guide={PANEL_GUIDES.sphere}
+        fullscreenAspect="square"
         visible={!hiddenPanels.has('sphere')}
         collapsed={collapsedPanels.has('sphere')}
         onToggleVisibility={() => togglePanelVisibility('sphere')}
@@ -237,6 +240,38 @@ export default function Home() {
       >
         <div className="h-full w-full">
           <PolarPlot xpData={xpData} ypData={ypData} dates={datesStr} rollingStats={rollingStats} />
+        </div>
+      </Panel>
+    ),
+    residualPolar: (
+      <Panel
+        panelId="residualPolar"
+        title="Residual Polar Motion (XY)"
+        guide={PANEL_GUIDES.residualPolar}
+        fullscreenAspect="square"
+        visible={!hiddenPanels.has('residualPolar')}
+        collapsed={collapsedPanels.has('residualPolar')}
+        onToggleVisibility={() => togglePanelVisibility('residualPolar')}
+        onToggleCollapse={() => togglePanelCollapse('residualPolar')}
+      >
+        <div className="h-full w-full">
+          <ResidualPolarMotionPlot xpData={xpData} ypData={ypData} dates={datesStr} />
+        </div>
+      </Panel>
+    ),
+    polarTrajectory: (
+      <Panel
+        panelId="polarTrajectory"
+        title="Polar Motion Trajectory"
+        guide={PANEL_GUIDES.polarTrajectory}
+        fullscreenAspect="square"
+        visible={!hiddenPanels.has('polarTrajectory')}
+        collapsed={collapsedPanels.has('polarTrajectory')}
+        onToggleVisibility={() => togglePanelVisibility('polarTrajectory')}
+        onToggleCollapse={() => togglePanelCollapse('polarTrajectory')}
+      >
+        <div className="h-full w-full">
+          <PolarMotionTrajectoryPlot xpData={xpData} ypData={ypData} dates={datesStr} />
         </div>
       </Panel>
     ),
@@ -351,7 +386,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.7
+                Version v1.4.8
               </p>
             </div>
             <Link

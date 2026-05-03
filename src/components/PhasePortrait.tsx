@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Plot from 'react-plotly.js';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
@@ -19,7 +19,23 @@ export default function PhasePortrait({
   omega,
   turningPoints = []
 }: PhasePortraitProps) {
-  const plotHeight = usePlotDisplayHeight(500, 860);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fallbackHeight = usePlotDisplayHeight(500, 860);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const plotSize = Math.round(containerWidth > 0 ? Math.min(containerWidth, fallbackHeight) : fallbackHeight);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      setContainerWidth(entry.contentRect.width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const traces = useMemo(() => {
     if (theta.length === 0 || omega.length === 0) {
@@ -134,7 +150,7 @@ export default function PhasePortrait({
       gridcolor: '#374151',
       zerolinecolor: '#4b5563'
     },
-    height: plotHeight,
+    height: plotSize,
     showlegend: true,
     legend: {
       orientation: 'h',
@@ -159,12 +175,12 @@ export default function PhasePortrait({
   }
 
   return (
-    <div className="h-full w-full min-w-0">
+    <div ref={containerRef} className="h-full w-full min-w-0">
       <Plot
         data={traces}
         layout={layout}
         config={createCsvExportConfig('phase-portrait.csv', { displayModeBar: true, responsive: true })}
-        style={{ width: '100%', height: `${plotHeight}px` }}
+        style={{ width: '100%', height: `${plotSize}px` }}
         useResizeHandler
       />
     </div>

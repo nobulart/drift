@@ -141,8 +141,17 @@ function normalizePanelOrder(value: unknown): string[] {
   ));
   const uniqueOrderedPanels = Array.from(new Set(orderedKnownPanels));
   const missingPanels = DEFAULT_PANEL_ORDER.filter((panelId) => !uniqueOrderedPanels.includes(panelId));
+  const mergedOrder = [...uniqueOrderedPanels];
+  missingPanels.forEach((panelId) => {
+    const defaultIndex = DEFAULT_PANEL_ORDER.indexOf(panelId as typeof DEFAULT_PANEL_ORDER[number]);
+    const precedingDefaults = DEFAULT_PANEL_ORDER.slice(0, defaultIndex);
+    const insertionIndex = Math.max(
+      0,
+      ...precedingDefaults.map((precedingPanelId) => mergedOrder.indexOf(precedingPanelId)).filter((index) => index >= 0).map((index) => index + 1)
+    );
+    mergedOrder.splice(insertionIndex, 0, panelId);
+  });
 
-  const mergedOrder = [...uniqueOrderedPanels, ...missingPanels];
   return [
     ...mergedOrder.filter((panelId) => panelId !== 'phaseEscape'),
     'phaseEscape',
