@@ -79,6 +79,8 @@ export function mergeDataSources(
       t: eop.t,
       xp: eop.xp,
       yp: eop.yp,
+      ...(eop.ut1_utc !== undefined ? { ut1_utc: eop.ut1_utc } : {}),
+      ...(eop.lod !== undefined ? { lod: eop.lod } : {}),
       ...(geomag.kp !== undefined ? { kp: geomag.kp } : {}),
       ...(geomag.ap !== undefined ? { ap: geomag.ap } : {}),
       ...(geomag.cp !== undefined ? { cp: geomag.cp } : {}),

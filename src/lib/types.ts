@@ -2,6 +2,8 @@ export interface TimeSample {
   t: string;
   xp: number;
   yp: number;
+  ut1_utc?: number;
+  lod?: number;
   e1?: [number, number, number];
   e2?: [number, number, number];
   e3?: [number, number, number];

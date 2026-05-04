@@ -4,7 +4,7 @@ export const DEFAULT_OVERLAY_SIGNALS = ['drift'];
 export const OVERLAY_SIGNAL_STORAGE_KEY = 'drift-overlay-selected-signals-v1';
 export const OVERLAY_SIGNAL_RESET_EVENT = 'drift-overlay-reset-defaults';
 
-const CORE_SIGNAL_KEYS = new Set(['drift', 'theta', 'omega', 'R', 'kp', 'ap']);
+const CORE_SIGNAL_KEYS = new Set(['xp', 'yp', 'ut1_utc', 'lod', 'drift', 'theta', 'omega', 'R', 'kp', 'ap']);
 const EPHEMERIS_SIGNAL_KEYS = new Set(
   EPHEMERIS_BODY_CONFIG.flatMap(body =>
     EPHEMERIS_METRIC_CONFIG.map(metric => `${body.key}:${metric.key}`)

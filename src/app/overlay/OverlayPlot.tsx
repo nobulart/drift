@@ -15,6 +15,10 @@ import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
 
 const CORE_SIGNALS = {
+  xp: { label: 'xp' },
+  yp: { label: 'yp' },
+  ut1_utc: { label: 'UT1-UTC' },
+  lod: { label: 'LOD' },
   drift: { label: 'Drift' },
   theta: { label: 'θ (Phase)' },
   omega: { label: 'ω (Angular Velocity)' },
@@ -37,8 +41,20 @@ function normalize(series: number[]): number[] {
   });
 }
 
-function getCoreSignalSeries(key: string, rollingStats: any, data: Array<{ kp?: number | null; ap?: number | null }>): number[] | undefined {
+function getCoreSignalSeries(
+  key: string,
+  rollingStats: any,
+  data: Array<{ xp?: number | null; yp?: number | null; ut1_utc?: number | null; lod?: number | null; kp?: number | null; ap?: number | null }>
+): number[] | undefined {
   switch (key) {
+    case 'xp':
+      return data.map(d => d.xp ?? NaN);
+    case 'yp':
+      return data.map(d => d.yp ?? NaN);
+    case 'ut1_utc':
+      return data.map(d => d.ut1_utc ?? NaN);
+    case 'lod':
+      return data.map(d => d.lod ?? NaN);
     case 'drift':
       return rollingStats.driftAxis?.map((d: [number, number, number]) =>
         (Math.atan2(d[1], d[0]) * 180 / Math.PI) + 90

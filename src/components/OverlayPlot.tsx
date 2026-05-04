@@ -26,6 +26,10 @@ interface CoreSignalConfig {
 }
 
 const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
+  xp: { label: 'xp' },
+  yp: { label: 'yp' },
+  ut1_utc: { label: 'UT1-UTC' },
+  lod: { label: 'LOD' },
   drift: { label: 'Drift' },
   theta: { label: 'θ (Phase)' },
   omega: { label: 'ω (Angular Velocity)' },
@@ -48,8 +52,20 @@ function normalize(series: number[]): number[] {
   });
 }
 
-function getCoreSignalSeries(key: string, rollingStats: any, data: Array<{ kp?: number | null; ap?: number | null }>): number[] | undefined {
+function getCoreSignalSeries(
+  key: string,
+  rollingStats: any,
+  data: Array<{ xp?: number | null; yp?: number | null; ut1_utc?: number | null; lod?: number | null; kp?: number | null; ap?: number | null }>
+): number[] | undefined {
   switch (key) {
+    case 'xp':
+      return data.map(d => d.xp ?? NaN);
+    case 'yp':
+      return data.map(d => d.yp ?? NaN);
+    case 'ut1_utc':
+      return data.map(d => d.ut1_utc ?? NaN);
+    case 'lod':
+      return data.map(d => d.lod ?? NaN);
     case 'drift':
       return rollingStats.driftAxis?.map((d: [number, number, number]) =>
         (Math.atan2(d[1], d[0]) * 180 / Math.PI) + 90
@@ -332,7 +348,7 @@ export default function OverlayPlot() {
   return (
     <div className="p-4 bg-[#0b1220] h-full w-full min-w-0">
       <div className="mb-4 space-y-4">
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
           {(Object.keys(CORE_SIGNALS) as Array<keyof typeof CORE_SIGNALS>).map(key => (
             <label key={key} className="flex items-center gap-2 cursor-pointer">
               <input
@@ -354,27 +370,42 @@ export default function OverlayPlot() {
             </div>
             <p className="text-xs text-[#6b7280]">Observer: Earth geocenter</p>
           </div>
-          <div className="max-h-40 overflow-y-auto">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="max-h-48 overflow-auto rounded-md border border-[#1f2937]">
+            <div
+              className="grid min-w-[680px] items-center gap-px bg-[#1f2937] text-xs"
+              style={{ gridTemplateColumns: `minmax(5.5rem, 0.9fr) repeat(${EPHEMERIS_METRIC_CONFIG.length}, minmax(5.5rem, 1fr))` }}
+            >
+              <div className="sticky left-0 top-0 z-20 bg-[#0b1220] px-2 py-2 font-semibold uppercase tracking-wide text-[#9ca3af]">
+                Body
+              </div>
               {EPHEMERIS_METRIC_CONFIG.map(metric => (
-                <div key={metric.key}>
-                  <p className="mb-2 text-xs uppercase tracking-wide text-[#60a5fa]">{metric.shortLabel}</p>
-                  <div className="space-y-2">
-                    {EPHEMERIS_BODY_CONFIG.map(body => {
-                      const signalKey = `${body.key}:${metric.key}`;
-                      return (
-                        <label key={signalKey} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedSignals.includes(signalKey)}
-                            onChange={() => toggleSignal(signalKey)}
-                            className="w-4 h-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
-                          />
-                          <span className="text-sm text-[#d1d5db]">{body.label}</span>
-                        </label>
-                      );
-                    })}
+                <div key={metric.key} className="sticky top-0 z-10 bg-[#0b1220] px-2 py-2 text-center font-semibold uppercase tracking-wide text-[#60a5fa]">
+                  {metric.shortLabel}
+                </div>
+              ))}
+              {EPHEMERIS_BODY_CONFIG.map(body => (
+                <div key={body.key} className="contents">
+                  <div className="sticky left-0 z-10 bg-[#111827] px-2 py-1.5 font-medium text-[#d1d5db]">
+                    {body.label}
                   </div>
+                  {EPHEMERIS_METRIC_CONFIG.map(metric => {
+                    const signalKey = `${body.key}:${metric.key}`;
+                    return (
+                      <label
+                        key={signalKey}
+                        className="flex cursor-pointer items-center justify-center bg-[#111827] px-2 py-1.5 transition-colors hover:bg-[#1f2937]"
+                        title={`${body.label} ${metric.label}`}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={`${body.label} ${metric.shortLabel}`}
+                          checked={selectedSignals.includes(signalKey)}
+                          onChange={() => toggleSignal(signalKey)}
+                          className="h-4 w-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               ))}
             </div>
