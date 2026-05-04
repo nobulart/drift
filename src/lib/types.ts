@@ -76,6 +76,11 @@ export interface ConditionalLagResult {
   phase_bins: number[];
   signal: number[][];
   baseline: number[][];
+  lagKernel?: number[][];
+  targetState?: number;
+  qualifyingTurningPoints?: number;
+  phaseEventCounts?: number[];
+  sufficientSamples?: boolean;
 }
 
 export interface LagKernel {
@@ -98,4 +103,5 @@ export interface TransitionForecast {
   alert_message: string;
   phase_bin: number;
   base_prob: number;
+  p_30d?: number;
 }

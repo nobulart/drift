@@ -129,7 +129,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.8
+                Version v1.4.9
               </span>
               <Link
                 href="/"
@@ -175,9 +175,9 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.8 IERS XY Frame</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.9 Model Corrections</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added square residual and trajectory polar-motion panels, aligned their fullscreen modals, and made the 3D Vector View use the same north-up/west-left IERS orientation with clear direction labels and drift longitude.
+                Corrected conditional lag support, transition probability normalization, 30-day cumulative reporting, and the trailing-window R(t) calculation so current diagnostics update from live derived data.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">

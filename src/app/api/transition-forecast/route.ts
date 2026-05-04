@@ -33,8 +33,11 @@ export async function GET(request: NextRequest) {
     let latestMtime = 0;
     
     try {
-      const files = await fs.readdir(statsCacheDir);
+      const files = await fs.readdir(statsCacheDir, { recursive: true });
       for (const file of files) {
+        if (typeof file !== 'string') {
+          continue;
+        }
         if (file.endsWith('.json')) {
           const filePath = join(statsCacheDir, file);
           const stat = await fs.stat(filePath);
@@ -78,7 +81,7 @@ export async function GET(request: NextRequest) {
     
     // Extract and normalize lag kernel
     const lags = conditionalResult.lags || [];
-    const signal = conditionalResult.signal || [];
+    const sourceKernel = conditionalResult.lagKernel || conditionalResult.signal || [];
     const phase_bins = conditionalResult.phase_bins || [];
     
     // Convert to positive kernel
@@ -89,8 +92,8 @@ export async function GET(request: NextRequest) {
     for (let i = 0; i < n_lags; i++) {
       const row: number[] = [];
       for (let p = 0; p < n_phases; p++) {
-        const val = (signal[i] && signal[i][p]) || 0;
-        row.push(Math.max(0, val));
+        const val = sourceKernel[i]?.[p];
+        row.push(Number.isFinite(val) ? Math.max(0, val) : 0);
       }
       lagKernel.push(row);
     }
@@ -105,10 +108,8 @@ export async function GET(request: NextRequest) {
           lagKernel[i][p] = lagKernel[i][p]! / colSum;
         }
       } else {
-        // Uniform distribution if all zeros
-        const uniform = 1.0 / n_lags;
         for (let i = 0; i < n_lags; i++) {
-          lagKernel[i][p] = uniform;
+          lagKernel[i][p] = 0;
         }
       }
     }
@@ -125,17 +126,13 @@ export async function GET(request: NextRequest) {
       : Math.min(params.currentState, n_phases - 1);
     const L = lagKernel.map(row => row[phase_idx] || 0);
     
-    // Combine with base probability
-    let P_tau = L.map(p => params.baseProb * p);
-    
-    // Normalize
-    const total = P_tau.reduce((sum, p) => sum + p, 0);
-    if (total > 0) {
-      P_tau = P_tau.map(p => p / total);
-    } else {
-      const uniform = 1.0 / n_lags;
-      P_tau = new Array(n_lags).fill(uniform);
-    }
+    const total = L.reduce((sum, p) => sum + p, 0);
+    const normalizedKernel = total > 0
+      ? L.map(p => p / total)
+      : new Array(n_lags).fill(1.0 / n_lags);
+
+    // Preserve base probability in the absolute probability density.
+    let P_tau = normalizedKernel.map(p => params.baseProb * p);
     
     // Cumulative
     const cumulative: number[] = [];
@@ -151,7 +148,7 @@ export async function GET(request: NextRequest) {
     let peak_prob = 0;
     
     for (let i = 0; i < n_lags; i++) {
-      expected_time += P_tau[i] * lags[i];
+      expected_time += normalizedKernel[i] * lags[i];
       if (P_tau[i] > peak_prob) {
         peak_prob = P_tau[i];
         peak_idx = i;
@@ -197,7 +194,8 @@ export async function GET(request: NextRequest) {
       alert_level,
       alert_message,
       phase_bin: phase_idx,
-      base_prob: params.baseProb
+      base_prob: params.baseProb,
+      p_30d: P_30d
     });
     
   } catch (error) {

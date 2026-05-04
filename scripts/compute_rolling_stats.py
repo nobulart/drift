@@ -135,6 +135,35 @@ def compute_omega(theta: np.ndarray, t: np.ndarray) -> np.ndarray:
     return omega
 
 
+def resolve_turn_threshold(
+    omega: np.ndarray,
+    requested_threshold: float = 0.05,
+    max_near_fraction: float = 0.35,
+    fallback_quantile: float = 0.10,
+) -> float:
+    """
+    Use the requested threshold unless it collapses most of the series into
+    a single near-turning-point regime. In that case, fall back to a data-scale
+    threshold based on the lower tail of |omega|.
+    """
+    omega_abs = np.abs(omega[np.isfinite(omega)])
+    if len(omega_abs) == 0:
+        return requested_threshold
+
+    requested_threshold = float(requested_threshold)
+    near_fraction = float(np.mean(omega_abs < requested_threshold))
+
+    if near_fraction <= max_near_fraction:
+        return requested_threshold
+
+    adaptive_threshold = float(np.quantile(omega_abs, fallback_quantile))
+    if adaptive_threshold <= 0:
+        positive = omega_abs[omega_abs > 0]
+        adaptive_threshold = float(np.min(positive)) if len(positive) else requested_threshold
+
+    return min(requested_threshold, adaptive_threshold)
+
+
 def detect_turning_points(omega: np.ndarray, threshold: float = 0.05) -> np.ndarray:
     """
     Detect turning points where |omega| < threshold.
@@ -279,31 +308,29 @@ def polygon_area(x: np.ndarray, y: np.ndarray) -> float:
 def compute_r_ratio(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """Compute orthogonal deviation ratio R(t) at each timestep."""
     n = len(x)
-    r_ratio = np.zeros(n)
+    r_ratio = np.full(n, np.nan)
+    min_window = 20
 
-    # Add padding for edge handling
-    pad = 20
-    r_ratio[:pad] = np.nan
-    r_ratio[-pad:] = np.nan
-
-    for i in range(pad, n - pad):
-        # Use local window for R ratio
+    for i in range(n):
+        # Use trailing local windows so the latest samples update as new data
+        # arrives instead of being forward-filled from an artificial tail pad.
         window_size = min(365, i + 1)
         x_win = x[max(0, i - window_size + 1) : i + 1]
         y_win = y[max(0, i - window_size + 1) : i + 1]
 
-        if len(x_win) < 2:
+        if len(x_win) < min_window:
             r_ratio[i] = np.nan
             continue
 
         cov = np.cov(np.vstack([x_win, y_win]))
         eigvals = np.linalg.eigvals(cov)
-        r_ratio[i] = np.min(np.abs(eigvals)) / np.max(np.abs(eigvals))
+        max_eig = np.max(np.abs(eigvals))
+        r_ratio[i] = np.min(np.abs(eigvals)) / max_eig if max_eig > 0 else np.nan
 
-    # Interpolate to fill NaN edges
+    # Interpolate to fill short gaps and leading warm-up values.
     r_ratio = pd.Series(r_ratio).interpolate().values
 
-    # Forward-fill and backward-fill remaining NaNs (pandas compatible)
+    # Forward-fill and backward-fill any remaining NaNs (pandas compatible).
     r_ratio = pd.Series(r_ratio).ffill().bfill().values
 
     return r_ratio
@@ -520,14 +547,18 @@ def compute_conditional_lag_model(
     lags = list(range(lag_min, lag_max + 1))
 
     # State filtering
+    # Use one representative anchor per contiguous region in the target state.
+    # Filtering turning-point centers by state makes non-transition states
+    # structurally impossible because those centers are state 2 by definition.
     state_mask = state == target_state
-
-    # Find turning points that also match target state
-    tp_list = []
-    for tp in turning_points:
-        if tp < len(state) and state[tp] == target_state:
-            tp_list.append(tp)
-    tp_idx = np.array(tp_list, dtype=int)
+    state_mask_int = state_mask.astype(int)
+    state_diff = np.diff(state_mask_int, prepend=0, append=0)
+    starts = np.where(state_diff == 1)[0]
+    ends = np.where(state_diff == -1)[0]
+    tp_idx = np.array([(start + end) // 2 for start, end in zip(starts, ends) if end > start], dtype=int)
+    tp_phase_counts = np.zeros(n_phase_bins, dtype=int)
+    for tp in tp_idx:
+        tp_phase_counts[phase_idx[tp]] += 1
 
     if len(tp_idx) == 0:
         # No qualifying turning points
@@ -536,6 +567,11 @@ def compute_conditional_lag_model(
             "phase_bins": phase_bins.tolist(),
             "signal": [[np.nan] * n_phase_bins] * len(lags),
             "baseline": [[np.nan] * n_phase_bins] * len(lags),
+            "lagKernel": [[0.0] * n_phase_bins] * len(lags),
+            "targetState": target_state,
+            "qualifyingTurningPoints": 0,
+            "phaseEventCounts": tp_phase_counts.tolist(),
+            "sufficientSamples": False,
         }
 
     # 3D structure: (lag × phase_bin)
@@ -600,16 +636,14 @@ def compute_conditional_lag_model(
 
     # === LAG KERNEL EXTRACTION ===
     # Convert to positive lag kernel (only positive responses)
-    lag_kernel = np.maximum(lag_phase_matrix, 0)
+    finite_signal = np.where(np.isfinite(lag_phase_matrix), lag_phase_matrix, 0.0)
+    lag_kernel = np.maximum(finite_signal, 0.0)
 
     # Normalize per phase bin to sum = 1 (probability distribution)
     for p in range(n_phase_bins):
         col_sum = np.sum(lag_kernel[:, p])
         if col_sum > 0:
             lag_kernel[:, p] /= col_sum
-        else:
-            # Uniform distribution if all zeros
-            lag_kernel[:, p] = 1.0 / len(lags)
 
     # Apply Gaussian smoothing (sigma=1.0)
     from scipy.ndimage import gaussian_filter
@@ -628,6 +662,10 @@ def compute_conditional_lag_model(
         "signal": lag_phase_matrix.tolist(),
         "baseline": baseline_matrix.tolist(),
         "lagKernel": lag_kernel.tolist(),
+        "targetState": target_state,
+        "qualifyingTurningPoints": int(len(tp_idx)),
+        "phaseEventCounts": tp_phase_counts.tolist(),
+        "sufficientSamples": bool(len(tp_idx) >= 3),
     }
 
 
@@ -1003,10 +1041,11 @@ def compute_rolling_stats(
     theta_wrapped = (theta + np.pi) % (2 * np.pi) - np.pi
 
     # Step 6: Turning points
-    turning_points = detect_turning_points(omega, turn_threshold)
+    effective_turn_threshold = resolve_turn_threshold(omega, turn_threshold)
+    turning_points = detect_turning_points(omega, effective_turn_threshold)
 
     # Step 6b: State detection
-    state = detect_states(omega, theta_wrapped, turn_threshold)
+    state = detect_states(omega, theta_wrapped, effective_turn_threshold)
 
     # Step 7: Dance segments
     dance_segments = extract_dance_segments(
@@ -1110,6 +1149,7 @@ def compute_rolling_stats(
         "omega": omega.tolist(),
         "turningPoints": turning_points.tolist(),
         "state": state.tolist(),
+        "effectiveTurnThreshold": float(effective_turn_threshold),
         "danceSegments": dance_segments,
         "rRatio": r_ratio.tolist(),
         "driftAxis": [drift_axis[i].tolist() for i in range(len(t))],
@@ -1298,6 +1338,7 @@ def main():
         "input_file": args.input,
         "window_size_days": args.window_size,
         "turn_threshold": args.turn_threshold,
+        "effective_turn_threshold": stats.get("effectiveTurnThreshold", args.turn_threshold),
         "center_window_days": args.center_window,
         "dance_window_days": args.dance_window,
         "conditional_target_state": args.conditional_target_state,

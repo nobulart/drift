@@ -41,7 +41,8 @@ export function predictTransitionCurve(
       alert_level: 'UNKNOWN',
       alert_message: 'No lag kernel data available',
       phase_bin: 0,
-      base_prob: baseProb
+      base_prob: baseProb,
+      p_30d: NaN
     };
   }
   
@@ -56,22 +57,14 @@ export function predictTransitionCurve(
     L.push(kernel[i][phase_idx]);
   }
   
-  // Combine with base probability
-  const P_tau: number[] = L.map(p => baseProb * p);
-  
-  // Normalize to proper probability distribution
-  const total = P_tau.reduce((sum, p) => sum + p, 0);
-  if (total > 0) {
-    for (let i = 0; i < P_tau.length; i++) {
-      P_tau[i] /= total;
-    }
-  } else {
-    // Uniform distribution if all zeros
-    const uniform = 1.0 / lags.length;
-    for (let i = 0; i < P_tau.length; i++) {
-      P_tau[i] = uniform;
-    }
-  }
+  const total = L.reduce((sum, p) => sum + p, 0);
+  const normalizedKernel = total > 0
+    ? L.map(p => p / total)
+    : L.map(() => 1.0 / lags.length);
+
+  // Absolute transition probability density. This intentionally preserves
+  // baseProb instead of normalizing it away.
+  const P_tau: number[] = normalizedKernel.map(p => baseProb * p);
   
   // Compute cumulative probability
   const cumulative: number[] = [];
@@ -87,7 +80,7 @@ export function predictTransitionCurve(
   let peak_prob = 0;
   
   for (let i = 0; i < lags.length; i++) {
-    expected_time += P_tau[i] * lags[i];
+    expected_time += normalizedKernel[i] * lags[i];
     if (P_tau[i] > peak_prob) {
       peak_prob = P_tau[i];
       peak_idx = i;
@@ -134,7 +127,8 @@ export function predictTransitionCurve(
     alert_level,
     alert_message,
     phase_bin: phase_idx,
-    base_prob: baseProb
+    base_prob: baseProb,
+    p_30d: P_30d
   };
 }
 

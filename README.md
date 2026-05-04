@@ -4,11 +4,19 @@ Constraint-first polar-motion diagnostics dashboard for geometry, phase structur
 
 Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Locked Planetary Torque Coupling in Polar Motion](https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion)
 
-![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.8.png)
+![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.4.8`
+Current release: `v1.4.9`
 
 ## Release Notes
+
+### v1.4.9
+
+- Fixed adaptive turning-point detection so the default threshold no longer collapses the full omega history into one turning region.
+- Reworked the conditional lag response anchors so all selected states can populate from contiguous state episodes, with sample-count metadata exposed to the transition panel.
+- Updated transition probability to use the computed lag kernel, preserve base probability in cumulative probabilities, and report `P(≤30d)` against the actual 30-day lag.
+- Fixed `R(t)` tail computation so the latest samples use trailing windows instead of being forward-filled from the last pre-padding value.
+- Added rolling-stats cache invalidation for model-code changes so derived outputs refresh when the Python computation changes.
 
 ### v1.4.8
 

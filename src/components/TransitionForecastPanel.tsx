@@ -105,6 +105,20 @@ export default function TransitionForecastPanel() {
     return computeTransitionForecast(currentTheta, currentState, lagKernel, baseProb);
   }, [baseProb, currentState, currentTheta, lagKernel]);
 
+  const forecastSampleCount = useMemo(() => {
+    if (!forecast || !conditionalLagModel?.phaseEventCounts) {
+      return null;
+    }
+
+    const count = conditionalLagModel.phaseEventCounts[forecast.phase_bin];
+    return typeof count === 'number' ? count : null;
+  }, [conditionalLagModel, forecast]);
+
+  const hasSparseForecast = Boolean(
+    conditionalLagModel
+      && (conditionalLagModel.sufficientSamples === false || forecastSampleCount === 0)
+  );
+
   const stateLabels = ['Stable', 'Pre', 'Transition', 'Post'];
   const expectedDateLabel = useMemo(() => {
     if (!forecast || !Number.isFinite(forecast.expected_time)) {
@@ -308,7 +322,7 @@ export default function TransitionForecastPanel() {
           <div className="p-4 bg-[#1f2937] rounded-lg border border-[#374151]">
             <p className="text-xs text-[#9ca3af] uppercase tracking-wider">P(≤30d)</p>
             <p className="text-2xl font-bold text-[#e5e7eb]">
-              {((forecast.cumulative[30] || 0) * 100).toFixed(1)}%
+              {(((forecast.p_30d ?? 0) || 0) * 100).toFixed(1)}%
             </p>
           </div>
           
@@ -351,6 +365,16 @@ export default function TransitionForecastPanel() {
             <p>
               <span className="text-[#9ca3af]">Base probability:</span>  <span className="text-white font-mono">{baseProb.toFixed(2)}</span>
             </p>
+            {forecastSampleCount !== null && (
+              <p>
+                <span className="text-[#9ca3af]">Phase samples:</span>  <span className="text-white font-mono">{forecastSampleCount}</span>
+              </p>
+            )}
+            {hasSparseForecast && (
+              <p className="text-amber-300">
+                Sparse conditional support; interpret the smoothed kernel cautiously.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -360,7 +384,7 @@ export default function TransitionForecastPanel() {
 
 function convertToLagKernel(conditionalResult: any): LagKernel {
   const lags = conditionalResult.lags || [];
-  const signal = conditionalResult.signal || [];
+  const sourceKernel = conditionalResult.lagKernel || conditionalResult.signal || [];
   const phase_bins = conditionalResult.phase_bins || [];
   
   const n_lags = lags.length;
@@ -372,8 +396,8 @@ function convertToLagKernel(conditionalResult: any): LagKernel {
   for (let i = 0; i < n_lags; i++) {
     const row: number[] = [];
     for (let p = 0; p < n_phases; p++) {
-      const val = (signal[i] && signal[i][p]) || 0;
-      row.push(Math.max(0, val));
+      const val = sourceKernel[i]?.[p];
+      row.push(Number.isFinite(val) ? Math.max(0, val) : 0);
     }
     kernel.push(row);
   }
