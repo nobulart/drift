@@ -2,8 +2,24 @@ import { promises as fs } from 'fs';
 import { gunzip } from 'zlib';
 import { dirname, join } from 'path';
 import { promisify } from 'util';
+import { NextResponse } from 'next/server';
 
 const gunzipAsync = promisify(gunzip);
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
+export function noStoreJson<T>(data: T, init?: ResponseInit) {
+  return NextResponse.json(data, {
+    ...init,
+    headers: {
+      ...NO_STORE_HEADERS,
+      ...init?.headers,
+    },
+  });
+}
 
 export async function readPipelineJson<T>(filename: string): Promise<T> {
   const candidates = [

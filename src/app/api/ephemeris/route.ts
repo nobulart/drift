@@ -1,13 +1,14 @@
-import { NextResponse } from 'next/server';
-import { readPipelineJson } from '@/lib/serverData';
+import { noStoreJson, readPipelineJson } from '@/lib/serverData';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     const data = await readPipelineJson<any>('ephemeris_historic.json');
-    return NextResponse.json(data);
+    return noStoreJson(data);
   } catch (error) {
     if (error instanceof Error && error.message.includes('Unable to locate ephemeris_historic.json')) {
-      return NextResponse.json({
+      return noStoreJson({
         source: {
           kernel: 'de442.bsp',
           kernel_url: 'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de442.bsp',
@@ -23,6 +24,6 @@ export async function GET() {
     }
 
     console.error('Error fetching ephemeris data:', error);
-    return NextResponse.json({ error: 'Failed to fetch ephemeris data' }, { status: 500 });
+    return noStoreJson({ error: 'Failed to fetch ephemeris data' }, { status: 500 });
   }
 }

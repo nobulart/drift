@@ -6,6 +6,11 @@ import { z } from 'zod';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
 const ParamsSchema = z.object({
   windowSize: z.number().positive().default(365),
@@ -113,10 +118,10 @@ export async function GET(request: NextRequest) {
       statsData = JSON.parse(dataStr);
     }
 
-    return NextResponse.json(statsData);
+    return NextResponse.json(statsData, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Error computing rolling stats:', error);
-    return NextResponse.json({ error: 'Failed to compute rolling stats' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to compute rolling stats' }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
 

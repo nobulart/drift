@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
+export const dynamic = 'force-dynamic';
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 export async function GET() {
   try {
     const eopPath = join(process.cwd(), 'public', 'data', 'eop_historic.json');
@@ -38,9 +45,9 @@ export async function GET() {
       return point;
     });
     
-    return NextResponse.json(combinedData);
+    return NextResponse.json(combinedData, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Error fetching combined data:', error);
-    return NextResponse.json({ error: 'Failed to fetch combined data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch combined data' }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

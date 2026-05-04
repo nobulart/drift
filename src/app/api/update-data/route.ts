@@ -1,13 +1,28 @@
 import { spawn } from 'child_process';
 import { join } from 'path';
 import { NextResponse } from 'next/server';
+import { readPipelineJson } from '@/lib/serverData';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
 interface UpdateResult {
   stdout: string;
   stderr: string;
+}
+
+interface UpdateSummary {
+  eopRecordCount?: number;
+  latestEopDate?: string;
+  geomagRecordCount?: number;
+  latestGeomagDate?: string;
+  combinedRecordCount?: number;
+  latestCombinedDate?: string;
 }
 
 let activeUpdate: Promise<UpdateResult> | null = null;
@@ -61,11 +76,43 @@ function runDataPipeline() {
   });
 }
 
+function summarizeSeries(records: any[] | undefined) {
+  if (!Array.isArray(records) || records.length === 0) {
+    return { recordCount: 0, latestDate: undefined };
+  }
+
+  const latest = records[records.length - 1];
+  return {
+    recordCount: records.length,
+    latestDate: typeof latest?.t === 'string' ? latest.t.slice(0, 10) : undefined,
+  };
+}
+
+async function collectUpdateSummary(): Promise<UpdateSummary> {
+  const [eop, geomag, combined] = await Promise.all([
+    readPipelineJson<any[]>('eop_historic.json').catch(() => undefined),
+    readPipelineJson<any[]>('geomag_gfz_kp.json').catch(() => undefined),
+    readPipelineJson<any[]>('combined_historic.json').catch(() => undefined),
+  ]);
+  const eopSummary = summarizeSeries(eop);
+  const geomagSummary = summarizeSeries(geomag);
+  const combinedSummary = summarizeSeries(combined);
+
+  return {
+    eopRecordCount: eopSummary.recordCount,
+    latestEopDate: eopSummary.latestDate,
+    geomagRecordCount: geomagSummary.recordCount,
+    latestGeomagDate: geomagSummary.latestDate,
+    combinedRecordCount: combinedSummary.recordCount,
+    latestCombinedDate: combinedSummary.latestDate,
+  };
+}
+
 export async function POST() {
   if (activeUpdate) {
     return NextResponse.json(
       { error: 'Data update is already running.' },
-      { status: 409 }
+      { status: 409, headers: NO_STORE_HEADERS }
     );
   }
 
@@ -73,19 +120,21 @@ export async function POST() {
 
   try {
     const result = await activeUpdate;
+    const summary = await collectUpdateSummary();
     return NextResponse.json({
       ok: true,
       completedAt: new Date().toISOString(),
+      summary,
       stdout: result.stdout,
       stderr: result.stderr,
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Data update failed:', error);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Data update failed.',
       },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   } finally {
     activeUpdate = null;

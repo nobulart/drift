@@ -20,6 +20,18 @@ interface SidebarSectionProps {
   className?: string;
 }
 
+interface UpdateDataResponse {
+  error?: string;
+  summary?: {
+    latestEopDate?: string;
+    eopRecordCount?: number;
+    latestGeomagDate?: string;
+    geomagRecordCount?: number;
+    latestCombinedDate?: string;
+    combinedRecordCount?: number;
+  };
+}
+
 function SidebarSection({ title, open, onToggle, children, className = '' }: SidebarSectionProps) {
   return (
     <section className={`flex flex-col gap-3 ${className}`}>
@@ -136,14 +148,19 @@ export default function Controls({
         method: 'POST',
         cache: 'no-store',
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await response.json().catch(() => ({})) as UpdateDataResponse;
 
       if (!response.ok) {
         throw new Error(result.error || 'Data update failed.');
       }
 
       await refetchData();
-      setUpdateMessage('Data files updated and dashboard reloaded.');
+      const latestDate = result.summary?.latestEopDate || result.summary?.latestCombinedDate;
+      setUpdateMessage(
+        latestDate
+          ? `Data updated through ${latestDate}; dashboard reloaded.`
+          : 'Data files updated and dashboard reloaded.'
+      );
     } catch (error) {
       setUpdateError(error instanceof Error ? error.message : 'Data update failed.');
     } finally {
