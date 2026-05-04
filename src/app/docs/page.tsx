@@ -129,7 +129,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.9
+                Version v1.5.0
               </span>
               <Link
                 href="/"
@@ -175,9 +175,9 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.9 Model Corrections</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.0 Turning-Point Overlays</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Corrected conditional lag support, transition probability normalization, 30-day cumulative reporting, and the trailing-window R(t) calculation so current diagnostics update from live derived data.
+                Added red turning-point markers to the polar trajectory and residual polar-motion paths, filtered unconfirmed boundary turning points, improved conditional-lag legend spacing, and expanded the internal experimental model documentation.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
@@ -357,6 +357,24 @@ export default function DocsPage() {
           </div>
 
           <div className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
+            <h2 className="text-lg font-bold text-white">
+              Phase-Locked Escape Model<sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup>
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
+              The phase-locked escape layer compares the current DRIFT phase state with DE442-derived composite phase relationships. It reports residual phase misalignment, phase drift, local time-to-alignment, phase acceleration, curvature signal, barrier ratio, phase-well state, and a Kramers-like comparative index that uses R(t) as a noise proxy.
+            </p>
+            <div className="mt-4 rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4 text-sm leading-7 text-[#cbd5e1]">
+              <p className="font-mono text-[#93c5fd]">E_phase = 0.5 omega_phi^2 + alpha(1 - cos(phi - phi0))</p>
+              <p className="mt-3">
+                Low barrier ratios and stable phase drift suggest the state remains inside a comparative phase basin; near-barrier or super-barrier readings flag episodes that deserve inspection alongside the geometric panels. These outputs are diagnostic coordinates, not deterministic planetary forcing claims.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+
+          <div className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
             <h2 className="text-lg font-bold text-white">Deployment Notes</h2>
             <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
               The production app is packaged as a Docker image, served by a Next.js standalone server on port 3000, and reverse proxied by Nginx on ports 80 and 443.
@@ -365,7 +383,7 @@ export default function DocsPage() {
             <ul className="mt-4 space-y-2 text-sm leading-6 text-[#cbd5e1]">
               <li>Docker image for reproducible app builds.</li>
               <li>Nginx reverse proxy for default web traffic and TLS termination.</li>
-              <li>Kamatera VM hosting for the live public deployment.</li>
+              <li>Linux VM hosting for the live public deployment.</li>
               <li>Cache-aware JSON artifacts bundled with the app for fast startup and consistent UI outputs.</li>
             </ul>
           </div>

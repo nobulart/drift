@@ -165,7 +165,9 @@ export default function ConditionalLagPlot() {
         yanchor: 'top' as const,
         y: -0.2,
         xanchor: 'center' as const,
-        x: 0.5
+        x: 0.5,
+        itemwidth: 120,
+        tracegroupgap: 24,
       },
       margin: { l: 60, r: 20, t: 60, b: 60 },
       template: 'plotly_dark' as any,

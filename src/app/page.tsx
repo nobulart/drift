@@ -256,7 +256,7 @@ export default function Home() {
         onToggleCollapse={() => togglePanelCollapse('residualPolar')}
       >
         <div className="h-full w-full">
-          <ResidualPolarMotionPlot xpData={xpData} ypData={ypData} dates={datesStr} />
+          <ResidualPolarMotionPlot xpData={xpData} ypData={ypData} dates={datesStr} rollingStats={rollingStats} />
         </div>
       </Panel>
     ),
@@ -272,7 +272,7 @@ export default function Home() {
         onToggleCollapse={() => togglePanelCollapse('polarTrajectory')}
       >
         <div className="h-full w-full">
-          <PolarMotionTrajectoryPlot xpData={xpData} ypData={ypData} dates={datesStr} />
+          <PolarMotionTrajectoryPlot xpData={xpData} ypData={ypData} dates={datesStr} rollingStats={rollingStats} />
         </div>
       </Panel>
     ),
@@ -387,7 +387,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.4.9
+                Version v1.5.0
               </p>
             </div>
             <Link

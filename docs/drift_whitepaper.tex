@@ -201,7 +201,7 @@ The dashboard interface is designed to support exploratory interpretation withou
 This interaction model treats the dashboard as a working analytical instrument rather than a static report page.
 
 \section{Operational Deployment}
-The application is packaged as a Docker image and deployed to a Kamatera virtual machine. Nginx handles default web traffic on ports 80 and 443, proxies to the container on port 3000, and uses Let's Encrypt certificates for HTTPS. This deployment model has three advantages:
+The application is packaged as a Docker image and deployed to a Linux virtual machine. Nginx handles default web traffic on ports 80 and 443, proxies to the container on port 3000, and uses Let's Encrypt certificates for HTTPS. This deployment model has three advantages:
 \begin{enumerate}[leftmargin=1.5em]
   \item reproducible rebuilds from a single image,
   \item clean separation between application and edge web serving,

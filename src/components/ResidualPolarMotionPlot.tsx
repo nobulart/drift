@@ -10,9 +10,13 @@ interface ResidualPolarMotionPlotProps {
   xpData: number[];
   ypData: number[];
   dates: string[];
+  rollingStats?: {
+    turningPoints?: number[];
+  } | null;
 }
 
 interface ResidualPoint {
+  index: number;
   date: string;
   year: number;
   x: number;
@@ -138,6 +142,7 @@ function decimalYear(date: string): number {
 function buildResidualSeries(xpData: number[], ypData: number[], dates: string[]) {
   const rows = dates
     .map((date, index) => ({
+      index,
       date,
       day: toDay(date, index),
       xpMas: xpData[index] * 1000,
@@ -189,6 +194,7 @@ function buildResidualSeries(xpData: number[], ypData: number[], dates: string[]
   const axisAngle = Math.atan2(axis[1], axis[0]) * 180 / Math.PI;
   const axisScale = Math.max(...xPos.map(Math.abs), ...yPos.map(Math.abs), 1) * 0.5;
   const points = rows.map((row, index) => ({
+    index: row.index,
     date: row.date,
     year: decimalYear(row.date),
     x: xPos[index],
@@ -200,7 +206,7 @@ function buildResidualSeries(xpData: number[], ypData: number[], dates: string[]
   return { points, axis, axisAngle, axisScale };
 }
 
-export default function ResidualPolarMotionPlot({ xpData, ypData, dates }: ResidualPolarMotionPlotProps) {
+export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rollingStats }: ResidualPolarMotionPlotProps) {
   const { timeRange, timeLockEnabled } = useTimeStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const fallbackHeight = usePlotDisplayHeight(620, 1800);
@@ -230,6 +236,10 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates }: Resid
     () => buildResidualSeries(xpData, ypData, dates),
     [dates, xpData, ypData]
   );
+  const turningPointIndices = useMemo(
+    () => new Set(rollingStats?.turningPoints || []),
+    [rollingStats]
+  );
 
   const visiblePoints = useMemo(() => {
     if (!timeLockEnabled || !timeRange) {
@@ -258,9 +268,10 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates }: Resid
     }
 
     const centroidPoints = visiblePoints.filter((point) => point.cx !== null && point.cy !== null);
+    const turningPoints = visiblePoints.filter((point) => turningPointIndices.has(point.index));
     const axisLongitude = eopDisplayLongitude(residual.axis[0], residual.axis[1]);
 
-    return [
+    const data: Plotly.Data[] = [
       {
         x: visiblePoints.map((point) => point.y),
         y: visiblePoints.map((point) => point.x),
@@ -301,8 +312,28 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates }: Resid
         line: { color: '#ef4444', width: 6 },
         hovertemplate: 'PCA drift axis<br>x_res (Greenwich/up) %{y:.1f} mas<br>y_res (90°W/left) %{x:.1f} mas<extra></extra>',
       },
-    ] as Plotly.Data[];
-  }, [residual.axis, residual.axisScale, visiblePoints]);
+    ];
+
+    if (turningPoints.length > 0) {
+      data.push({
+        x: turningPoints.map((point) => point.y),
+        y: turningPoints.map((point) => point.x),
+        customdata: turningPoints.map((point) => [point.date, point.x, point.y]),
+        mode: 'markers',
+        type: 'scatter',
+        name: 'Turning points',
+        marker: {
+          size: 8,
+          color: '#ef4444',
+          opacity: 0.95,
+          line: { color: '#fee2e2', width: 1 },
+        },
+        hovertemplate: 'Turning point %{customdata[0]}<br>x_res (Greenwich/up) %{customdata[1]:.1f} mas<br>y_res (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+      });
+    }
+
+    return data;
+  }, [residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
 
   const maxExtent = useMemo(() => {
     const extents = visiblePoints.flatMap((point) => [Math.abs(point.x), Math.abs(point.y)]);

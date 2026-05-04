@@ -6,9 +6,16 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.4.9`
+Current release: `v1.5.0`
 
 ## Release Notes
+
+### v1.5.0
+
+- Added confirmed turning-point markers to the Polar Motion Trajectory and Residual Polar Motion (XY) path views.
+- Filtered unconfirmed boundary turning-point regions so the newest sample is not marked before the low-omega episode is bracketed by future data.
+- Increased horizontal legend spacing in the Conditional Lag Response phase-bin slice plot.
+- Updated internal docs with reordered experimental panel guides and a companion Phase-Locked Escape Model detail panel.
 
 ### v1.4.9
 
@@ -121,7 +128,7 @@ Build the production image:
 docker build -t drift-dashboard:latest .
 ```
 
-Run it locally or on a Kamatera host:
+Run it locally or on a Linux host:
 
 ```bash
 docker run -d \
@@ -136,11 +143,11 @@ Notes:
 - The container serves the Next.js app on port `3000`.
 - Python runtime dependencies are bundled because `/api/rolling-stats` computes diagnostics on demand.
 - The image includes the current `data/`, `public/data/`, and `scripts/` directories needed by the dashboard.
-- For Kamatera, point your reverse proxy or firewall rule at the VM’s port `3000`.
+- Point your reverse proxy or firewall rule at the host’s port `3000`.
 
 ## Production Hosting
 
-The live deployment is designed around a single Kamatera Linux VM:
+The live deployment is designed around a single Linux VM:
 
 - public app URL: `https://drift.nobulart.com`
 - app container port: `3000`
@@ -158,7 +165,7 @@ Internet
 
 ### Rebuild And Publish
 
-Build and publish the production image for the Kamatera host architecture:
+Build and publish the production image for the target host architecture:
 
 ```bash
 docker buildx build \
@@ -261,15 +268,15 @@ For subsequent updates, the deployment cycle is:
 
 1. `npm run build`
 2. `docker buildx build --platform linux/amd64 -t sunbear73/drift-dashboard:latest --push .`
-3. SSH to the Kamatera host
+3. SSH to the deployment host
 4. `docker pull sunbear73/drift-dashboard:latest`
 5. `docker rm -f drift-dashboard || true`
 6. `docker run -d --name drift-dashboard --restart unless-stopped -p 3000:3000 sunbear73/drift-dashboard:latest`
 7. Verify `https://drift.nobulart.com`
 
-### Kamatera Staging Checklist
+### Staging Checklist
 
-Use this exact sequence when staging a new build to the live Kamatera VM.
+Use this sequence when staging a new build to the live VM.
 
 1. Confirm the working tree is clean enough to release:
 
@@ -286,7 +293,7 @@ npm run build
 git push origin main
 ```
 
-3. Build and publish the Linux image used by Kamatera:
+3. Build and publish the Linux image used by the deployment host:
 
 ```bash
 docker buildx build \
@@ -295,7 +302,7 @@ docker buildx build \
   --push .
 ```
 
-4. SSH to the Kamatera VM as `root` and confirm the currently running container:
+4. SSH to the deployment VM as `root` and confirm the currently running container:
 
 ```bash
 ssh root@drift.nobulart.com
@@ -329,13 +336,13 @@ curl -I https://drift.nobulart.com
 curl -s https://drift.nobulart.com/docs | rg 'Version v'
 ```
 
-8. If the public site still appears stale in a browser, hard-refresh first. If the curl checks still show the old version, the Kamatera container was not actually refreshed and steps 4-7 should be repeated.
+8. If the public site still appears stale in a browser, hard-refresh first. If the curl checks still show the old version, the container was not actually refreshed and steps 4-7 should be repeated.
 
 ### Notes From Recent Deploys
 
-- A successful image push does not mean Kamatera is updated. The VM must still `docker pull` and restart `drift-dashboard`.
+- A successful image push does not mean the live host is updated. The VM must still `docker pull` and restart `drift-dashboard`.
 - The most reliable user-visible version check is currently the docs badge at `/docs`.
-- If SSH by hostname fails, use the current VM address from the Kamatera console rather than hard-coding server IPs or credentials into the repo.
+- If SSH by hostname fails, use the current VM address from the hosting console rather than hard-coding server IPs or credentials into the repo.
 
 ## Project Structure
 

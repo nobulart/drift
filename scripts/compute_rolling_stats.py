@@ -186,7 +186,10 @@ def detect_turning_points(omega: np.ndarray, threshold: float = 0.05) -> np.ndar
     ends = np.where(diff == -1)[0]
 
     turning_points = []
+    n = len(omega)
     for start, end in zip(starts, ends):
+        if start == 0 or end == n:
+            continue
         if end > start:
             # Center of the region
             center = (start + end) // 2
@@ -228,7 +231,10 @@ def detect_states(
     state[:] = 0
 
     # Mark transition regions
+    n = len(omega)
     for start, end in zip(starts, ends):
+        if start == 0 or end == n:
+            continue
         if end <= start:
             continue
 

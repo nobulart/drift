@@ -11,9 +11,13 @@ interface PolarMotionTrajectoryPlotProps {
   xpData: number[];
   ypData: number[];
   dates: string[];
+  rollingStats?: {
+    turningPoints?: number[];
+  } | null;
 }
 
 interface TrajectoryPoint {
+  index: number;
   date: string;
   year: number;
   xPole: number;
@@ -35,6 +39,7 @@ function decimalYear(date: string): number {
 function buildTrajectory(xpData: number[], ypData: number[], dates: string[]) {
   return dates
     .map((date, index) => ({
+      index,
       date,
       year: decimalYear(date),
       xPole: xpData[index] * 1000,
@@ -48,7 +53,7 @@ function buildTrajectory(xpData: number[], ypData: number[], dates: string[]) {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
-export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates }: PolarMotionTrajectoryPlotProps) {
+export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rollingStats }: PolarMotionTrajectoryPlotProps) {
   const { timeRange, timeLockEnabled } = useTimeStore();
   const isFullscreen = useContext(PanelFullscreenContext);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +84,10 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates }: Pol
     () => buildTrajectory(xpData, ypData, dates),
     [dates, xpData, ypData]
   );
+  const turningPointIndices = useMemo(
+    () => new Set(rollingStats?.turningPoints || []),
+    [rollingStats]
+  );
 
   const visiblePoints = useMemo(() => {
     if (!timeLockEnabled || !timeRange) {
@@ -106,31 +115,53 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates }: Pol
       return [];
     }
 
-    return [
-      {
-        x: visiblePoints.map((point) => point.yPole),
-        y: visiblePoints.map((point) => point.xPole),
-        customdata: visiblePoints.map((point) => [point.date, point.xPole, point.yPole]),
-        mode: 'lines+markers',
-        type: 'scattergl',
-        name: 'Polar motion path',
-        line: { color: 'rgba(96, 165, 250, 0.45)', width: 1.4 },
-        marker: {
-          size: 4,
-          color: visiblePoints.map((point) => point.year),
-          colorscale: 'Viridis',
-          showscale: true,
-          colorbar: {
-            title: { text: 'Calendar year', side: 'right' },
-            thickness: 14,
-            len: 0.82,
-          },
-          opacity: 0.78,
+    const pathTrace: Plotly.Data = {
+      x: visiblePoints.map((point) => point.yPole),
+      y: visiblePoints.map((point) => point.xPole),
+      customdata: visiblePoints.map((point) => [point.date, point.xPole, point.yPole]),
+      mode: 'lines+markers',
+      type: 'scattergl',
+      name: 'Polar motion path',
+      line: { color: 'rgba(96, 165, 250, 0.45)', width: 1.4 },
+      marker: {
+        size: 4,
+        color: visiblePoints.map((point) => point.year),
+        colorscale: 'Viridis',
+        showscale: true,
+        colorbar: {
+          title: { text: 'Calendar year', side: 'right' },
+          thickness: 14,
+          len: 0.82,
         },
-        hovertemplate: '%{customdata[0]}<br>x pole (Greenwich/up) %{customdata[1]:.1f} mas<br>y pole (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+        opacity: 0.78,
+      },
+      hovertemplate: '%{customdata[0]}<br>x pole (Greenwich/up) %{customdata[1]:.1f} mas<br>y pole (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+    };
+    const turningPoints = visiblePoints.filter((point) => turningPointIndices.has(point.index));
+
+    if (turningPoints.length === 0) {
+      return [pathTrace] as Plotly.Data[];
+    }
+
+    return [
+      pathTrace,
+      {
+        x: turningPoints.map((point) => point.yPole),
+        y: turningPoints.map((point) => point.xPole),
+        customdata: turningPoints.map((point) => [point.date, point.xPole, point.yPole]),
+        mode: 'markers',
+        type: 'scattergl',
+        name: 'Turning points',
+        marker: {
+          size: 8,
+          color: '#ef4444',
+          opacity: 0.95,
+          line: { color: '#fee2e2', width: 1 },
+        },
+        hovertemplate: 'Turning point %{customdata[0]}<br>x pole (Greenwich/up) %{customdata[1]:.1f} mas<br>y pole (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
       },
     ] as Plotly.Data[];
-  }, [visiblePoints]);
+  }, [turningPointIndices, visiblePoints]);
 
   const axisRanges = useMemo(() => {
     if (visiblePoints.length === 0) {

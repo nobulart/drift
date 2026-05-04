@@ -39,8 +39,6 @@ interface DocsPanelGuide {
 
 export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: '3D Vector View', guide: PANEL_GUIDES.sphere },
-  { title: 'Transition Probability', guide: PANEL_GUIDES.forecast, experimental: true },
-  { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape, experimental: true },
   { title: 'Polar Motion (XP, YP)', guide: PANEL_GUIDES.polar },
   { title: 'Residual Polar Motion (XY)', guide: PANEL_GUIDES.residualPolar },
   { title: 'Polar Motion Trajectory', guide: PANEL_GUIDES.polarTrajectory },
@@ -51,6 +49,8 @@ export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: 'Lag Model', guide: PANEL_GUIDES.lagModel },
   { title: 'Overlay Plot', guide: PANEL_GUIDES.overlay },
   { title: 'Conditional Lag Response', guide: PANEL_GUIDES.conditionalLag },
+  { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape, experimental: true },
+  { title: 'Transition Probability', guide: PANEL_GUIDES.forecast, experimental: true },
 ];
 
 export const DOCS_PRINCIPLES = [
