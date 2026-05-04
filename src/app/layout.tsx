@@ -1,5 +1,7 @@
 import '@/styles/globals.css';
 import type { Metadata } from 'next';
+import Image from 'next/image';
+import bmcLogo from '../../docs/assets/bmc-logo.svg';
 
 export const metadata: Metadata = {
   title: 'DRIFT Dashboard',
@@ -19,10 +21,18 @@ export default function RootLayout({
           href="https://buymeacoffee.com/nobulart"
           target="_blank"
           rel="noreferrer"
-          className="fixed bottom-4 right-4 z-[100] rounded-full border border-[#5b4630] bg-[#1b1610]/90 px-4 py-2 text-sm font-medium text-[#f6d4a4] shadow-lg backdrop-blur-sm transition-all hover:scale-[1.02] hover:bg-[#2a2118] hover:text-[#ffe8c8]"
-          aria-label="Support on Buy Me a Coffee"
+          className="fixed bottom-6 right-6 z-[100] opacity-70 transition-all hover:scale-[1.04] hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#f6d4a4]/50"
+          aria-label="Buy me a coffee!"
+          title="Buy me a coffee!"
         >
-          Buy me a coffee
+          <Image
+            src={bmcLogo}
+            alt=""
+            width={42}
+            height={62}
+            unoptimized
+            className="h-[60px] w-auto drop-shadow-md"
+          />
         </a>
       </body>
     </html>
