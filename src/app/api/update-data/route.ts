@@ -11,49 +11,52 @@ interface UpdateResult {
 }
 
 let activeUpdate: Promise<UpdateResult> | null = null;
-const UPDATE_TIMEOUT_MS = 5 * 60 * 1000;
+const UPDATE_TIMEOUT_MS = 15 * 60 * 1000;
 
 function appendBounded(current: string, chunk: Buffer, maxLength = 20000) {
   const next = current + chunk.toString();
   return next.length > maxLength ? next.slice(next.length - maxLength) : next;
 }
 
-function runFetchLatest() {
+function runDataPipeline() {
   return new Promise<UpdateResult>((resolve, reject) => {
-    const scriptPath = join(process.cwd(), 'scripts', 'fetch_latest.py');
-    const python = spawn('python3', [scriptPath], {
+    const scriptPath = join(process.cwd(), 'scripts', 'run_pipeline.sh');
+    const pipeline = spawn('bash', [scriptPath, '--compute-stats'], {
       cwd: process.cwd(),
-      env: process.env,
+      env: {
+        ...process.env,
+        COMPUTE_STATS: '1',
+      },
     });
 
     let stdout = '';
     let stderr = '';
     const timeout = setTimeout(() => {
-      python.kill('SIGTERM');
-      reject(new Error('Data update timed out after 5 minutes.'));
+      pipeline.kill('SIGTERM');
+      reject(new Error('Data update timed out after 15 minutes.'));
     }, UPDATE_TIMEOUT_MS);
 
-    python.stdout.on('data', (data: Buffer) => {
+    pipeline.stdout.on('data', (data: Buffer) => {
       stdout = appendBounded(stdout, data);
     });
 
-    python.stderr.on('data', (data: Buffer) => {
+    pipeline.stderr.on('data', (data: Buffer) => {
       stderr = appendBounded(stderr, data);
     });
 
-    python.on('error', (error) => {
+    pipeline.on('error', (error) => {
       clearTimeout(timeout);
       reject(error);
     });
 
-    python.on('close', (code) => {
+    pipeline.on('close', (code) => {
       clearTimeout(timeout);
       if (code === 0) {
         resolve({ stdout, stderr });
         return;
       }
 
-      reject(new Error(`fetch_latest.py exited with code ${code ?? 'unknown'}\n${stderr || stdout}`));
+      reject(new Error(`run_pipeline.sh exited with code ${code ?? 'unknown'}\n${stderr || stdout}`));
     });
   });
 }
@@ -66,7 +69,7 @@ export async function POST() {
     );
   }
 
-  activeUpdate = runFetchLatest();
+  activeUpdate = runDataPipeline();
 
   try {
     const result = await activeUpdate;

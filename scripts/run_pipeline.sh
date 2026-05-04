@@ -67,8 +67,15 @@ log_info "Created: inertia_timeseries.json"
 
 # Step 6: Process ephemeris data
 log_info "Step 6/7: Processing DE442 ephemeris data..."
-python3 scripts/build_ephemeris.py
-log_info "Created: ephemeris_historic.json"
+if [ -s data/ephemeris_historic.json ]; then
+    log_info "Using existing: ephemeris_historic.json"
+elif [ -s data/ephemeris_historic.json.gz ]; then
+    log_info "Restoring compressed: ephemeris_historic.json.gz"
+    gzip -dk data/ephemeris_historic.json.gz
+else
+    python3 scripts/build_ephemeris.py
+    log_info "Created: ephemeris_historic.json"
+fi
 
 # Step 7: Combine all data
 log_info "Step 7/7: Combining all data..."

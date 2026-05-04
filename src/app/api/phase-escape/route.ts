@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
+import { materializePipelineJson } from '@/lib/serverData';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,19 +45,6 @@ function getPythonCommand() {
   throw new Error('No Python interpreter with numpy, scipy, and pandas is available. Set DRIFT_PYTHON to a compatible interpreter.');
 }
 
-async function firstExistingPath(candidates: string[]) {
-  for (const candidate of candidates) {
-    try {
-      await fs.access(candidate);
-      return candidate;
-    } catch {
-      // Try the next internal cache location.
-    }
-  }
-
-  throw new Error(`Unable to locate required data file from: ${candidates.join(', ')}`);
-}
-
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -66,14 +54,8 @@ export async function GET(request: NextRequest) {
       smoothDays: searchParams.get('smoothDays') ? Number(searchParams.get('smoothDays')) : 31,
     });
 
-    const eopPath = await firstExistingPath([
-      join(process.cwd(), 'data', 'eop_historic.json'),
-      join(process.cwd(), 'public', 'data', 'eop_historic.json'),
-    ]);
-    const ephemerisPath = await firstExistingPath([
-      join(process.cwd(), 'data', 'ephemeris_historic.json'),
-      join(process.cwd(), 'public', 'data', 'ephemeris_historic.json'),
-    ]);
+    const eopPath = await materializePipelineJson('eop_historic.json');
+    const ephemerisPath = await materializePipelineJson('ephemeris_historic.json');
 
     const [eopStat, ephemerisStat] = await Promise.all([
       fs.stat(eopPath),

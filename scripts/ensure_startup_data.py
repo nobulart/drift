@@ -17,6 +17,7 @@ REQUIRED_OUTPUTS = [
     PROJECT_ROOT / "data" / "geomag_gfz_kp.json",
     PROJECT_ROOT / "data" / "grace_historic.json",
     PROJECT_ROOT / "data" / "inertia_timeseries.json",
+    PROJECT_ROOT / "data" / "ephemeris_historic.json",
     PROJECT_ROOT / "data" / "combined_historic.json",
     PROJECT_ROOT / "data" / "rolling_stats.json",
 ]
@@ -31,10 +32,14 @@ def get_refresh_reason() -> str | None:
     oldest_mtime: datetime | None = None
 
     for output_path in REQUIRED_OUTPUTS:
-        if not output_path.exists():
+        if not output_path.exists() and not output_path.with_suffix(output_path.suffix + ".gz").exists():
             return f"missing output: {output_path.name}"
 
-        mtime = datetime.fromtimestamp(output_path.stat().st_mtime, tz=timezone.utc)
+        if output_path.name == "ephemeris_historic.json":
+            continue
+
+        existing_path = output_path if output_path.exists() else output_path.with_suffix(output_path.suffix + ".gz")
+        mtime = datetime.fromtimestamp(existing_path.stat().st_mtime, tz=timezone.utc)
         if oldest_mtime is None or mtime < oldest_mtime:
             oldest_mtime = mtime
 

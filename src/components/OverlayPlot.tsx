@@ -14,6 +14,12 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildSelectedSeriesCsvRows, createCsvExportConfig, plotlyXRange, WideCsvSeries } from '@/lib/plotlyCsvExport';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
+import {
+  DEFAULT_OVERLAY_SIGNALS,
+  OVERLAY_SIGNAL_RESET_EVENT,
+  readOverlaySignals,
+  writeOverlaySignals,
+} from '@/lib/overlayPreferences';
 
 interface CoreSignalConfig {
   label: string;
@@ -79,9 +85,27 @@ function getEphemerisSignalSeries(
   });
 }
 
+function getEphemerisTraceSeries(
+  key: string,
+  records: EphemerisRecord[]
+): { x: string[]; raw: number[] } | undefined {
+  const [bodyKey, metricKey] = key.split(':');
+  if (!bodyKey || !metricKey) {
+    return undefined;
+  }
+
+  return {
+    x: records.map(record => record.t),
+    raw: records.map(record =>
+      record.bodies[bodyKey]?.[metricKey as keyof EphemerisRecord['bodies'][string]] ?? NaN
+    ),
+  };
+}
+
 export default function OverlayPlot() {
-  const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift']);
+  const [selectedSignals, setSelectedSignals] = useState<string[]>(readOverlaySignals);
   const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});
+  const [ephemerisRecords, setEphemerisRecords] = useState<EphemerisRecord[]>([]);
   const isInternalUpdate = useRef(false);
   const plotHeight = usePlotDisplayHeight(500, 860);
 
@@ -89,6 +113,13 @@ export default function OverlayPlot() {
   const rollingStats = useStore(state => state.rollingStats);
   const data = useStore(state => state.data);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
+  const observationRange = useMemo<[string, string] | null>(() => {
+    if (data.length === 0) {
+      return null;
+    }
+
+    return [data[0].t, data[data.length - 1].t];
+  }, [data]);
 
   const selectedSeries = useMemo(() => {
     if (!rollingStats || data.length === 0) {
@@ -128,6 +159,7 @@ export default function OverlayPlot() {
           return acc;
         }, {});
         setEphemerisByDate(nextMap);
+        setEphemerisRecords(dataset.records);
       })
       .catch(error => {
         console.error('Failed to load ephemeris data:', error);
@@ -139,21 +171,62 @@ export default function OverlayPlot() {
   }, []);
 
   useEffect(() => {
+    writeOverlaySignals(selectedSignals);
+  }, [selectedSignals]);
+
+  useEffect(() => {
+    const handleReset = () => {
+      setSelectedSignals([...DEFAULT_OVERLAY_SIGNALS]);
+    };
+
+    window.addEventListener(OVERLAY_SIGNAL_RESET_EVENT, handleReset);
+    return () => window.removeEventListener(OVERLAY_SIGNAL_RESET_EVENT, handleReset);
+  }, []);
+
+  useEffect(() => {
     if (!rollingStats || data.length === 0) {
       setTraces([]);
       return;
     }
 
+    const rangeFilter = (timestamp: string) => {
+      if (!timeLockEnabled || !timeRange) {
+        return true;
+      }
+
+      const t = new Date(timestamp).getTime();
+      return t >= timeRange[0] && t <= timeRange[1];
+    };
+
     const timestamps = data.map(d => d.t);
-    const filteredIndices = (timeLockEnabled && timeRange)
-      ? timestamps.map((_, i) => i).filter(i => {
-          const t = new Date(timestamps[i]).getTime();
-          return t >= timeRange[0] && t <= timeRange[1];
-        })
-      : timestamps.map((_, i) => i);
+    const filteredIndices = timestamps.map((_, i) => i).filter(i => rangeFilter(timestamps[i]));
     const filteredTime = filteredIndices.map(i => timestamps[i]);
 
-    const nextTraces = selectedSeries.map(series => {
+    const nextTraces = selectedSignals.map(signalKey => {
+      if (signalKey.includes(':')) {
+        const series = getEphemerisTraceSeries(signalKey, ephemerisRecords);
+        if (!series) {
+          return null;
+        }
+
+        const filteredSamples = series.x
+          .map((timestamp, index) => ({ timestamp, value: series.raw[index] ?? NaN }))
+          .filter(sample => rangeFilter(sample.timestamp));
+
+        return {
+          x: filteredSamples.map(sample => sample.timestamp),
+          y: normalize(filteredSamples.map(sample => sample.value)),
+          mode: 'lines',
+          name: getEphemerisSignalLabel(signalKey),
+          line: { width: 2 },
+        } as Plotly.Data;
+      }
+
+      const series = selectedSeries.find(entry => entry.key === signalKey);
+      if (!series) {
+        return null;
+      }
+
       const filtered = filteredIndices.map(i => series.raw[i] ?? NaN);
       return {
         x: filteredTime,
@@ -162,10 +235,73 @@ export default function OverlayPlot() {
         name: series.label,
         line: { width: 2 },
       } as Plotly.Data;
-    });
+    }).filter(Boolean) as Plotly.Data[];
 
     setTraces(nextTraces);
-  }, [data, rollingStats, selectedSeries, timeLockEnabled, timeRange]);
+  }, [data, ephemerisRecords, rollingStats, selectedSeries, selectedSignals, timeLockEnabled, timeRange]);
+
+  const visibleXRange = useMemo<[string, string] | undefined>(() => {
+    if (timeLockEnabled && timeRange) {
+      return [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()];
+    }
+
+    return observationRange ?? undefined;
+  }, [observationRange, timeLockEnabled, timeRange]);
+
+  const nowIso = useMemo(() => new Date().toISOString(), []);
+
+  const overlayLayout = useMemo(() => ({
+    template: 'plotly_dark',
+    xaxis: {
+      title: { text: 'Date', standoff: 20 },
+      gridcolor: '#374151',
+      zerolinecolor: '#4b5563',
+      ...(visibleXRange ? { range: visibleXRange } : {}),
+    },
+    yaxis: {
+      title: { text: 'Normalized Value (z-score)', standoff: 20 },
+      gridcolor: '#374151',
+      zerolinecolor: '#4b5563',
+    },
+    legend: {
+      orientation: 'h' as const,
+      yanchor: 'top' as const,
+      y: -0.2,
+      xanchor: 'center' as const,
+      x: 0.5,
+    },
+    shapes: [
+      {
+        type: 'line' as const,
+        xref: 'x' as const,
+        yref: 'paper' as const,
+        x0: nowIso,
+        x1: nowIso,
+        y0: 0,
+        y1: 1,
+        line: { color: '#f59e0b', width: 2, dash: 'dash' as const },
+      },
+    ],
+    annotations: [
+      {
+        x: nowIso,
+        y: 1,
+        xref: 'x' as const,
+        yref: 'paper' as const,
+        text: 'Now',
+        showarrow: false,
+        xanchor: 'left' as const,
+        yanchor: 'bottom' as const,
+        font: { color: '#fbbf24', size: 11 },
+      },
+    ],
+    margin: { l: 60, r: 20, t: 40, b: 60 },
+    plot_bgcolor: '#111827',
+    paper_bgcolor: '#0b1220',
+    font: { color: '#e5e7eb' },
+    height: plotHeight,
+    autosize: true,
+  }), [nowIso, plotHeight, visibleXRange]);
 
   const overlayCsvConfig = useMemo(() => createCsvExportConfig(
     'overlay-plot.csv',
@@ -184,33 +320,6 @@ export default function OverlayPlot() {
     setTimeRange(range);
     setTimeout(() => { isInternalUpdate.current = false; }, 0);
   };
-
-  const overlayLayout = useMemo(() => ({
-    template: 'plotly_dark',
-    xaxis: {
-      title: { text: 'Date', standoff: 20 },
-      gridcolor: '#374151',
-      zerolinecolor: '#4b5563',
-    },
-    yaxis: {
-      title: { text: 'Normalized Value (z-score)', standoff: 20 },
-      gridcolor: '#374151',
-      zerolinecolor: '#4b5563',
-    },
-    legend: {
-      orientation: 'h' as const,
-      yanchor: 'top' as const,
-      y: -0.2,
-      xanchor: 'center' as const,
-      x: 0.5,
-    },
-    margin: { l: 60, r: 20, t: 40, b: 60 },
-    plot_bgcolor: '#111827',
-    paper_bgcolor: '#0b1220',
-    font: { color: '#e5e7eb' },
-    height: plotHeight,
-    autosize: true,
-  }), [plotHeight]);
 
   const toggleSignal = (signalKey: string) => {
     setSelectedSignals(prev => (

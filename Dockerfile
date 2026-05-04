@@ -32,7 +32,7 @@ RUN python3 -m venv "${VIRTUAL_ENV}" \
 
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs \
-  && mkdir -p /app/public/data/.rolling-stats-cache /app/data /app/scripts
+  && mkdir -p /app/public/data/.rolling-stats-cache /app/public/data/.phase-escape-cache /app/data /app/scripts
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
