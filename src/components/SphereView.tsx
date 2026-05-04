@@ -1,12 +1,11 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Text, PerspectiveCamera } from "@react-three/drei";
-import { memo, useState, useMemo, useRef, useEffect, useDeferredValue } from "react";
+import { memo, useCallback, useState, useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useStore } from '@/store/useStore';
 import { computePhysicalBasis, toSpherical } from '@/lib/transforms';
-import { RollingStats } from '@/lib/rollingStats';
 
 THREE.Object3D.DEFAULT_UP.set(0, 1, 0);
 
@@ -86,6 +85,12 @@ type PathMap = {
   geomagnetic: PathSample[];
 };
 
+type DriftPlaybackFrame = {
+  t: string;
+  vector: Vec3;
+  longitude: number;
+};
+
 function toThreeVector(vector: Vec3): THREE.Vector3 {
   return new THREE.Vector3(vector[0], vector[1], vector[2]);
 }
@@ -143,6 +148,70 @@ function eopVectorToNorthUpWestLeft(vector: Vec3): Vec3 {
 
 function eopDisplayLongitude(vector: Vec3) {
   return Math.atan2(-vector[1], vector[0]) * (180 / Math.PI);
+}
+
+function getVectorLabelPosition(vector: Vec3, label: string, hovered = false) {
+  const direction = toThreeVector(vector);
+  const length = direction.length();
+
+  if (length < 1e-10) {
+    return new THREE.Vector3(0, 1.32, 0);
+  }
+
+  direction.normalize();
+  const tangent = new THREE.Vector3(-direction.y, direction.x, 0);
+  if (tangent.lengthSq() < 1e-10) {
+    tangent.set(1, 0, 0);
+  } else {
+    tangent.normalize();
+  }
+
+  const labelShift = label.startsWith('x_pole')
+    ? 0.22
+    : label.startsWith('y_pole')
+      ? -0.28
+      : label === 'Drift'
+        ? -0.18
+        : 0.16;
+
+  return direction
+    .multiplyScalar(label === 'Drift' ? 1.33 : 1.38)
+    .add(tangent.multiplyScalar(labelShift))
+    .add(new THREE.Vector3(0, hovered ? 0.08 : 0, 0));
+}
+
+function applyArrowTransform(
+  vector: Vec3,
+  arrowGroup: THREE.Group | null,
+  marker: THREE.Mesh | null,
+  label: THREE.Object3D | null,
+  valueLabel: THREE.Object3D | null,
+  labelText: string
+) {
+  const direction = toThreeVector(vector);
+  const vectorLength = direction.length();
+  const displayLength = Math.max(vectorLength, 0.001);
+
+  if (arrowGroup) {
+    if (direction.lengthSq() < 1e-10) {
+      arrowGroup.quaternion.identity();
+    } else {
+      arrowGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+    }
+    arrowGroup.scale.setScalar(displayLength);
+  }
+
+  if (marker) {
+    marker.position.set(vector[0] * 1.1, vector[1] * 1.1, vector[2] * 1.1);
+  }
+
+  if (label) {
+    label.position.copy(getVectorLabelPosition(vector, labelText));
+  }
+
+  if (valueLabel && label) {
+    valueLabel.position.copy(label.position).add(new THREE.Vector3(0, -0.12, 0));
+  }
 }
 
 function transformPathToDisplay(samples?: PathSample[]): PathSample[] {
@@ -378,34 +447,8 @@ const VectorArrow = memo(function VectorArrow({
   const vecArray = vector as number[];
   const offset = positionOffset as [number, number, number];
   const labelPosition = useMemo(() => {
-    const direction = new THREE.Vector3(vecArray[0], vecArray[1], vecArray[2]);
-    const length = direction.length();
-
-    if (length < 1e-10) {
-      return new THREE.Vector3(0, 1.32, 0);
-    }
-
-    direction.normalize();
-    const tangent = new THREE.Vector3(-direction.y, direction.x, 0);
-    if (tangent.lengthSq() < 1e-10) {
-      tangent.set(1, 0, 0);
-    } else {
-      tangent.normalize();
-    }
-
-    const labelShift = label.startsWith('x_pole')
-      ? 0.22
-      : label.startsWith('y_pole')
-        ? -0.28
-        : label === 'Drift'
-          ? -0.18
-          : 0.16;
-
-    return direction
-      .multiplyScalar(label === 'Drift' ? 1.33 : 1.38)
-      .add(tangent.multiplyScalar(labelShift))
-      .add(new THREE.Vector3(0, hovered ? 0.08 : 0, 0));
-  }, [hovered, label, vecArray]);
+    return getVectorLabelPosition(vector, label, hovered);
+  }, [hovered, label, vector]);
   const valueLabelPosition = useMemo(() => labelPosition.clone().add(new THREE.Vector3(0, -0.12, 0)), [labelPosition]);
   const pathGeometry = useMemo(() => {
     if (!pathData || pathData.length <= 1) {
@@ -496,14 +539,88 @@ const Arrow = memo(function Arrow({ vector, color }: { vector: [number, number, 
   );
 });
 
+function ArrowBody({ color }: { color: string }) {
+  const shaftLength = 0.72;
+  const headLength = 0.22;
+
+  return (
+    <>
+      <mesh position={[0, shaftLength / 2, 0]}>
+        <cylinderGeometry args={[0.018, 0.018, shaftLength, 16]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      <mesh position={[0, shaftLength + headLength / 2, 0]}>
+        <coneGeometry args={[0.05, headLength, 16]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+    </>
+  );
+}
+
+function AnimatedDriftArrow({
+  vector,
+  color,
+  visible,
+  frames,
+  playbackIndexRef,
+  isPlaying,
+}: {
+  vector: Vec3;
+  color: string;
+  visible: boolean;
+  frames: DriftPlaybackFrame[];
+  playbackIndexRef: { current: number };
+  isPlaying: boolean;
+}) {
+  const arrowGroupRef = useRef<THREE.Group>(null);
+  const markerRef = useRef<THREE.Mesh>(null);
+  const labelRef = useRef<THREE.Object3D>(null);
+
+  useEffect(() => {
+    const frame = frames[playbackIndexRef.current];
+    applyArrowTransform(frame?.vector ?? vector, arrowGroupRef.current, markerRef.current, labelRef.current, null, 'Drift');
+  }, [frames, playbackIndexRef, vector]);
+
+  useFrame(() => {
+    if (!isPlaying || !visible) {
+      return;
+    }
+
+    const frame = frames[playbackIndexRef.current];
+    if (!frame) {
+      return;
+    }
+
+    applyArrowTransform(frame.vector, arrowGroupRef.current, markerRef.current, labelRef.current, null, 'Drift');
+  });
+
+  if (!visible) return null;
+
+  return (
+    <group>
+      <group ref={arrowGroupRef}>
+        <ArrowBody color={color} />
+      </group>
+      <mesh ref={markerRef}>
+        <sphereGeometry args={[0.05, 16, 16]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      <Text
+        ref={labelRef}
+        color="white" fontSize={0.07} anchorX="center" anchorY="middle" outlineWidth={0.012} outlineColor="black"
+      >
+        Drift
+      </Text>
+    </group>
+  );
+}
+
 const Scene = memo(function Scene({
-  driftAxis, driftDisplayAxis, e1, e2, e3, showDrift, showE1, showE2, showE3, autoRotate, rotationSpeed = 0.5, paths = {},
+  driftAxis, driftDisplayAxis, e1, e2, e3, showDrift, showE1, showE2, showE3, autoRotate, isPlaying, playbackFrames, playbackIndexRef, rotationSpeed = 0.5, paths = {},
 }: {
   driftAxis: [number, number, number]; driftDisplayAxis: [number, number, number]; e1: [number, number, number]; e2: [number, number, number]; e3: [number, number, number];
-  showDrift: boolean; showE1: boolean; showE2: boolean; showE3: boolean; autoRotate: boolean; rotationSpeed?: number; paths?: Partial<PathMap>;
+  showDrift: boolean; showE1: boolean; showE2: boolean; showE3: boolean; autoRotate: boolean; isPlaying: boolean; playbackFrames: DriftPlaybackFrame[]; playbackIndexRef: { current: number }; rotationSpeed?: number; paths?: Partial<PathMap>;
 }) {
-  const isPlaying = useStore((state) => state.isPlaying);
-
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 0, 3]} up={[0, 1, 0]} fov={50} />
@@ -520,7 +637,11 @@ const Scene = memo(function Scene({
       <VectorArrow vector={e1} color="#ff5555" label="x_pole (Greenwich)" visible={showE1} pathData={paths['e1']} isAnimating={isPlaying} />
       <VectorArrow vector={e2} color="#55ff55" label="y_pole (90°W)" visible={showE2} pathData={paths['e2']} isAnimating={isPlaying} />
       <VectorArrow vector={e3} color="#5555ff" label="e3 (Rotation)" visible={showE3} pathData={paths['e3']} isAnimating={isPlaying} />
-      <VectorArrow vector={driftDisplayAxis} color="#ffaa00" label="Drift" visible={showDrift} pathData={paths['drift']} isAnimating={isPlaying} />
+      {isPlaying ? (
+        <AnimatedDriftArrow vector={driftDisplayAxis} color="#ffaa00" visible={showDrift} frames={playbackFrames} playbackIndexRef={playbackIndexRef} isPlaying={isPlaying} />
+      ) : (
+        <VectorArrow vector={driftDisplayAxis} color="#ffaa00" label="Drift" visible={showDrift} pathData={paths['drift']} isAnimating={false} />
+      )}
     </>
   );
 });
@@ -532,15 +653,82 @@ export default function SphereView({
   frame: "earth" | "principal"; showDrift?: boolean; showE1?: boolean; showE2?: boolean; showE3?: boolean; autoRotate?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { data, currentTimeIndex, setCurrentTimeIndex, isPlaying, setIsPlaying, playbackSpeed, setPlaybackSpeed, driftAxisTimeSeries, rollingStats } = useStore();
+  const data = useStore((state) => state.data);
+  const currentTimeIndex = useStore((state) => state.currentTimeIndex);
+  const setCurrentTimeIndex = useStore((state) => state.setCurrentTimeIndex);
+  const isPlaying = useStore((state) => state.isPlaying);
+  const setIsPlaying = useStore((state) => state.setIsPlaying);
+  const playbackSpeed = useStore((state) => state.playbackSpeed);
+  const setPlaybackSpeed = useStore((state) => state.setPlaybackSpeed);
+  const driftAxisTimeSeries = useStore((state) => state.driftAxisTimeSeries);
+  const rollingStats = useStore((state) => state.rollingStats);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const deferredTimeIndex = useDeferredValue(currentTimeIndex);
+  const [uiTimeIndex, setUiTimeIndex] = useState(currentTimeIndex);
+  const playbackIndexRef = useRef(currentTimeIndex);
   
   // Cache precomputed paths to avoid re-creation on every render
   const precomputedPathsRef = useRef<Partial<PathMap>>({ e1: [], e2: [], e3: [], drift: [], geomagnetic: [] });
   if (rollingStats?.paths) {
     precomputedPathsRef.current = rollingStats.paths;
   }
+
+  const playbackFrames = useMemo<DriftPlaybackFrame[]>(() => {
+    return data.map((sample, index) => {
+      const vector = (driftAxisTimeSeries[index] || sample.driftAxis || driftAxis) as Vec3;
+      return {
+        t: sample.t,
+        vector: eopVectorToNorthUpWestLeft(vector),
+        longitude: eopDisplayLongitude(vector),
+      };
+    });
+  }, [data, driftAxis, driftAxisTimeSeries]);
+
+  const activeTimeIndex = isPlaying ? uiTimeIndex : currentTimeIndex;
+
+  useEffect(() => {
+    if (isPlaying) {
+      return;
+    }
+
+    const nextIndex = data.length > 0
+      ? THREE.MathUtils.clamp(currentTimeIndex, 0, data.length - 1)
+      : 0;
+    playbackIndexRef.current = nextIndex;
+    setUiTimeIndex(nextIndex);
+  }, [currentTimeIndex, data.length, isPlaying]);
+
+  useEffect(() => {
+    if (data.length === 0) {
+      playbackIndexRef.current = 0;
+      setUiTimeIndex(0);
+      return;
+    }
+
+    if (playbackIndexRef.current >= data.length) {
+      const nextIndex = data.length - 1;
+      playbackIndexRef.current = nextIndex;
+      setUiTimeIndex(nextIndex);
+      setCurrentTimeIndex(nextIndex);
+    }
+  }, [data.length, setCurrentTimeIndex]);
+
+  const updateTimeIndex = useCallback((index: number, syncGlobal = true) => {
+    if (data.length === 0) {
+      playbackIndexRef.current = 0;
+      setUiTimeIndex(0);
+      if (syncGlobal) {
+        setCurrentTimeIndex(0);
+      }
+      return;
+    }
+
+    const nextIndex = THREE.MathUtils.clamp(index, 0, data.length - 1);
+    playbackIndexRef.current = nextIndex;
+    setUiTimeIndex(nextIndex);
+    if (syncGlobal) {
+      setCurrentTimeIndex(nextIndex);
+    }
+  }, [data.length, setCurrentTimeIndex]);
   
   useEffect(() => {
     if (!isPlaying) return;
@@ -548,6 +736,7 @@ export default function SphereView({
 
     let animationFrame = 0;
     let previousTime: number | null = null;
+    let lastUiSyncTime = 0;
     let accumulatedSteps = 0;
     const samplesPerSecond = 10 * playbackSpeed;
 
@@ -563,14 +752,23 @@ export default function SphereView({
       const wholeSteps = Math.floor(accumulatedSteps);
       if (wholeSteps > 0) {
         accumulatedSteps -= wholeSteps;
-        setCurrentTimeIndex((prev: number) => (prev + wholeSteps) % data.length);
+        const nextIndex = (playbackIndexRef.current + wholeSteps) % data.length;
+        playbackIndexRef.current = nextIndex;
+
+        if (time - lastUiSyncTime >= 500) {
+          lastUiSyncTime = time;
+          setUiTimeIndex(nextIndex);
+        }
       }
 
       animationFrame = window.requestAnimationFrame(tick);
     };
 
     animationFrame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(animationFrame);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      setCurrentTimeIndex(playbackIndexRef.current);
+    };
   }, [isPlaying, data.length, setCurrentTimeIndex, playbackSpeed]);
 
   useEffect(() => {
@@ -595,17 +793,18 @@ export default function SphereView({
     }
   };
 
-  const currentSample = data[currentTimeIndex];
-  const timestamp = currentSample ? currentSample.t : 'N/A';
-  const displayDriftAxis = (driftAxisTimeSeries[currentTimeIndex] || currentSample?.driftAxis || driftAxis) as [number, number, number];
-  const driftLongitude = eopDisplayLongitude(displayDriftAxis);
+  const currentSample = data[activeTimeIndex];
+  const activePlaybackFrame = playbackFrames[activeTimeIndex];
+  const timestamp = activePlaybackFrame?.t || currentSample?.t || 'N/A';
+  const displayDriftAxis = (driftAxisTimeSeries[activeTimeIndex] || currentSample?.driftAxis || driftAxis) as [number, number, number];
+  const driftLongitude = activePlaybackFrame?.longitude ?? eopDisplayLongitude(displayDriftAxis);
   // Geomagnetic calculations disabled - not currently used in the pipeline
   const stepBy = (delta: number) => {
     if (data.length === 0) {
       return;
     }
 
-    setCurrentTimeIndex((prev: number) => THREE.MathUtils.clamp(prev + delta, 0, data.length - 1));
+    updateTimeIndex(activeTimeIndex + delta);
   };
 
   const jumpTo = (index: number) => {
@@ -613,7 +812,7 @@ export default function SphereView({
       return;
     }
 
-    setCurrentTimeIndex(THREE.MathUtils.clamp(index, 0, data.length - 1));
+    updateTimeIndex(index);
   };
 
   // Geomagnetic-based physicalBasis disabled - not currently used in the pipeline
@@ -626,10 +825,8 @@ export default function SphereView({
     };
   }, []);
 
-  const driftDisplayAxis = eopVectorToNorthUpWestLeft(displayDriftAxis);
+  const driftDisplayAxis = activePlaybackFrame?.vector ?? eopVectorToNorthUpWestLeft(displayDriftAxis);
 
-  const precomputedPaths = rollingStats?.paths;
-  
   const pathSeries = useMemo<PathMap | null>(() => {
     if (isMobileViewport) {
       return null;
@@ -685,13 +882,13 @@ export default function SphereView({
   }, [data, driftAxisTimeSeries, isMobileViewport]);
 
   const paths = useMemo<Partial<PathMap>>(() => {
-    if (!pathSeries) {
+    if (!pathSeries || isPlaying) {
       return {};
     }
 
     const trailLength = 40;
-    const start = Math.max(0, deferredTimeIndex - trailLength);
-    const end = deferredTimeIndex + 1;
+    const start = Math.max(0, activeTimeIndex - trailLength);
+    const end = activeTimeIndex + 1;
 
     return {
       e1: transformPathToDisplay(pathSeries.e1.slice(start, end)),
@@ -700,7 +897,7 @@ export default function SphereView({
       drift: transformPathToDisplay(pathSeries.drift.slice(start, end)),
       geomagnetic: transformPathToDisplay(pathSeries.geomagnetic.slice(start, end)),
     };
-  }, [deferredTimeIndex, pathSeries]);
+  }, [activeTimeIndex, isPlaying, pathSeries]);
 
   return (
     <div
@@ -758,7 +955,7 @@ export default function SphereView({
           <div className="flex justify-between text-[10px] text-gray-400 font-mono uppercase tracking-wider mb-1">
             <span>Timeline</span><span className="text-blue-400 font-bold">{timestamp}</span>
           </div>
-          <input type="range" min="0" max={data.length - 1} value={currentTimeIndex} onChange={(e) => setCurrentTimeIndex(parseInt(e.target.value))} className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+          <input type="range" min="0" max={data.length - 1} value={activeTimeIndex} onChange={(e) => updateTimeIndex(parseInt(e.target.value))} className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500" />
         </div>
       </div>
       <Canvas
@@ -768,7 +965,7 @@ export default function SphereView({
         performance={{ min: 0.5 }}
         camera={{ position: [0, 0, 3], fov: 50 }}
       >
-        <Scene driftAxis={displayDriftAxis} driftDisplayAxis={driftDisplayAxis} e1={physicalBasis.e1} e2={physicalBasis.e2} e3={physicalBasis.e3} showDrift={showDrift} showE1={showE1} showE2={showE2} showE3={showE3} autoRotate={autoRotate} paths={paths} />
+        <Scene driftAxis={displayDriftAxis} driftDisplayAxis={driftDisplayAxis} e1={physicalBasis.e1} e2={physicalBasis.e2} e3={physicalBasis.e3} showDrift={showDrift} showE1={showE1} showE2={showE2} showE3={showE3} autoRotate={autoRotate} isPlaying={isPlaying} playbackFrames={playbackFrames} playbackIndexRef={playbackIndexRef} paths={paths} />
       </Canvas>
     </div>
   );
