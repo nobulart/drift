@@ -17,6 +17,7 @@ const SphereView = dynamic(() => import('@/components/SphereView'), { ssr: false
 const PhasePortrait = dynamic(() => import('@/components/PhasePortrait'), { ssr: false });
 const ResidualPolarMotionPlot = dynamic(() => import('@/components/ResidualPolarMotionPlot'), { ssr: false });
 const PolarMotionTrajectoryPlot = dynamic(() => import('@/components/PolarMotionTrajectoryPlot'), { ssr: false });
+const LoopCenterAngularVelocityPlot = dynamic(() => import('@/components/LoopCenterAngularVelocityPlot'), { ssr: false });
 const ThetaOmegaPlots = dynamic(() => import('@/components/ThetaOmegaPlots'), { ssr: false });
 const OrthogonalDeviationPlot = dynamic(() => import('@/components/OrthogonalDeviationPlot'), { ssr: false });
 const OverlayPlot = dynamic(() => import('@/components/OverlayPlot'), { ssr: false });
@@ -276,6 +277,19 @@ export default function Home() {
         </div>
       </Panel>
     ),
+    loopAngularVelocity: (
+      <Panel
+        panelId="loopAngularVelocity"
+        title="Loop-Center Angular Velocity"
+        guide={PANEL_GUIDES.loopAngularVelocity}
+        visible={!hiddenPanels.has('loopAngularVelocity')}
+        collapsed={collapsedPanels.has('loopAngularVelocity')}
+        onToggleVisibility={() => togglePanelVisibility('loopAngularVelocity')}
+        onToggleCollapse={() => togglePanelCollapse('loopAngularVelocity')}
+      >
+        <LoopCenterAngularVelocityPlot xpData={xpData} ypData={ypData} dates={datesStr} />
+      </Panel>
+    ),
     drift: (
       <Panel
         panelId="drift"
@@ -387,7 +401,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.0
+                Version v1.5.1
               </p>
             </div>
             <Link

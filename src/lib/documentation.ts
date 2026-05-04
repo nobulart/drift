@@ -11,6 +11,8 @@ export const PANEL_GUIDES: Record<string, string> = {
     'Reproduces the paper residual polar-motion XY phase-space view from the live EOP series. The panel removes the secular xp/yp trend, integrates the detrended residual components, overlays a one-year rolling centroid, and fits the residual drift axis in a north-up/west-left IERS orientation: x_res upward along Greenwich and y_res left toward 90°W.',
   polarTrajectory:
     'Reproduces the paper polar-motion trajectory view from the live EOP series in a north-up/west-left IERS orientation: x_pole upward along Greenwich and y_pole left toward 90°W. Chronological coloring follows the residual XY panel so the long-loop evolution can be read as a path rather than a static cloud.',
+  loopAngularVelocity:
+    'Reproduces the paper loop-center angular-velocity figure from the live EOP series. The solid curve uses completed Chandler-scale loop centers, unwraps their center angle, and plots finite-difference angular velocity smoothed with a quadratic Savitzky-Golay style filter. The shaded band is a robust ±2σ estimate from MAD residuals. When newer data extend beyond the last completed loop, the latest incomplete-loop estimate is shown separately as a dashed provisional endpoint so the live diagnostic does not distort the paper-equivalent smoothed curve. Its visible error bar combines the completed-loop robust band with a near-origin angular-sensitivity term; low-radius provisional centers are labeled low-confidence.',
   drift:
     'Tracks the longitude of the dominant drift axis through time. For each selected window, the polar-motion samples are read in the active frame, the dominant direction of the recent xp-yp trajectory is fit from that local cloud, and the planar angle of that direction is reported as drift longitude. Smooth migration indicates a persistent geometric trend, while flattening, reversals, or abrupt bends can mark reorganization.',
   angle:
@@ -42,6 +44,7 @@ export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: 'Polar Motion (XP, YP)', guide: PANEL_GUIDES.polar },
   { title: 'Residual Polar Motion (XY)', guide: PANEL_GUIDES.residualPolar },
   { title: 'Polar Motion Trajectory', guide: PANEL_GUIDES.polarTrajectory },
+  { title: 'Loop-Center Angular Velocity', guide: PANEL_GUIDES.loopAngularVelocity },
   { title: 'Drift Direction', guide: PANEL_GUIDES.drift },
   { title: 'Phase Portrait', guide: PANEL_GUIDES.phase },
   { title: 'Phase Diagnostics', guide: PANEL_GUIDES.phaseDiag },

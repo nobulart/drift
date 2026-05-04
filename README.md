@@ -6,9 +6,16 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.0`
+Current release: `v1.5.1`
 
 ## Release Notes
+
+### v1.5.1
+
+- Added the Loop-Center Angular Velocity panel, reproducing the paper diagnostic from the live EOP store instead of a static figure.
+- Preserved the paper-equivalent completed-loop smoothing while showing the newest incomplete-loop estimate as a separate provisional endpoint.
+- Labeled low-radius provisional centers as low-confidence and added a visible endpoint error bar that combines robust residual spread with near-origin angular sensitivity.
+- Added dashboard/docs guidance for interpreting provisional loop-center angular velocity without over-reading endpoint instability.
 
 ### v1.5.0
 
