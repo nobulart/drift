@@ -53,7 +53,7 @@ const pipelineSteps = [
 const apiRows = [
   {
     route: '/api/eop',
-    purpose: 'Historical Earth Orientation Parameters cache.',
+    purpose: 'Historical Earth Orientation Parameters cache. Optional `dataset` values: `finals` for finals.all IAU1980, `finals2000a` for finals.all IAU2000, and `c04` for EOP 20u24 C04 IAU2000A. Unknown or omitted values fall back to `finals`; the response header `X-DRIFT-EOP-Dataset` reports the resolved id.',
     fields: 't, xp, yp',
   },
   {
@@ -271,7 +271,10 @@ export default function DocsPage() {
           <div className="mt-4 rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4 text-sm leading-6 text-[#cbd5e1]">
             <p>Analysis query routes accept URL parameters.</p>
             <p className="mt-2 text-xs text-[#9ca3af]">
-              `/api/rolling-stats` accepts `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, and `conditionalTargetState`.
+              `/api/eop` accepts `dataset=finals`, `dataset=finals2000a`, or `dataset=c04`.
+            </p>
+            <p className="mt-2 text-xs text-[#9ca3af]">
+              `/api/rolling-stats` accepts `dataset`, `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, and `conditionalTargetState`.
             </p>
             <p className="mt-2 text-xs text-[#9ca3af]">
               `/api/transition-forecast` accepts `currentState`, `theta`, `baseProb`, and `smoothSigma`.

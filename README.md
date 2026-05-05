@@ -404,8 +404,15 @@ drift/
 ### Live API (Next.js)
 
 #### `GET /api/eop`
-- Returns cached historical Earth Orientation Parameters from `eop_historic.json`.
+- Returns cached historical Earth Orientation Parameters from the selected EOP product.
 - Primary fields: `t`, `xp`, `yp`.
+- Optional query parameter: `dataset`.
+- Supported dataset ids:
+  - `finals`: `finals.all (IAU1980)`, served from `eop_historic.json`; this is the default when `dataset` is omitted or unknown.
+  - `finals2000a`: `finals.all (IAU2000)`, served from `eop_finals2000a_historic.json`.
+  - `c04`: `EOP 20u24 C04 (IAU2000A)`, served from `eop_c04_historic.json`.
+- Examples: `/api/eop?dataset=finals2000a`, `/api/eop?dataset=c04`.
+- Response header: `X-DRIFT-EOP-Dataset` contains the resolved dataset id.
 
 #### `GET /api/inertia`
 - Returns cached inertia-frame time series from `inertia_timeseries.json` when real upstream inputs are available.
