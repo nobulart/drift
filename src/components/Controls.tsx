@@ -98,10 +98,12 @@ export default function Controls({
 
   const normalizedStart = startDate || minDate;
   const normalizedEnd = endDate || maxDate;
+  const displayStart = timeRange ? normalizedStart : minDate;
+  const displayEnd = timeRange ? normalizedEnd : maxDate;
   const selectedRangeDays = Math.max(
     1,
     Math.round(
-      (new Date(`${normalizedEnd}T00:00:00Z`).getTime() - new Date(`${normalizedStart}T00:00:00Z`).getTime()) /
+      (new Date(`${displayEnd}T00:00:00Z`).getTime() - new Date(`${displayStart}T00:00:00Z`).getTime()) /
         86400000
     ) + 1
   );
@@ -153,6 +155,7 @@ export default function Controls({
     setUpdateError(null);
 
     try {
+      setTimeRange(null);
       await setEOPDataset(datasetId);
       const nextDataset = getEOPDataset(datasetId);
       setUpdateMessage(`Loaded ${nextDataset.shortLabel} EOP dataset.`);
