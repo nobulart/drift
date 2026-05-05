@@ -84,10 +84,7 @@ function WelcomeModal({ onAcknowledge }: { onAcknowledge: () => void }) {
             Rather than attributing this motion to assumed causes, DRIFT adopts a different approach: it determines the geometric structure that the data itself necessitates. This results in a constraint-first perspective of a system that is surprisingly organised. It is confined to a low-dimensional shape in mathematical space with two preferred states and coupled fast and slow dynamics.
           </p>
           <p>
-            The dashboard is updated daily from IERS Earth orientation data. Panels are arranged from most to least certain, beginning with geometric views and progressing to dynamical and planetary diagnostics.
-          </p>
-          <p>
-            Some panels are marked experimental. These explore concepts that extend beyond the data’s current capacity to prove. They are included as honest scientific work-in-progress, not as forecasts or predictions.
+            The dashboard is updated daily from IERS Earth orientation data. Some panels are marked experimental. These explore concepts that extend beyond the data’s current capacity to prove. They are included as honest scientific work-in-progress, not as forecasts or predictions.
           </p>
           <p>
             For the full scientific context, the source paper is available{' '}
@@ -475,11 +472,29 @@ export default function Home() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#0b1220] text-[#e5e7eb]">
       {showWelcomeModal && <WelcomeModal onAcknowledge={acknowledgeWelcomeModal} />}
-      <div className={`bg-[#111827] border-r border-[#374151] flex flex-col h-full transition-all duration-300 overflow-hidden ${sidebarOpen && sidebarVisible ? 'w-72 opacity-100' : 'w-0 opacity-0 border-none'}`}>
+      <div className={`bg-[#111827] border-r border-[#374151] flex flex-col h-full transition-all duration-300 overflow-hidden ${sidebarOpen && sidebarVisible ? 'w-[19.8rem] opacity-100' : 'w-0 opacity-0 border-none'}`}>
         <div className="p-6 border-b border-[#374151] bg-[#0b1220]/50 flex-shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-xl font-bold text-[#3b82f6]">DRIFT Dashboard</h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xl font-bold text-[#3b82f6]">
+                  <span>DRIFT</span>
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => setShowWelcomeModal(true)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#374151] bg-[#111827] text-[#93c5fd] transition-colors hover:border-[#60a5fa] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#93c5fd]/70"
+                  aria-label="Show DRIFT Dashboard information"
+                  title="Show DRIFT Dashboard information"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4" />
+                    <path d="M12 8h.01" />
+                  </svg>
+                </button>
+                <span className="text-xl font-bold text-[#3b82f6]">Dashboard</span>
+              </div>
               <p className="text-xs text-[#9ca3af] uppercase tracking-widest font-medium">
                 Polar Motion Geometry and Context
               </p>
