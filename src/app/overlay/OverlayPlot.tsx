@@ -102,6 +102,13 @@ export default function OverlayPage() {
   const data = useStore(state => state.data);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const [lagTraces, setLagTraces] = useState<Plotly.Data[]>([]);
+  const observationRange = useMemo<[string, string] | null>(() => {
+    if (data.length === 0) {
+      return null;
+    }
+
+    return [data[0].t, data[data.length - 1].t];
+  }, [data]);
 
   const selectedSeries = useMemo(() => {
     if (!rollingStats || data.length === 0) {
@@ -136,7 +143,11 @@ export default function OverlayPage() {
   useEffect(() => {
     let active = true;
 
-    loadEphemerisData()
+    loadEphemerisData(
+      observationRange
+        ? { start: observationRange[0], end: observationRange[1] }
+        : undefined
+    )
       .then((dataset: EphemerisDataset) => {
         if (!active || !dataset?.records) {
           return;
@@ -155,7 +166,7 @@ export default function OverlayPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [observationRange]);
 
   useEffect(() => {
     if (!rollingStats || data.length === 0) {

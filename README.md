@@ -440,7 +440,9 @@ drift/
 
 #### `GET /api/ephemeris`
 - Returns the cached DE442-derived Earth-geocentric overlay dataset.
-- Current cache window: `1973-01-02` through `2050-12-31`.
+- Current bundled cache window: `1962-01-01` through `2050-12-31`, matching the earliest selectable EOP product.
+- Optional query parameters: `start=YYYY-MM-DD` and `end=YYYY-MM-DD`.
+- When a requested range falls outside the local cache and SPICE assets are available, the route runs `scripts/build_ephemeris.py --merge` to populate the missing dates before responding.
 - Primary payload shape:
   `source` metadata plus `records[]`, where each record has `t` and `bodies`.
 - Per-body overlay metrics currently exposed:

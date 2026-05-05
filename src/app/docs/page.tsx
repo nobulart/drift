@@ -88,7 +88,7 @@ const apiRows = [
   },
   {
     route: '/api/ephemeris',
-    purpose: 'DE442 Earth-geocentric overlay cache for 1973-01-02 through 2050-12-31.',
+    purpose: 'DE442 Earth-geocentric overlay cache for 1962-01-01 through 2050-12-31. Optional `start` and `end` query parameters return the requested slice and can populate missing cache dates on demand when SPICE assets are available.',
     fields: 'source metadata, records[].bodies[bodyKey].distance_au/angular_velocity_deg_per_day/radial_velocity_km_s/ecliptic_longitude_deg/torque_proxy',
   },
   {
@@ -272,6 +272,9 @@ export default function DocsPage() {
             <p>Analysis query routes accept URL parameters.</p>
             <p className="mt-2 text-xs text-[#9ca3af]">
               `/api/eop` accepts `dataset=finals`, `dataset=finals2000a`, or `dataset=c04`.
+            </p>
+            <p className="mt-2 text-xs text-[#9ca3af]">
+              `/api/ephemeris` accepts `start` and `end` in `YYYY-MM-DD` format and can extend the local DE442 cache for missing requested dates.
             </p>
             <p className="mt-2 text-xs text-[#9ca3af]">
               `/api/rolling-stats` accepts `dataset`, `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, and `conditionalTargetState`.

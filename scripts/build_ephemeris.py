@@ -9,8 +9,10 @@ for major solar-system bodies tracked in the overlay plot.
 from __future__ import annotations
 
 import math
+import gzip
 import sys
 import urllib.request
+from argparse import ArgumentParser
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -19,7 +21,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from data_paths import DATA_DIR, ensure_data_dirs, write_json
+from data_paths import DATA_DIR, read_json, ensure_data_dirs, write_json
 
 
 KERNEL_DIR = DATA_DIR / "kernels"
@@ -91,7 +93,7 @@ BODIES = [
 
 KM_PER_AU = 149_597_870.7
 SECONDS_PER_DAY = 86_400.0
-START_DATE = date(1973, 1, 2)
+START_DATE = date(1962, 1, 1)
 END_DATE = date(2050, 12, 31)
 OUTPUT_METRICS = [
     "distance_au",
@@ -148,7 +150,64 @@ def iter_dates(start: date, end: date) -> list[date]:
     return [start + timedelta(days=offset) for offset in range(total_days)]
 
 
+def parse_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise SystemExit(f"Invalid date {value!r}; expected YYYY-MM-DD") from exc
+
+
+def parse_args() -> Any:
+    parser = ArgumentParser(description="Build or extend the DRIFT DE442 ephemeris cache.")
+    parser.add_argument("--start", default=START_DATE.isoformat(), help="Inclusive start date, YYYY-MM-DD.")
+    parser.add_argument("--end", default=END_DATE.isoformat(), help="Inclusive end date, YYYY-MM-DD.")
+    parser.add_argument("--merge", action="store_true", help="Merge generated samples into existing ephemeris_historic.json instead of replacing it.")
+    return parser.parse_args()
+
+
+def build_source_metadata(start_date: date, end_date: date) -> dict[str, Any]:
+    return {
+        "kernel": "de442.bsp",
+        "kernel_url": DE442_URL,
+        "leapseconds": "naif0012.tls",
+        "observer": "EARTH",
+        "frame": "ECLIPJ2000",
+        "aberration_correction": "LT+S",
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "cadence": "daily",
+        "bodies": [
+            {"key": body["key"], "label": body["label"], "target": body["target"]}
+            for body in BODIES
+        ],
+        "metrics": OUTPUT_METRICS,
+    }
+
+
+def load_existing_records() -> list[dict[str, Any]]:
+    try:
+        payload = read_json("ephemeris_historic.json")
+    except FileNotFoundError:
+        compressed_path = DATA_DIR / "ephemeris_historic.json.gz"
+        if not compressed_path.exists():
+            return []
+        with gzip.open(compressed_path, "rt", encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+    records = payload.get("records", [])
+    if not isinstance(records, list):
+        return []
+
+    return [record for record in records if isinstance(record, dict) and isinstance(record.get("t"), str)]
+
+
 def main() -> None:
+    args = parse_args()
+    start_date = parse_date(args.start)
+    end_date = parse_date(args.end)
+    if start_date > end_date:
+        raise SystemExit("--start must be on or before --end")
+
     ensure_data_dirs()
     KERNEL_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -168,39 +227,47 @@ def main() -> None:
     spice.furnsh(str(lsk_path))
     spice.furnsh(str(de442_path))
 
-    all_dates = iter_dates(START_DATE, END_DATE)
-    output = []
-    for index, current_date in enumerate(all_dates):
+    existing_records = load_existing_records() if args.merge else []
+    existing_by_date = {record["t"]: record for record in existing_records}
+    requested_dates = iter_dates(start_date, end_date)
+    dates_to_generate = [
+        current_date for current_date in requested_dates
+        if current_date.isoformat() not in existing_by_date
+    ]
+
+    if args.merge:
+        print(f"Existing cache records: {len(existing_by_date)}")
+        print(f"Requested date range: {start_date.isoformat()} to {end_date.isoformat()}")
+        print(f"Missing dates to generate: {len(dates_to_generate)}")
+
+    generated = []
+    for index, current_date in enumerate(dates_to_generate):
         date_str = current_date.isoformat()
         et = spice.utc2et(f"{date_str}T00:00:00")
         bodies = {
             body["key"]: build_body_record(spice, body, et)
             for body in BODIES
         }
-        output.append({"t": date_str, "bodies": bodies})
+        generated.append({"t": date_str, "bodies": bodies})
 
         if index and index % 1000 == 0:
-            print(f"Processed {index}/{len(all_dates)} dates...")
+            print(f"Processed {index}/{len(dates_to_generate)} dates...")
 
     spice.kclear()
 
+    if args.merge:
+        merged_by_date = {**existing_by_date, **{record["t"]: record for record in generated}}
+        output = [merged_by_date[key] for key in sorted(merged_by_date)]
+    else:
+        output = generated
+
+    if not output:
+        raise SystemExit("No ephemeris records were generated or found.")
+
+    output_start = date.fromisoformat(output[0]["t"])
+    output_end = date.fromisoformat(output[-1]["t"])
     payload = {
-        "source": {
-            "kernel": "de442.bsp",
-            "kernel_url": DE442_URL,
-            "leapseconds": "naif0012.tls",
-            "observer": "EARTH",
-            "frame": "ECLIPJ2000",
-            "aberration_correction": "LT+S",
-            "start_date": START_DATE.isoformat(),
-            "end_date": END_DATE.isoformat(),
-            "cadence": "daily",
-            "bodies": [
-                {"key": body["key"], "label": body["label"], "target": body["target"]}
-                for body in BODIES
-            ],
-            "metrics": OUTPUT_METRICS,
-        },
+        "source": build_source_metadata(output_start, output_end),
         "records": output,
     }
 

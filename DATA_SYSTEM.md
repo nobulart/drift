@@ -71,7 +71,7 @@ Fetch and process GFZ-KP geomagnetic indices via web service API.
 Combine EOP, GRACE, and GFZ-KP data into unified format.
 
 #### `scripts/build_ephemeris.py`
-Extract the slim daily DE442 overlay cache used by dashboard ephemeris panels and phase-composite construction.
+Extract or extend the slim daily DE442 overlay cache used by dashboard ephemeris panels and phase-composite construction. The script accepts `--start`, `--end`, and `--merge` so API requests can populate missing chart ranges without rebuilding the full cache.
 
 #### `scripts/compute_phase_escape.py`
 Build Phase-Locked Escape Model inputs from internal EOP/DRIFT state and cached DE442 ephemeris. This production path does not read `docs/drift.csv` or any `docs/outputs` exploratory artifacts.
@@ -102,7 +102,7 @@ Timestamp-aware retrieval script that:
 | `geomag_gfz_latest.json` | Recent KP data | 25 | Daily |
 | `combined_historic.json` | Combined EOP+KP | 19,449 | Monthly |
 | `combined_latest.json` | Latest combined data | 19,449 | Daily |
-| `ephemeris_historic.json` | Daily DE442 Earth-geocentric overlay cache | 28,000+ | Static / rebuilt as needed |
+| `ephemeris_historic.json` | Daily DE442 Earth-geocentric overlay cache, 1962-2050 bundled range | 32,000+ | Static / extended on demand |
 | `.phase-escape-cache/*.json` | Cached Phase-Locked Escape Model API outputs | Window-dependent | On demand |
 
 ## API Routes
@@ -120,7 +120,7 @@ Returns combined EOP + GRACE data.
 Returns EOP + GRACE + GFZ-KP data.
 
 ### `/api/ephemeris`
-Returns the cached DE442-derived Earth-geocentric overlay dataset.
+Returns the cached DE442-derived Earth-geocentric overlay dataset. Accepts optional `start=YYYY-MM-DD` and `end=YYYY-MM-DD`; if the requested range is outside the local cache and SPICE assets are available, the route extends the cache before returning the requested slice.
 
 ### `/api/rolling-stats`
 Computes or serves cached rolling DRIFT diagnostics, lag models, and transition-state inputs.

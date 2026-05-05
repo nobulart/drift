@@ -46,8 +46,14 @@ export async function loadCombinedData(): Promise<any[]> {
   return data;
 }
 
-export async function loadEphemerisData(): Promise<any> {
-  const response = await fetch('/api/ephemeris', { cache: 'no-store' });
+export async function loadEphemerisData(range?: { start?: string; end?: string }): Promise<any> {
+  const params = new URLSearchParams();
+  if (range?.start && range?.end) {
+    params.set('start', range.start.slice(0, 10));
+    params.set('end', range.end.slice(0, 10));
+  }
+  const query = params.toString();
+  const response = await fetch(`/api/ephemeris${query ? `?${query}` : ''}`, { cache: 'no-store' });
   const data = await response.json();
   return data;
 }

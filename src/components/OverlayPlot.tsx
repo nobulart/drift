@@ -164,7 +164,11 @@ export default function OverlayPlot() {
   useEffect(() => {
     let active = true;
 
-    loadEphemerisData()
+    loadEphemerisData(
+      observationRange
+        ? { start: observationRange[0], end: observationRange[1] }
+        : undefined
+    )
       .then((dataset: EphemerisDataset) => {
         if (!active || !dataset?.records) {
           return;
@@ -184,7 +188,7 @@ export default function OverlayPlot() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [observationRange]);
 
   useEffect(() => {
     writeOverlaySignals(selectedSignals);
