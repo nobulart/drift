@@ -21,6 +21,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from data_paths import DATA_DIR, write_json
 
 DAILY_JSON_URL = "https://datacenter.iers.org/data/json/finals.daily.json"
+DAILY_2000A_JSON_URL = "https://datacenter.iers.org/data/json/finals2000A.daily.json"
 ALL_JSON_URL = "https://datacenter.iers.org/data/json/finals.all.json"
 EOP_DATASETS = {
     "finals2000a": {
@@ -29,6 +30,7 @@ EOP_DATASETS = {
         "json_url": "https://datacenter.iers.org/data/json/finals2000A.all.json",
         "output": "eop_finals2000a_historic.json",
         "parser": "finals_json",
+        "daily_tail": "finals2000a",
     },
     "c04": {
         "label": "EOP 20u24 C04 (IAU2000A)",
@@ -36,6 +38,7 @@ EOP_DATASETS = {
         "download_url": "https://datacenter.iers.org/data/254/eopc04_20u24.1962-now.txt",
         "output": "eop_c04_historic.json",
         "parser": "c04",
+        "daily_tail": "finals2000a",
     },
 }
 
@@ -122,6 +125,18 @@ def fetch_from_daily_json():
             return extract_finals(daily_json)
     except Exception as e:
         print(f"  ERROR: Could not fetch from {DAILY_JSON_URL}: {e}")
+        return []
+
+
+def fetch_from_daily_2000a_json():
+    """Fetch confirmed EOP data from the finals2000A.daily.json endpoint."""
+    print(f"  Fetching {DAILY_2000A_JSON_URL} ...")
+    try:
+        with urllib.request.urlopen(DAILY_2000A_JSON_URL) as response:
+            daily_json = json.loads(response.read().decode("utf-8"))
+            return extract_finals(daily_json)
+    except Exception as e:
+        print(f"  ERROR: Could not fetch from {DAILY_2000A_JSON_URL}: {e}")
         return []
 
 
@@ -227,6 +242,22 @@ def fetch_alternate_eop_dataset(config):
         return parse_c04_text(content)
 
     raise ValueError(f"Unknown EOP parser: {config['parser']}")
+
+
+def merge_eop_records(historic_data, daily_data):
+    """Merge historic/backfill EOP records with a rapid daily tail.
+
+    Daily records take precedence on overlapping dates and extend the selected
+    backfill to the newest confirmed rapid sample available for its convention.
+    """
+    historic_map = {d["t"]: d for d in historic_data}
+    daily_map = {d["t"]: d for d in daily_data}
+    all_dates = sorted(set(historic_map) | set(daily_map))
+
+    return [
+        daily_map[date] if date in daily_map else historic_map[date]
+        for date in all_dates
+    ]
 
 
 def fetch_finals_daily():
@@ -385,23 +416,10 @@ def main():
     print()
     print("3. Merging daily (recent) + all (historic) ...")
 
-    # daily_data takes precedence for overlapping dates
-    all_map = {d["t"]: d for d in all_data}
-    daily_map = {d["t"]: d for d in daily_data}
+    print(f"   Historic dates: {len(all_data)}")
+    print(f"   Daily dates: {len(daily_data)}")
 
-    # Get all unique dates, sorted
-    all_dates = sorted(set(list(all_map.keys()) + list(daily_map.keys())))
-
-    print(f"   Historic dates: {len(all_map)}")
-    print(f"   Daily dates: {len(daily_map)}")
-    print(f"   Total unique dates: {len(all_dates)}")
-
-    merged = []
-    for date in all_dates:
-        if date in daily_map:
-            merged.append(daily_map[date])
-        elif date in all_map:
-            merged.append(all_map[date])
+    merged = merge_eop_records(all_data, daily_data)
 
     print(f"   Merged records: {len(merged)}")
     if merged:
@@ -416,6 +434,7 @@ def main():
 
     print()
     print("4. Fetching alternate EOP backfill datasets ...")
+    daily_2000a_data = None
     for dataset_id, config in EOP_DATASETS.items():
         print()
         print(f"   {config['label']}")
@@ -423,6 +442,22 @@ def main():
         if not records:
             print(f"   WARN: No records parsed for {dataset_id}; leaving any existing file unchanged.")
             continue
+
+        if config.get("daily_tail") == "finals2000a":
+            if daily_2000a_data is None:
+                print("   Fetching IAU2000A rapid daily tail ...")
+                daily_2000a_data = fetch_from_daily_2000a_json()
+
+            if daily_2000a_data:
+                before_count = len(records)
+                before_end = records[-1]["t"]
+                records = merge_eop_records(records, daily_2000a_data)
+                print(
+                    f"   Merged {before_count} backfill records through {before_end} "
+                    f"with {len(daily_2000a_data)} daily-tail records"
+                )
+            else:
+                print("   WARN: No IAU2000A daily tail available; writing backfill only.")
 
         output_file = write_json(config["output"], records)
         print(f"   Saved {len(records)} records to {output_file}")
