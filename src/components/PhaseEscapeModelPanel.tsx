@@ -195,6 +195,7 @@ export default function PhaseEscapeModelPanel() {
   const rollingStats = useStore(state => state.rollingStats);
   const windowSize = useStore(state => state.windowSize);
   const turnThreshold = useStore(state => state.turnThreshold);
+  const eopDataset = useStore(state => state.eopDataset);
 
   useEffect(() => {
     let active = true;
@@ -205,6 +206,7 @@ export default function PhaseEscapeModelPanel() {
       windowSize: String(windowSize),
       turnThreshold: String(turnThreshold),
       smoothDays: '31',
+      dataset: eopDataset,
     });
 
     fetch(`/api/phase-escape?${params.toString()}`, { cache: 'no-store' })
@@ -233,7 +235,7 @@ export default function PhaseEscapeModelPanel() {
     return () => {
       active = false;
     };
-  }, [turnThreshold, windowSize]);
+  }, [eopDataset, turnThreshold, windowSize]);
 
   const model = DEFAULT_PHASE_ESCAPE_MODELS[selectedComposite];
   const records = useMemo(() => dataset?.records ?? [], [dataset]);

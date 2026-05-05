@@ -5,6 +5,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
 import { materializePipelineJson } from '@/lib/serverData';
+import { getEOPDataset } from '@/lib/eopDatasets';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,8 @@ export async function GET(request: NextRequest) {
       smoothDays: searchParams.get('smoothDays') ? Number(searchParams.get('smoothDays')) : 31,
     });
 
-    const eopPath = await materializePipelineJson('eop_historic.json');
+    const dataset = getEOPDataset(searchParams.get('dataset'));
+    const eopPath = await materializePipelineJson(dataset.filename);
     const ephemerisPath = await materializePipelineJson('ephemeris_historic.json');
 
     const [eopStat, ephemerisStat] = await Promise.all([
@@ -64,11 +66,12 @@ export async function GET(request: NextRequest) {
 
     const cacheKey = crypto.createHash('md5')
       .update(JSON.stringify(params))
+      .update(dataset.id)
       .update(`${eopStat.mtimeMs}:${eopStat.size}`)
       .update(`${ephemerisStat.mtimeMs}:${ephemerisStat.size}`)
       .digest('hex');
 
-    const cacheDir = join(process.cwd(), 'public', 'data', '.phase-escape-cache');
+    const cacheDir = join(process.cwd(), 'public', 'data', '.phase-escape-cache', dataset.id);
     const cachePath = join(cacheDir, `${cacheKey}.json`);
     await fs.mkdir(cacheDir, { recursive: true });
 

@@ -6,6 +6,7 @@ import { RollingStats } from '@/lib/rollingStats';
 import { loadEOPData, loadGeomagGFZData, loadGRACEData, loadInertiaData, mergeDataSources } from '@/lib/dataLoader';
 import { computeLagModel } from '@/lib/lagModel';
 import { DEFAULT_PANEL_ORDER } from '@/lib/panels';
+import { DEFAULT_EOP_DATASET_ID, EOPDatasetId, getEOPDataset } from '@/lib/eopDatasets';
 
 const DEFAULT_BASIS = {
   e1: [1, 0, 0] as [number, number, number],
@@ -92,6 +93,7 @@ interface AppState {
   hiddenPanels: Set<string>;
   panelOrder: string[];
   lastUpdated: string | null;
+  eopDataset: EOPDatasetId;
 
   setData: (data: TimeSample[]) => void;
   setFrame: (frame: 'earth' | 'principal') => void;
@@ -109,6 +111,7 @@ interface AppState {
   movePanel: (panelId: string, direction: 'up' | 'down') => void;
   resetPanelPreferences: () => void;
   refetchData: () => Promise<void>;
+  setEOPDataset: (dataset: EOPDatasetId) => Promise<void>;
 }
 
 const PANEL_PREFERENCES_STORAGE_KEY = 'drift-panel-preferences-v1';
@@ -223,6 +226,7 @@ const useStore = create<AppState>((set, get) => ({
   hiddenPanels: initialPanelPreferences?.hiddenPanels ?? new Set(DEFAULT_VISIBLE_PANELS),
   panelOrder: initialPanelPreferences?.panelOrder ?? [...DEFAULT_PANEL_ORDER],
   lastUpdated: null,
+  eopDataset: DEFAULT_EOP_DATASET_ID,
   setData: (data) => {
     const transformedData = data.map(item => {
       const pos: [number, number, number] = [item.xp, item.yp, 0];
@@ -362,8 +366,9 @@ const useStore = create<AppState>((set, get) => ({
     const { windowSize, turnThreshold, data } = get();
     
     try {
+      const dataset = getEOPDataset(get().eopDataset);
       const response = await fetch(
-        `/api/rolling-stats?windowSize=${windowSize}&turnThreshold=${turnThreshold}&pathResolution=medium`
+        `/api/rolling-stats?windowSize=${windowSize}&turnThreshold=${turnThreshold}&pathResolution=medium&dataset=${dataset.id}`
       );
       const stats = await response.json();
       const stabilizedBasis = stabilizePlanarBasis(stats.e1, stats.e2);
@@ -459,8 +464,9 @@ const useStore = create<AppState>((set, get) => ({
 
   refetchData: async () => {
     try {
+      const dataset = getEOPDataset(get().eopDataset);
       const [eopData, geomagData, graceData, inertiaData] = await Promise.all([
-        loadEOPData(),
+        loadEOPData(dataset.id),
         loadGeomagGFZData(),
         loadGRACEData(),
         loadInertiaData()
@@ -492,6 +498,11 @@ const useStore = create<AppState>((set, get) => ({
     } catch (err) {
       console.error('Failed to refetch data:', err);
     }
+  },
+  setEOPDataset: async (dataset) => {
+    const nextDataset = getEOPDataset(dataset);
+    set({ eopDataset: nextDataset.id, rollingStats: null });
+    await get().refetchData();
   }
 }));
 

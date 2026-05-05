@@ -22,6 +22,7 @@ export default function TransitionForecastPanel() {
   const rollingStats = useStore(state => state.rollingStats);
   const windowSize = useStore(state => state.windowSize);
   const turnThreshold = useStore(state => state.turnThreshold);
+  const eopDataset = useStore(state => state.eopDataset);
   const data = useStore(state => state.data);
   const presentTimeIndex = useMemo(() => {
     return data.length > 0 ? data.length - 1 : -1;
@@ -59,6 +60,7 @@ export default function TransitionForecastPanel() {
           conditionalTargetState: String(currentState),
           windowSize: String(windowSize),
           turnThreshold: String(turnThreshold),
+          dataset: eopDataset,
         });
         const response = await fetch(`/api/rolling-stats?${params.toString()}`);
         if (!response.ok) {
@@ -76,7 +78,7 @@ export default function TransitionForecastPanel() {
     };
 
     loadConditionalLag();
-  }, [currentState, turnThreshold, windowSize]);
+  }, [currentState, eopDataset, turnThreshold, windowSize]);
 
   useEffect(() => {
     if (!conditionalLagModel) {

@@ -26,6 +26,7 @@ export default function ConditionalLagPlot() {
   const sliceHeight = usePlotDisplayHeight(300, 420);
   const windowSize = useStore((state) => state.windowSize);
   const turnThreshold = useStore((state) => state.turnThreshold);
+  const eopDataset = useStore((state) => state.eopDataset);
 
   useEffect(() => {
     const loadConditionalLag = async () => {
@@ -36,6 +37,7 @@ export default function ConditionalLagPlot() {
           conditionalTargetState: String(STATE_TO_INDEX[targetState]),
           windowSize: String(windowSize),
           turnThreshold: String(turnThreshold),
+          dataset: eopDataset,
         });
         const response = await fetch(`/api/rolling-stats?${params.toString()}`);
         if (!response.ok) {
@@ -52,7 +54,7 @@ export default function ConditionalLagPlot() {
     };
 
     loadConditionalLag();
-  }, [targetState, turnThreshold, windowSize]);
+  }, [eopDataset, targetState, turnThreshold, windowSize]);
 
   const populatedPhaseIndices = useMemo(() => {
     if (!conditionalLagResult?.signal?.length) {

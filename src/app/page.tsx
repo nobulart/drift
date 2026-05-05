@@ -176,7 +176,7 @@ export default function Home() {
     const loadData = async () => {
       try {
         const [eopData, geomagData, graceData, inertiaData] = await Promise.all([
-          loadEOPData(),
+          loadEOPData(useStore.getState().eopDataset),
           loadGeomagGFZData(),
           loadGRACEData(),
           loadInertiaData()
@@ -499,7 +499,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.1
+                Version v1.5.2
               </p>
             </div>
             <Link

@@ -8,7 +8,7 @@ The DRIFT dashboard integrates data from multiple scientific sources:
 
 | Source | URL | Update Frequency | Current Date Range | Notes |
 |-- -----|-- ---|-- -------------|-- -------------|-- ----|
-| IERS EOP | finals.all.json / finals.daily.txt | Daily | 1973-01-02 to 2026-04-05 | Final values with ~2-4 day delay |
+| IERS EOP | finals.all (IAU1980), finals.all (IAU2000), EOP 20u24 C04 (IAU2000A) | Daily / weekly by product | 1962-present or 1973-present by product | Selectable polar-motion backfills in Data Settings |
 | GFZ-KP | kp.gfz-potsdam.de | Real-time | 2003-01-01 to present | 3-hourly geomagnetic indices |
 | GRACE | PODAAC | Monthly | 2002-04-17 to 2025-05-16 | Liquid Water Equivalent data |
 
@@ -17,7 +17,11 @@ The DRIFT dashboard integrates data from multiple scientific sources:
 ### IERS EOP Data
 - **Final values**: Available with ~2-4 day delay (due to data processing/validation)
 - **Rapid values**: Available in near real-time but less accurate
-- **Daily updates**: `finals.daily.iau1980.txt` is the recommended source
+- **Selectable products**:
+  - `finals.all (IAU1980)`: default rapid EOP JSON cache, written to `eop_historic.json`
+  - `finals.all (IAU2000)`: rapid EOP JSON cache, written to `eop_finals2000a_historic.json`
+  - `EOP 20u24 C04 (IAU2000A)`: combined C04 backfill, written to `eop_c04_historic.json`
+- **Catalogue**: https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html
 
 ### GFZ-KP Data
 - Real-time updates via web service

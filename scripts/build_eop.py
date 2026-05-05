@@ -8,8 +8,10 @@ timespan with the most-recent confirmed data from the daily feed.
 """
 
 import json
+import re
 import sys
 import urllib.request
+from datetime import datetime, timedelta
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -20,6 +22,24 @@ from data_paths import DATA_DIR, write_json
 
 DAILY_JSON_URL = "https://datacenter.iers.org/data/json/finals.daily.json"
 ALL_JSON_URL = "https://datacenter.iers.org/data/json/finals.all.json"
+EOP_DATASETS = {
+    "finals2000a": {
+        "label": "finals.all (IAU2000)",
+        "metadata_url": "https://datacenter.iers.org/versionMetadata.php?filename=latestVersionMeta/9_FINALS.ALL_IAU2000_V2013_019.txt",
+        "json_url": "https://datacenter.iers.org/data/json/finals2000A.all.json",
+        "output": "eop_finals2000a_historic.json",
+        "parser": "finals_json",
+    },
+    "c04": {
+        "label": "EOP 20u24 C04 (IAU2000A)",
+        "metadata_url": "https://datacenter.iers.org/versionMetadata.php?filename=latestVersionMeta/254_EOP_C04_20u24.62-NOW254.txt",
+        "download_url": "https://datacenter.iers.org/data/254/eopc04_20u24.1962-now.txt",
+        "output": "eop_c04_historic.json",
+        "parser": "c04",
+    },
+}
+
+MJD_EPOCH = datetime(1858, 11, 17)
 
 
 def extract_finals(data_object):
@@ -115,6 +135,98 @@ def fetch_from_all_json():
     except Exception as e:
         print(f"  ERROR: Could not fetch from {ALL_JSON_URL}: {e}")
         return []
+
+
+def fetch_text(url):
+    """Fetch a text payload from a URL."""
+    with urllib.request.urlopen(url, timeout=60) as response:
+        return response.read().decode("utf-8", errors="replace")
+
+
+def resolve_metadata_download_url(metadata_url, fallback_url):
+    """Resolve the first IERS /data/... download URL from a version metadata page."""
+    try:
+        metadata = fetch_text(metadata_url)
+    except Exception as exc:
+        print(f"  WARN: Could not read metadata {metadata_url}: {exc}")
+        return fallback_url
+
+    match = re.search(r'https://datacenter\.iers\.org/data/[^\s"<>]+', metadata)
+    if match:
+        return match.group(0)
+
+    match = re.search(r'href=["\'](?P<href>/data/[^"\']+)["\']', metadata)
+    if match:
+        return f"https://datacenter.iers.org{match.group('href')}"
+
+    return fallback_url
+
+
+def mjd_to_date_string(mjd):
+    return (MJD_EPOCH + timedelta(days=round(float(mjd)))).strftime("%Y-%m-%d")
+
+
+def parse_c04_text(content):
+    """Parse the IERS C04 20u24 format: YR, MM, DD, HH, MJD, x, y, UT1-UTC, ..."""
+    records = []
+
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        parts = stripped.split()
+        if len(parts) < 8:
+            continue
+
+        try:
+            year = int(parts[0])
+            month = int(parts[1])
+            day = int(parts[2])
+            xp = float(parts[5])
+            yp = float(parts[6])
+        except (TypeError, ValueError):
+            continue
+
+        record = {"t": datetime(year, month, day).strftime("%Y-%m-%d"), "xp": xp, "yp": yp}
+        try:
+            record["ut1_utc"] = float(parts[7])
+        except (TypeError, ValueError):
+            pass
+        if len(parts) > 12:
+            try:
+                record["lod"] = float(parts[12])
+            except (TypeError, ValueError):
+                pass
+        records.append(record)
+
+    return sorted(records, key=lambda item: item["t"])
+
+
+def fetch_alternate_eop_dataset(config):
+    """Fetch and parse one alternate IERS EOP backfill dataset."""
+    if config["parser"] == "finals_json":
+        print(f"  Fetching {config['json_url']} ...")
+        try:
+            with urllib.request.urlopen(config["json_url"], timeout=60) as response:
+                return extract_finals(json.loads(response.read().decode("utf-8")))
+        except Exception as exc:
+            print(f"  ERROR: Could not fetch {config['label']}: {exc}")
+            return []
+
+    print(f"  Resolving metadata: {config['metadata_url']}")
+    download_url = resolve_metadata_download_url(config["metadata_url"], config["download_url"])
+    print(f"  Fetching {download_url} ...")
+    try:
+        content = fetch_text(download_url)
+    except Exception as exc:
+        print(f"  ERROR: Could not fetch {config['label']}: {exc}")
+        return []
+
+    if config["parser"] == "c04":
+        return parse_c04_text(content)
+
+    raise ValueError(f"Unknown EOP parser: {config['parser']}")
 
 
 def fetch_finals_daily():
@@ -225,14 +337,11 @@ def parseiers_c01_c04(filepath):
         if line.startswith("COR") or line.startswith("PRED"):
             parts = line.split()
             if len(parts) >= 7:
-                from datetime import datetime, timedelta
-
                 mjd = float(parts[1])
                 xp = float(parts[5])
                 yp = float(parts[6])
 
-                mjd_epoch = datetime(1858, 11, 17)
-                date = mjd_epoch + timedelta(days=mjd)
+                date = MJD_EPOCH + timedelta(days=mjd)
 
                 data.append({"t": date.strftime("%Y-%m-%d"), "xp": xp, "yp": yp})
 
@@ -304,6 +413,20 @@ def main():
     print(f"Saved {len(merged)} EOP data points to {output_file}")
     if merged:
         print(f"Date range: {merged[0]['t']} to {merged[-1]['t']}")
+
+    print()
+    print("4. Fetching alternate EOP backfill datasets ...")
+    for dataset_id, config in EOP_DATASETS.items():
+        print()
+        print(f"   {config['label']}")
+        records = fetch_alternate_eop_dataset(config)
+        if not records:
+            print(f"   WARN: No records parsed for {dataset_id}; leaving any existing file unchanged.")
+            continue
+
+        output_file = write_json(config["output"], records)
+        print(f"   Saved {len(records)} records to {output_file}")
+        print(f"   Range: {records[0]['t']} to {records[-1]['t']}")
 
     print()
     print("Note: GFZ Kp data requires separate processing.")

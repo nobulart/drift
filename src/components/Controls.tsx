@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTimeStore } from '@/store/timeStore';
+import { EOP_DATASETS, EOPDatasetId, getEOPDataset } from '@/lib/eopDatasets';
 
 interface ControlsProps {
   windowSize: number;
@@ -61,36 +62,10 @@ export default function Controls({
   maxDate,
   dataPointCount,
 }: ControlsProps) {
-  const sourceLinks = [
-    {
-      name: 'IERS EOP',
-      description: 'polar motion and Earth orientation data.',
-      href: 'https://datacenter.iers.org/productMetadata.php?id=221',
-    },
-    {
-      name: 'GFZ Kp',
-      description: 'geomagnetic activity indices and dipole-strength proxy context.',
-      href: 'https://kp.gfz-potsdam.de/en/data',
-    },
-    {
-      name: 'GRACE / GRACE-FO',
-      description: 'mass-distribution context and derived structural products.',
-      href: 'https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4',
-    },
-    {
-      name: 'JPL DE442',
-      description: 'Earth-geocentric planetary ephemerides used for overlay comparisons and torque-screening context.',
-      href: 'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/',
-    },
-    {
-      name: 'Framework Paper',
-      description: 'constraint-first interpretation basis for the dashboard.',
-      href: 'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion',
-    },
-  ];
-
   const windowPresets = [180, 365, 730];
   const refetchData = useStore((state) => state.refetchData);
+  const eopDataset = useStore((state) => state.eopDataset);
+  const setEOPDataset = useStore((state) => state.setEOPDataset);
   const lastUpdated = useStore((state) => state.lastUpdated);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
@@ -136,6 +111,56 @@ export default function Controls({
     if (!lastUpdated) return 'Never';
     const date = new Date(lastUpdated);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+
+  const selectedDataset = getEOPDataset(eopDataset);
+  const sourceLinks = [
+    {
+      name: 'IERS EOP Products',
+      description: 'Earth orientation data product catalogue.',
+      href: 'https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html',
+    },
+    {
+      name: 'IERS EOP',
+      description: 'selected polar motion and Earth orientation backfill.',
+      href: selectedDataset.sourceUrl,
+    },
+    {
+      name: 'GFZ Kp',
+      description: 'geomagnetic activity indices and dipole-strength proxy context.',
+      href: 'https://kp.gfz-potsdam.de/en/data',
+    },
+    {
+      name: 'GRACE / GRACE-FO',
+      description: 'mass-distribution context and derived structural products.',
+      href: 'https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4',
+    },
+    {
+      name: 'JPL DE442',
+      description: 'Earth-geocentric planetary ephemerides used for overlay comparisons and torque-screening context.',
+      href: 'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/',
+    },
+    {
+      name: 'Framework Paper',
+      description: 'constraint-first interpretation basis for the dashboard.',
+      href: 'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion',
+    },
+  ];
+
+  const handleDatasetChange = async (datasetId: EOPDatasetId) => {
+    setIsUpdating(true);
+    setUpdateMessage(null);
+    setUpdateError(null);
+
+    try {
+      await setEOPDataset(datasetId);
+      const nextDataset = getEOPDataset(datasetId);
+      setUpdateMessage(`Loaded ${nextDataset.shortLabel} EOP dataset.`);
+    } catch (error) {
+      setUpdateError(error instanceof Error ? error.message : 'Dataset switch failed.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleUpdateData = async () => {
@@ -217,6 +242,26 @@ export default function Controls({
       </SidebarSection>
 
       <SidebarSection title="Data Settings" open={sectionOpen.dataSettings} onToggle={() => toggleSection('dataSettings')}>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="eop-dataset" className="text-sm font-medium">EOP Dataset</label>
+          <select
+            id="eop-dataset"
+            value={selectedDataset.id}
+            onChange={(event) => handleDatasetChange(event.target.value as EOPDatasetId)}
+            disabled={isUpdating}
+            className="rounded-lg border border-[#374151] bg-[#0b1220]/60 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {EOP_DATASETS.map((dataset) => (
+              <option key={dataset.id} value={dataset.id}>
+                {dataset.label}
+              </option>
+            ))}
+          </select>
+          <p className="rounded-lg border border-[#374151] bg-[#0b1220]/60 px-3 py-2 text-xs leading-relaxed text-[#9ca3af]">
+            {selectedDataset.description}
+          </p>
+        </div>
+
         <div className="flex flex-col gap-2">
           <label className="text-sm font-medium">Window Size (days)</label>
           <p className="rounded-lg border border-[#374151] bg-[#0b1220]/60 px-3 py-2 text-xs leading-relaxed text-[#9ca3af]">

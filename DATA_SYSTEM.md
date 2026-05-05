@@ -6,13 +6,17 @@ This document describes the automated data retrieval and integration system for 
 
 ### 1. IERS EOP Data (Earth Orientation Parameters)
 - **Source**: IERS Data Center (datacenter.iers.org)
-- **Format**: JSON (finals.all.json)
+- **Formats**: JSON (`finals.all`, `finals2000A.all`) and fixed-width text (`EOP 20u24 C04`)
 - **Content**: 
   - Pole coordinates (X, Y) in arcseconds
   - UT1-UTC in seconds
   - LOD (Length of Day) in milliseconds
   - Nutation corrections (dPsi, dEpsilon)
-- **Time Range**: 1973-2026
+- **Selectable products**:
+  - `finals.all (IAU1980)`: default dashboard EOP backfill
+  - `finals.all (IAU2000)`: alternate rapid EOP backfill
+  - `EOP 20u24 C04 (IAU2000A)`: alternate combined C04 backfill
+- **Time Range**: 1962-present or 1973-present depending on selected product
 - **Resolution**: Daily
 - **License**: IERS Data Policy
 
@@ -55,7 +59,7 @@ This document describes the automated data retrieval and integration system for 
 ### Build Scripts
 
 #### `scripts/build_eop.py`
-Parse IERS EOP data from finals.all.json and extract xp, yp (polar motion).
+Parse IERS EOP data from the default `finals.all (IAU1980)` feed and generate alternate selectable backfills for `finals.all (IAU2000)` and `EOP 20u24 C04 (IAU2000A)`.
 
 #### `scripts/build_grace.py`
 Process GRACE Zarr manifest to extract time coordinates and create time series.
@@ -88,7 +92,9 @@ Timestamp-aware retrieval script that:
 
 | File | Contents | Records | Last Updated |
 |------|----------|---------|--------------|
-| `eop_historic.json` | EOP polar motion data | 19,449 | 2026-04-02 |
+| `eop_historic.json` | EOP polar motion data, finals.all (IAU1980) | 19,000+ | Daily |
+| `eop_finals2000a_historic.json` | EOP polar motion data, finals.all (IAU2000) | 19,000+ | Weekly / rebuilt by pipeline |
+| `eop_c04_historic.json` | EOP polar motion data, EOP 20u24 C04 (IAU2000A) | 23,000+ | Rebuilt by pipeline |
 | `eop_latest.json` | Recent EOP data (last 30 days) | 30 | Daily |
 | `grace_historic.json` | GRACE LWE time series | 245 | Monthly |
 | `grace_latest.json` | Latest GRACE data | 245 | Monthly |
@@ -102,7 +108,7 @@ Timestamp-aware retrieval script that:
 ## API Routes
 
 ### `/api/eop`
-Returns IERS EOP rapid data (polar motion: xp, yp).
+Returns IERS EOP polar motion data (xp, yp). Accepts `dataset=finals`, `dataset=finals2000a`, or `dataset=c04`; unknown values fall back to `finals`.
 
 ### `/api/geomag`
 Returns GFZ-KP geomagnetic indices (Kp, ap, Ap).

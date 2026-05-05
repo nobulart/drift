@@ -6,9 +6,16 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.1`
+Current release: `v1.5.2`
 
 ## Release Notes
+
+### v1.5.2
+
+- Added a Data Settings selector for alternate IERS EOP backfills.
+- Supported EOP products are `finals.all (IAU1980)`, `finals.all (IAU2000)`, and `EOP 20u24 C04 (IAU2000A)`.
+- Routed the selected EOP dataset through dashboard loading, rolling statistics, conditional lag, transition probability, and phase-escape diagnostics.
+- Added generated JSON caches for the IAU2000 finals.all and EOP 20u24 C04 products.
 
 ### v1.5.1
 

@@ -17,14 +17,19 @@ python3 scripts/fetch_latest.py --force
 ## Available Scripts
 
 ### `scripts/build_eop.py`
-Parse IERS EOP data from finals.all.json
+Parse IERS EOP data from the default `finals.all (IAU1980)` feed and build alternate selectable backfills.
 
-**Output**: `data/eop_historic.json` (19,449 records, 1973-2026)
+**Output**:
+- `data/eop_historic.json` (`finals.all (IAU1980)`)
+- `data/eop_finals2000a_historic.json` (`finals.all (IAU2000)`)
+- `data/eop_c04_historic.json` (`EOP 20u24 C04 (IAU2000A)`)
 
 **Features**:
 - Extracts polar motion (xp, yp)
 - Also extracts UT1-UTC, LOD
-- Uses full finals.all.json dataset
+- Uses full finals.all JSON dataset for the default product
+- Fetches `finals2000A.all.json` for the IAU2000 rapid product
+- Fetches and parses the IERS EOP 20u24 C04 text product
 
 ### `scripts/build_grace.py`
 Extract GRACE MASCON data from Zarr manifest
@@ -105,6 +110,8 @@ python3 fetch_latest.py --force
 | Source | URL | Format | Resolution |
 |--------|-----|--------|-- -----------|
 | IERS EOP | https://datacenter.iers.org/data/json/finals.all.json | JSON | Daily |
+| IERS EOP IAU2000 | https://datacenter.iers.org/data/json/finals2000A.all.json | JSON | Weekly |
+| IERS EOP C04 | https://datacenter.iers.org/data/254/eopc04_20u24.1962-now.txt | Text | Daily |
 | GRACE | https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-public/virtual_collections/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4/ | Zarr over HTTP | Monthly |
 | GFZ-KP | https://kp.gfz-potsdam.de/app/json/ | Web Service API | 3-hourly |
 
@@ -140,7 +147,7 @@ For GFZ-KP:
 
 1. **GRACE LWE values**: Synthetic placeholders are not used in the active dashboard pipeline. Full mass-field values require additional source processing beyond the manifest metadata.
 
-2. **EOP data**: Uses IERS 'finals.all.json' which contains both Bulletin A (final+prediction) and Bulletin B (final only) data. We extract Bulletin A final values.
+2. **EOP data**: Uses IERS `finals.all (IAU1980)` by default and also builds selectable `finals.all (IAU2000)` and `EOP 20u24 C04 (IAU2000A)` backfills. The dashboard selector chooses which EOP cache powers the client data, rolling statistics, conditional lag, and phase-escape diagnostics.
 
 3. **KP data**: Contains 3-hourly Kp values. Daily means are also available via ap_daily field.
 

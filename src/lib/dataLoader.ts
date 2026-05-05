@@ -1,5 +1,6 @@
 // Data loader for DRIFT dashboard
 import { deriveGeomagneticStrength } from './geomagnetic';
+import { EOPDatasetId, getEOPDataset } from './eopDatasets';
 
 export async function loadInertiaData(): Promise<any[]> {
   const response = await fetch('/api/inertia', { cache: 'no-store' });
@@ -7,14 +8,16 @@ export async function loadInertiaData(): Promise<any[]> {
   return data;
 }
 
-export async function loadEOPData(): Promise<any[]> {
-  const response = await fetch('/api/eop', { cache: 'no-store' });
+export async function loadEOPData(datasetId?: EOPDatasetId): Promise<any[]> {
+  const dataset = getEOPDataset(datasetId);
+  const response = await fetch(`/api/eop?dataset=${dataset.id}`, { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
 
-export async function loadEOPLatestData(): Promise<any[]> {
-  const response = await fetch('/api/eop', { cache: 'no-store' });
+export async function loadEOPLatestData(datasetId?: EOPDatasetId): Promise<any[]> {
+  const dataset = getEOPDataset(datasetId);
+  const response = await fetch(`/api/eop?dataset=${dataset.id}`, { cache: 'no-store' });
   const data = await response.json();
   return data;
 }
