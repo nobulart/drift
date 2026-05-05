@@ -28,6 +28,9 @@ const PhaseEscapeModelPanel = dynamic(() => import('@/components/PhaseEscapeMode
 const ResponsiveGrid = dynamic(() => import('@/components/ResponsiveGrid'), { ssr: false });
 const Panel = dynamic(() => import('@/components/LayoutPanel'), { ssr: false });
 
+const WELCOME_MODAL_STORAGE_KEY = 'drift.dashboard.welcomeAcknowledged.v1';
+const SOURCE_PAPER_URL = 'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion';
+
 function LoadingScreen({ progress }: { progress: number }) {
   return (
     <div className="flex min-h-screen items-center justify-center overflow-hidden bg-black px-6">
@@ -58,6 +61,62 @@ function LoadingScreen({ progress }: { progress: number }) {
   );
 }
 
+function WelcomeModal({ onAcknowledge }: { onAcknowledge: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#020617]/85 px-4 py-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drift-welcome-title"
+    >
+      <div className="max-h-[calc(100vh-3rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-[#334155] bg-[#0b1220] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+        <div className="border-b border-[#1f2937] px-6 py-5 sm:px-8">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#60a5fa]">First visit context</p>
+          <h2 id="drift-welcome-title" className="mt-2 text-2xl font-bold text-white">
+            DRIFT Dashboard
+          </h2>
+        </div>
+        <div className="space-y-4 px-6 py-6 text-sm leading-6 text-[#d1d5db] sm:px-8 sm:text-[15px]">
+          <p>
+            DRIFT is a live monitoring platform for Earth’s polar motion, the gradual movement of the planet’s rotation axis relative to its surface.
+          </p>
+          <p>
+            Rather than attributing this motion to assumed causes, DRIFT adopts a different approach: it determines the geometric structure that the data itself necessitates. This results in a constraint-first perspective of a system that is surprisingly organised. It is confined to a low-dimensional shape in mathematical space with two preferred states and coupled fast and slow dynamics.
+          </p>
+          <p>
+            The dashboard is updated daily from IERS Earth orientation data. Panels are arranged from most to least certain, beginning with geometric views and progressing to dynamical and planetary diagnostics.
+          </p>
+          <p>
+            Some panels are marked experimental. These explore concepts that extend beyond the data’s current capacity to prove. They are included as honest scientific work-in-progress, not as forecasts or predictions.
+          </p>
+          <p>
+            For the full scientific context, the source paper is available{' '}
+            <a
+              href={SOURCE_PAPER_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/60 underline-offset-4 transition-colors hover:text-white"
+            >
+              here
+            </a>
+            .
+          </p>
+        </div>
+        <div className="flex justify-end border-t border-[#1f2937] bg-[#111827]/65 px-6 py-4 sm:px-8">
+          <button
+            type="button"
+            onClick={onAcknowledge}
+            className="rounded-md bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] focus:outline-none focus:ring-2 focus:ring-[#93c5fd] focus:ring-offset-2 focus:ring-offset-[#0b1220]"
+            autoFocus
+          >
+            Enter Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const defaultBasis = {
     e1: [1, 0, 0] as [number, number, number],
@@ -71,6 +130,7 @@ export default function Home() {
   const [rollingStatsLoaded, setRollingStatsLoaded] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [panelsOpen, setPanelsOpen] = useState(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -92,6 +152,28 @@ export default function Home() {
   const [showE2, setShowE2] = useState(true);
   const [showE3, setShowE3] = useState(true);
   const [autoRotate, setAutoRotate] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      setShowWelcomeModal(window.localStorage.getItem(WELCOME_MODAL_STORAGE_KEY) !== 'true');
+    } catch {
+      setShowWelcomeModal(true);
+    }
+  }, []);
+
+  const acknowledgeWelcomeModal = () => {
+    try {
+      window.localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, 'true');
+    } catch {
+      // If storage is unavailable, still let the visitor enter this session.
+    }
+
+    setShowWelcomeModal(false);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -392,6 +474,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0b1220] text-[#e5e7eb]">
+      {showWelcomeModal && <WelcomeModal onAcknowledge={acknowledgeWelcomeModal} />}
       <div className={`bg-[#111827] border-r border-[#374151] flex flex-col h-full transition-all duration-300 overflow-hidden ${sidebarOpen && sidebarVisible ? 'w-72 opacity-100' : 'w-0 opacity-0 border-none'}`}>
         <div className="p-6 border-b border-[#374151] bg-[#0b1220]/50 flex-shrink-0">
           <div className="flex items-start justify-between gap-3">
