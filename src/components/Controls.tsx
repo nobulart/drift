@@ -118,11 +118,6 @@ export default function Controls({
   const selectedDataset = getEOPDataset(eopDataset);
   const sourceLinks = [
     {
-      name: 'IERS EOP Products',
-      description: 'Earth orientation data product catalogue.',
-      href: 'https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html',
-    },
-    {
       name: 'IERS EOP',
       description: 'selected polar motion and Earth orientation backfill.',
       href: selectedDataset.sourceUrl,
@@ -146,6 +141,11 @@ export default function Controls({
       name: 'Framework Paper',
       description: 'constraint-first interpretation basis for the dashboard.',
       href: 'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion',
+    },
+    {
+      name: 'GitHub Repo',
+      description: 'project source code, pipeline scripts, and release history.',
+      href: 'https://github.com/nobulart/drift',
     },
   ];
 
