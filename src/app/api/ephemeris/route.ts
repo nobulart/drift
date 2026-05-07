@@ -23,14 +23,14 @@ function getPythonCommand() {
   ].filter(Boolean) as string[];
 
   for (const candidate of candidates) {
-    const check = spawnSync(candidate, ['-c', 'import spiceypy'], { stdio: 'ignore' });
+    const check = spawnSync(candidate, ['-c', 'import sys'], { stdio: 'ignore' });
     if (check.status === 0) {
       pythonCommand = candidate;
       return pythonCommand;
     }
   }
 
-  throw new Error('No Python interpreter with spiceypy is available. Set DRIFT_PYTHON to a compatible interpreter.');
+  throw new Error('No Python interpreter is available. Set DRIFT_PYTHON to a compatible interpreter.');
 }
 
 function isDateString(value: string | null): value is string {
@@ -66,7 +66,17 @@ function hasCoverage(data: any, start: string | null, end: string | null) {
 
   const first = data.records[0]?.t;
   const last = data.records[data.records.length - 1]?.t;
-  return typeof first === 'string' && typeof last === 'string' && first <= start && last >= end;
+  if (!(typeof first === 'string' && typeof last === 'string' && first <= start && last >= end)) {
+    return false;
+  }
+
+  return data.records.every((record: any) => {
+    if (typeof record?.t !== 'string' || record.t < start || record.t > end) {
+      return true;
+    }
+
+    return Boolean(record?.bodies?.net);
+  });
 }
 
 function runEphemerisBuild(start: string, end: string) {

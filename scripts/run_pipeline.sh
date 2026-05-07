@@ -69,9 +69,13 @@ log_info "Created: inertia_timeseries.json"
 log_info "Step 6/7: Processing DE442 ephemeris data..."
 if [ -s data/ephemeris_historic.json ]; then
     log_info "Using existing: ephemeris_historic.json"
+    python3 scripts/build_ephemeris.py --merge
+    log_info "Refreshed ephemeris derived fields"
 elif [ -s data/ephemeris_historic.json.gz ]; then
     log_info "Restoring compressed: ephemeris_historic.json.gz"
     gzip -dk data/ephemeris_historic.json.gz
+    python3 scripts/build_ephemeris.py --merge
+    log_info "Refreshed ephemeris derived fields"
 else
     python3 scripts/build_ephemeris.py
     log_info "Created: ephemeris_historic.json"

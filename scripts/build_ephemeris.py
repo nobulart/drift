@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import gzip
+import json
 import sys
 import urllib.request
 from argparse import ArgumentParser
@@ -102,6 +103,10 @@ OUTPUT_METRICS = [
     "ecliptic_longitude_deg",
     "torque_proxy",
 ]
+NORMALIZED_TORQUE_BODY_KEYS = [
+    body["key"] for body in BODIES
+    if body["key"] not in ("sun", "moon")
+]
 
 
 def ensure_file(url: str, destination: Path) -> None:
@@ -118,12 +123,16 @@ def angle_wrap_degrees(value: float) -> float:
     return (value + 360.0) % 360.0
 
 
-def build_body_record(spice: Any, body: dict[str, Any], et: float, all_bodies_data: list[dict[str, Any]]) -> dict[str, float]:
-    state, light_time = spice.spkezr(body["target"], et, "ECLIPJ2000", "LT+S", "EARTH")
+def build_body_record(
+    spice: Any,
+    body: dict[str, Any],
+    et: float,
+    all_bodies_data: list[dict[str, Any]],
+) -> dict[str, float]:
+    state, _light_time = spice.spkezr(body["target"], et, "ECLIPJ2000", "LT+S", "EARTH")
     rx, ry, rz, vx, vy, vz = state
 
     radius_km = math.sqrt(rx * rx + ry * ry + rz * rz)
-    speed_km_s = math.sqrt(vx * vx + vy * vy + vz * vz)
     cross_x = ry * vz - rz * vy
     cross_y = rz * vx - rx * vz
     cross_z = rx * vy - ry * vx
@@ -145,79 +154,152 @@ def build_body_record(spice: Any, body: dict[str, Any], et: float, all_bodies_da
         "torque_proxy": torque_proxy,
     }
 
-    all_bodies_data.append({
-        "key": body["key"],
-        "mass_kg": body["mass_kg"],
-        "radius_km": radius_km,
-        "angular_velocity_rad_s": angular_velocity_rad_s,
-        "radial_velocity_km_s": radial_velocity_km_s,
-        "longitude_rad": longitude_rad,
-        "longitude_deg": longitude_deg,
-        "distance_au": distance_au,
-        "torque_proxy": torque_proxy,
-    })
+    all_bodies_data.append(
+        {
+            "key": body["key"],
+            "mass_kg": body["mass_kg"],
+            "radius_km": radius_km,
+            "angular_velocity_rad_s": angular_velocity_rad_s,
+            "radial_velocity_km_s": radial_velocity_km_s,
+            "longitude_rad": longitude_rad,
+            "longitude_deg": longitude_deg,
+            "distance_au": distance_au,
+            "torque_proxy": torque_proxy,
+        }
+    )
 
     return result
 
 
-def compute_net_values(all_bodies_data: list[dict[str, Any]]) -> dict[str, float]:
+def body_data_from_record(record: dict[str, Any]) -> list[dict[str, Any]]:
+    bodies = record.get("bodies", {})
+    if not isinstance(bodies, dict):
+        return []
+
+    all_bodies_data = []
+    body_config_by_key = {body["key"]: body for body in BODIES}
+    for key, config in body_config_by_key.items():
+        sample = bodies.get(key)
+        if not isinstance(sample, dict):
+            return []
+
+        try:
+            distance_au = float(sample["distance_au"])
+            angular_velocity_deg_per_day = float(sample["angular_velocity_deg_per_day"])
+            radial_velocity_km_s = float(sample["radial_velocity_km_s"])
+            longitude_deg = float(sample["ecliptic_longitude_deg"])
+            torque_proxy = float(sample["torque_proxy"])
+        except (KeyError, TypeError, ValueError):
+            return []
+
+        radius_km = distance_au * KM_PER_AU
+        longitude_rad = math.radians(longitude_deg)
+        angular_velocity_rad_s = math.radians(angular_velocity_deg_per_day) / SECONDS_PER_DAY
+        all_bodies_data.append(
+            {
+                "key": key,
+                "mass_kg": config["mass_kg"],
+                "radius_km": radius_km,
+                "angular_velocity_rad_s": angular_velocity_rad_s,
+                "radial_velocity_km_s": radial_velocity_km_s,
+                "longitude_rad": longitude_rad,
+                "longitude_deg": longitude_deg,
+                "distance_au": distance_au,
+                "torque_proxy": torque_proxy,
+            }
+        )
+
+    return all_bodies_data
+
+
+def compute_net_values(
+    all_bodies_data: list[dict[str, Any]],
+    torque_normalizers: dict[str, float] | None = None,
+) -> dict[str, float]:
     if not all_bodies_data:
         return {
-            'distance_au': 0.0,
-            'angular_velocity_deg_per_day': 0.0,
-            'radial_velocity_km_s': 0.0,
-            'ecliptic_longitude_deg': 0.0,
-            'torque_proxy': 0.0,
+            "distance_au": 0.0,
+            "angular_velocity_deg_per_day": 0.0,
+            "radial_velocity_km_s": 0.0,
+            "ecliptic_longitude_deg": 0.0,
+            "torque_proxy": 0.0,
         }
 
-    total_mass = sum(body['mass_kg'] for body in all_bodies_data)
+    total_mass = sum(body["mass_kg"] for body in all_bodies_data)
 
-    net_position_x = sum(body['radius_km'] * math.cos(body['longitude_rad']) for body in all_bodies_data)
-    net_position_y = sum(body['radius_km'] * math.sin(body['longitude_rad']) for body in all_bodies_data)
+    net_position_x = sum(body["radius_km"] * math.cos(body["longitude_rad"]) for body in all_bodies_data)
+    net_position_y = sum(body["radius_km"] * math.sin(body["longitude_rad"]) for body in all_bodies_data)
     net_distance_km = math.sqrt(net_position_x * net_position_x + net_position_y * net_position_y)
-    net_longitude_rad = math.atan2(net_position_y, net_position_x)
     net_distance_au = net_distance_km / KM_PER_AU
 
-    total_angular_momentum = sum(body['mass_kg'] * body['radius_km'] * body['radius_km'] * body['angular_velocity_rad_s'] for body in all_bodies_data)
-    total_moment_of_inertia = sum(body['mass_kg'] * body['radius_km'] * body['radius_km'] for body in all_bodies_data)
+    total_angular_momentum = sum(
+        body["mass_kg"] * body["radius_km"] * body["radius_km"] * body["angular_velocity_rad_s"]
+        for body in all_bodies_data
+    )
+    total_moment_of_inertia = sum(
+        body["mass_kg"] * body["radius_km"] * body["radius_km"]
+        for body in all_bodies_data
+    )
     net_angular_velocity_rad_s = total_angular_momentum / max(total_moment_of_inertia, 1e-12)
 
-    total_mass_weighted_radial_velocity = sum(body['mass_kg'] * body['radial_velocity_km_s'] for body in all_bodies_data)
+    total_mass_weighted_radial_velocity = sum(body["mass_kg"] * body["radial_velocity_km_s"] for body in all_bodies_data)
     net_radial_velocity_km_s = total_mass_weighted_radial_velocity / total_mass
 
-    total_mass_weighted_longitude = sum(body['mass_kg'] * body['longitude_rad'] for body in all_bodies_data)
+    total_mass_weighted_longitude = sum(body["mass_kg"] * body["longitude_rad"] for body in all_bodies_data)
     net_longitude_rad = total_mass_weighted_longitude / total_mass
     net_longitude_deg = angle_wrap_degrees(math.degrees(net_longitude_rad))
 
-    # Net torque proxy: sum of individually normalized torques (excluding Sun and Moon)
-    # Normalize each torque by its own max value for timing comparison
-    torque_values = [
-        body['torque_proxy'] for body in all_bodies_data
-        if body['key'] not in ('sun', 'moon') and body['torque_proxy'] != 0
-    ]
-    
-    if torque_values:
-        max_torque = max(abs(t) for t in torque_values)
-        min_torque = min(abs(t) for t in torque_values)
-        torque_range = max_torque - min_torque if max_torque != min_torque else 1.0
-        
-        # Normalize each torque to [0, 1] range before summing
-        normalized_torques = [
-            (body['torque_proxy'] - min_torque) / max(torque_range, 1e-12)
-            for body in all_bodies_data
-            if body['key'] not in ('sun', 'moon')
-        ]
-        net_torque_proxy = sum(normalized_torques)
-    else:
-        net_torque_proxy = 0.0
+    # Temporal-comparison signal: every non-solar/non-lunar body contributes
+    # by its own peak torque over the output cache, deliberately flattening
+    # intensity differences so phase and timing relationships are easier to see.
+    net_torque_proxy = 0.0
+    normalizers = torque_normalizers or {}
+    for body in all_bodies_data:
+        if body["key"] not in NORMALIZED_TORQUE_BODY_KEYS:
+            continue
+        normalizer = normalizers.get(body["key"], 0.0)
+        if normalizer > 0:
+            net_torque_proxy += body["torque_proxy"] / normalizer
 
     return {
-        'distance_au': net_distance_au,
-        'angular_velocity_deg_per_day': math.degrees(net_angular_velocity_rad_s) * SECONDS_PER_DAY,
-        'radial_velocity_km_s': net_radial_velocity_km_s,
-        'ecliptic_longitude_deg': net_longitude_deg,
-        'torque_proxy': net_torque_proxy,
+        "distance_au": net_distance_au,
+        "angular_velocity_deg_per_day": math.degrees(net_angular_velocity_rad_s) * SECONDS_PER_DAY,
+        "radial_velocity_km_s": net_radial_velocity_km_s,
+        "ecliptic_longitude_deg": net_longitude_deg,
+        "torque_proxy": net_torque_proxy,
     }
+
+
+def compute_torque_normalizers(records: list[dict[str, Any]]) -> dict[str, float]:
+    normalizers = {key: 0.0 for key in NORMALIZED_TORQUE_BODY_KEYS}
+    for record in records:
+        bodies = record.get("bodies", {})
+        if not isinstance(bodies, dict):
+            continue
+        for key in NORMALIZED_TORQUE_BODY_KEYS:
+            sample = bodies.get(key)
+            if not isinstance(sample, dict):
+                continue
+            value = sample.get("torque_proxy")
+            if isinstance(value, (int, float)) and math.isfinite(value):
+                normalizers[key] = max(normalizers[key], abs(float(value)))
+
+    return normalizers
+
+
+def refresh_net_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    torque_normalizers = compute_torque_normalizers(records)
+    refreshed = []
+    for record in records:
+        all_bodies_data = body_data_from_record(record)
+        if all_bodies_data:
+            bodies = dict(record.get("bodies", {}))
+            bodies["net"] = compute_net_values(all_bodies_data, torque_normalizers)
+            refreshed.append({**record, "bodies": bodies})
+        else:
+            refreshed.append(record)
+
+    return refreshed
 
 
 def iter_dates(start: date, end: date) -> list[date]:
@@ -251,9 +333,21 @@ def build_source_metadata(start_date: date, end_date: date) -> dict[str, Any]:
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
         "cadence": "daily",
+        "net_torque_proxy": {
+            "description": "Sum of per-body temporal-normalized torque proxies for non-Sun/non-Moon bodies.",
+            "normalization": "Each included body is divided by its own maximum absolute torque_proxy over this cache before summing.",
+            "purpose": "Prioritizes timing and phase comparison over absolute intensity resolution.",
+            "included_bodies": NORMALIZED_TORQUE_BODY_KEYS,
+        },
         "bodies": [
             {"key": body["key"], "label": body["label"], "target": body["target"]}
             for body in BODIES
+        ] + [
+            {
+                "key": "net",
+                "label": "Net",
+                "target": "DERIVED_NON_SOLAR_NON_LUNAR_TEMPORAL_NORMALIZED_SUM",
+            }
         ],
         "metrics": OUTPUT_METRICS,
     }
@@ -284,23 +378,6 @@ def main() -> None:
         raise SystemExit("--start must be on or before --end")
 
     ensure_data_dirs()
-    KERNEL_DIR.mkdir(parents=True, exist_ok=True)
-
-    try:
-        import spiceypy as spice
-    except ImportError as exc:
-        print("ERROR: spiceypy is required. Install with `pip install spiceypy`.")
-        raise SystemExit(1) from exc
-
-    de442_path = KERNEL_DIR / "de442.bsp"
-    lsk_path = KERNEL_DIR / "naif0012.tls"
-    ensure_file(DE442_URL, de442_path)
-    ensure_file(LSK_URL, lsk_path)
-
-    print("Loading SPICE kernels...")
-    spice.kclear()
-    spice.furnsh(str(lsk_path))
-    spice.furnsh(str(de442_path))
 
     existing_records = load_existing_records() if args.merge else []
     existing_by_date = {record["t"]: record for record in existing_records}
@@ -316,30 +393,49 @@ def main() -> None:
         print(f"Missing dates to generate: {len(dates_to_generate)}")
 
     generated = []
-    for index, current_date in enumerate(dates_to_generate):
-        date_str = current_date.isoformat()
-        et = spice.utc2et(f"{date_str}T00:00:00")
+    if dates_to_generate:
+        KERNEL_DIR.mkdir(parents=True, exist_ok=True)
 
-        all_bodies_data = []
-        bodies = {}
-        for body in BODIES:
-            body_record = build_body_record(spice, body, et, all_bodies_data)
-            bodies[body["key"]] = body_record
+        try:
+            import spiceypy as spice
+        except ImportError as exc:
+            print("ERROR: spiceypy is required. Install with `pip install spiceypy`.")
+            raise SystemExit(1) from exc
 
-        bodies["net"] = compute_net_values(all_bodies_data)
+        de442_path = KERNEL_DIR / "de442.bsp"
+        lsk_path = KERNEL_DIR / "naif0012.tls"
+        ensure_file(DE442_URL, de442_path)
+        ensure_file(LSK_URL, lsk_path)
 
-        generated.append({"t": date_str, "bodies": bodies})
+        print("Loading SPICE kernels...")
+        spice.kclear()
+        spice.furnsh(str(lsk_path))
+        spice.furnsh(str(de442_path))
 
-        if index and index % 1000 == 0:
-            print(f"Processed {index}/{len(dates_to_generate)} dates...")
+        for index, current_date in enumerate(dates_to_generate):
+            date_str = current_date.isoformat()
+            et = spice.utc2et(f"{date_str}T00:00:00")
 
-    spice.kclear()
+            all_bodies_data = []
+            bodies = {}
+            for body in BODIES:
+                body_record = build_body_record(spice, body, et, all_bodies_data)
+                bodies[body["key"]] = body_record
+
+            generated.append({"t": date_str, "bodies": bodies})
+
+            if index and index % 1000 == 0:
+                print(f"Processed {index}/{len(dates_to_generate)} dates...")
+
+        spice.kclear()
 
     if args.merge:
         merged_by_date = {**existing_by_date, **{record["t"]: record for record in generated}}
         output = [merged_by_date[key] for key in sorted(merged_by_date)]
     else:
         output = generated
+
+    output = refresh_net_records(output)
 
     if not output:
         raise SystemExit("No ephemeris records were generated or found.")

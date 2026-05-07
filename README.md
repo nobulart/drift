@@ -6,9 +6,16 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.2`
+Current release: `v1.5.3`
 
 ## Release Notes
+
+### v1.5.3
+
+- Added cache-wide temporal normalization for the Net torque proxy so each non-Sun/non-Moon body contributes by timing rather than absolute intensity.
+- Refreshed ephemeris cache merge/API behavior so older records gain `bodies.net` and missing Net rows are treated as stale.
+- Bounded overlay ephemeris loading to the active observation or time-lock window while preserving the 1900-2100 display context.
+- Updated dashboard, API, and data-system documentation for the temporal-normalized Net torque objective.
 
 ### v1.5.2
 
@@ -97,6 +104,7 @@ Current release: `v1.5.2`
 - Added DE442-backed Earth-geocentric overlay signals for all tracked bodies.
 - Added a slim daily ephemeris cache covering `1973-01-02` through `2050-12-31`.
 - Added overlay-selectable distance, angular velocity, radial velocity, ecliptic longitude, and heuristic torque-proxy series.
+- Added a derived Net torque overlay that sums non-Sun/non-Moon torque proxies after each body is normalized by its own cache-wide peak, emphasizing temporal alignment over absolute intensity.
 - Removed hidden default ephemeris selections so an unchecked overlay plot is truly empty.
 
 ## Scientific Basis
@@ -442,11 +450,12 @@ drift/
 - Returns the cached DE442-derived Earth-geocentric overlay dataset.
 - Current bundled cache window: `1962-01-01` through `2050-12-31`, matching the earliest selectable EOP product.
 - Optional query parameters: `start=YYYY-MM-DD` and `end=YYYY-MM-DD`.
-- When a requested range falls outside the local cache and SPICE assets are available, the route runs `scripts/build_ephemeris.py --merge` to populate the missing dates before responding.
+- When a requested range falls outside the local cache, or is covered by an older cache without `bodies.net`, the route runs `scripts/build_ephemeris.py --merge` to refresh or populate the dates before responding.
 - Primary payload shape:
   `source` metadata plus `records[]`, where each record has `t` and `bodies`.
 - Per-body overlay metrics currently exposed:
   `distance_au`, `angular_velocity_deg_per_day`, `radial_velocity_km_s`, `ecliptic_longitude_deg`, `torque_proxy`.
+- `bodies.net.torque_proxy` is a temporal-comparison signal: non-Sun/non-Moon body torque proxies are each divided by their body-specific cache-wide peak before summing.
 
 #### `GET /api/rolling-stats`
 - Computes or serves cached rolling diagnostics from `compute_rolling_stats.py`.

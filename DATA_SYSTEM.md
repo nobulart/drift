@@ -50,7 +50,8 @@ This document describes the automated data retrieval and integration system for 
   - Earth-geocentric body distance and angular state
   - Ecliptic longitude and angular velocity
   - Torque-proxy series used for contextual overlays and phase-composite construction
-- **Time Range**: 1973-2050
+  - A derived `net` row whose torque proxy sums non-Sun/non-Moon bodies after each body is normalized by its own cache-wide peak, prioritizing temporal/phase comparison over absolute intensity
+- **Time Range**: 1962-2050 bundled range, extensible on demand
 - **Resolution**: Daily
 - **Role**: Supports planetary overlay context and the Phase-Locked Escape Model composite phases. This is a phase-conditioned diagnostic input, not a deterministic forcing claim.
 
@@ -71,7 +72,7 @@ Fetch and process GFZ-KP geomagnetic indices via web service API.
 Combine EOP, GRACE, and GFZ-KP data into unified format.
 
 #### `scripts/build_ephemeris.py`
-Extract or extend the slim daily DE442 overlay cache used by dashboard ephemeris panels and phase-composite construction. The script accepts `--start`, `--end`, and `--merge` so API requests can populate missing chart ranges without rebuilding the full cache.
+Extract or extend the slim daily DE442 overlay cache used by dashboard ephemeris panels and phase-composite construction. The script accepts `--start`, `--end`, and `--merge` so API requests can populate missing chart ranges without rebuilding the full cache. On merge, it also refreshes derived `net` records from existing body observables so older caches gain the temporal-normalized Net torque proxy without requiring SPICE when no dates are missing.
 
 #### `scripts/compute_phase_escape.py`
 Build Phase-Locked Escape Model inputs from internal EOP/DRIFT state and cached DE442 ephemeris. This production path does not read `docs/drift.csv` or any `docs/outputs` exploratory artifacts.
@@ -120,7 +121,7 @@ Returns combined EOP + GRACE data.
 Returns EOP + GRACE + GFZ-KP data.
 
 ### `/api/ephemeris`
-Returns the cached DE442-derived Earth-geocentric overlay dataset. Accepts optional `start=YYYY-MM-DD` and `end=YYYY-MM-DD`; if the requested range is outside the local cache and SPICE assets are available, the route extends the cache before returning the requested slice.
+Returns the cached DE442-derived Earth-geocentric overlay dataset. Accepts optional `start=YYYY-MM-DD` and `end=YYYY-MM-DD`; if the requested range is outside the local cache, or covered by an older cache without `bodies.net`, the route refreshes/extends the cache before returning the requested slice.
 
 ### `/api/rolling-stats`
 Computes or serves cached rolling DRIFT diagnostics, lag models, and transition-state inputs.

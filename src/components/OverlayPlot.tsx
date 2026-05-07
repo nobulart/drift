@@ -38,6 +38,8 @@ const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
   ap: { label: 'ap' },
 };
 
+const EPHEMERIS_DISPLAY_RANGE: [string, string] = ['1900-01-01', '2100-12-31'];
+
 function normalize(series: number[]): number[] {
   const valid = series.filter(v => Number.isFinite(v));
   if (valid.length === 0) return series;
@@ -158,72 +160,65 @@ export default function OverlayPlot() {
       return null;
     }
 
-    const ephemerisStart = '1900-01-01';
-    const ephemerisEnd = '2100-12-31';
-    
-    const eopDataStart = data[0].t;
-    const eopDataEnd = data[data.length - 1].t;
-    
-    // Use ephemeris range if available, otherwise fall back to EOP range
-    // But ensure we don't go beyond what the ephemeris data covers
-    const start = ephemerisStart < eopDataStart ? ephemerisStart : eopDataStart;
-    const end = ephemerisEnd > eopDataEnd ? ephemerisEnd : eopDataEnd;
-    
-    return [start, end];
-   }, [data]);
+    return [data[0].t.slice(0, 10), data[data.length - 1].t.slice(0, 10)];
+  }, [data]);
 
   const visibleXRange = useMemo<[string, string] | undefined>(() => {
     if (timeLockEnabled && timeRange) {
       return [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()];
     }
 
-    return observationRange ?? undefined;
-  }, [observationRange, timeLockEnabled, timeRange]);
+    return EPHEMERIS_DISPLAY_RANGE;
+  }, [timeLockEnabled, timeRange]);
 
-  const ephemerisWindow = useMemo(() => {
-    if (!timeLockEnabled) {
+  const ephemerisWindow = useMemo<{ start: string; end: string } | undefined>(() => {
+    if (timeLockEnabled && timeRange) {
+      return {
+        start: new Date(timeRange[0]).toISOString().slice(0, 10),
+        end: new Date(timeRange[1]).toISOString().slice(0, 10),
+      };
+    }
+
+    if (!observationRange) {
       return undefined;
     }
-    
-    const range = visibleXRange;
-    if (!range) return undefined;
-    
+
     return {
-      start: range[0].slice(0, 10),
-      end: range[1].slice(0, 10)
+      start: observationRange[0],
+      end: observationRange[1],
     };
-  }, [visibleXRange, timeLockEnabled]);
+  }, [observationRange, timeLockEnabled, timeRange]);
 
   const selectedSeries = useMemo(() => {
-      if (!rollingStats || data.length === 0) {
-        return [];
+    if (!rollingStats || data.length === 0) {
+      return [];
+    }
+
+    const timestamps = data.map(d => d.t);
+    return selectedSignals.map(signalKey => {
+      let raw: number[] | undefined;
+
+      if (signalKey.startsWith('net:')) {
+        const metricKey = signalKey.split(':')[1];
+        raw = getNetEphemerisSignalSeries(metricKey, timestamps, ephemerisByDate);
+      } else if (signalKey.includes(':')) {
+        raw = getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate);
+      } else {
+        raw = getCoreSignalSeries(signalKey, rollingStats, data);
       }
 
-      const timestamps = data.map(d => d.t);
-      return selectedSignals.map(signalKey => {
-        let raw: number[] | undefined;
+      if (!raw) {
+        return null;
+      }
 
-        if (signalKey.startsWith('net:')) {
-          const metricKey = signalKey.split(':')[1];
-          raw = getNetEphemerisSignalSeries(metricKey, timestamps, ephemerisByDate);
-        } else if (signalKey.includes(':')) {
-          raw = getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate);
-        } else {
-          raw = getCoreSignalSeries(signalKey, rollingStats, data);
-        }
-
-        if (!raw) {
-          return null;
-        }
-
-        return {
-          key: signalKey,
-          label: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey]?.label ?? signalKey,
-          raw,
-          normalized: normalize(raw),
-        };
-      }).filter(Boolean) as Array<WideCsvSeries & { key: string }>;
-    }, [data, ephemerisByDate, rollingStats, selectedSignals]);
+      return {
+        key: signalKey,
+        label: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey]?.label ?? signalKey,
+        raw,
+        normalized: normalize(raw),
+      };
+    }).filter(Boolean) as Array<WideCsvSeries & { key: string }>;
+  }, [data, ephemerisByDate, rollingStats, selectedSignals]);
 
   useEffect(() => {
     let active = true;
@@ -422,7 +417,7 @@ export default function OverlayPlot() {
           <div className="mb-2 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-[#e5e7eb]">DE442 Geocentric Ephemerides</p>
-              <p className="text-xs text-[#9ca3af]">Overlay planetary distance, angular motion, longitude, radial speed, and torque(proxy for each major body plus a combined Net row.</p>
+              <p className="text-xs text-[#9ca3af]">Overlay planetary distance, angular motion, longitude, radial speed, and torque proxy for each major body plus a combined Net row.</p>
             </div>
             <p className="text-xs text-[#6b7280]">Observer: Earth geocenter</p>
           </div>
@@ -490,7 +485,7 @@ export default function OverlayPlot() {
             </div>
           </div>
           <p className="mt-3 text-xs text-[#9ca3af]">
-            `Torque Proxy` is a heuristic `mass / r^3 * angular speed`. Net row sums individual torques (excluding Sun and Moon) for total net torque from Earth perspective.
+            Torque Proxy is a heuristic mass / r^3 * angular speed. The Net torque row sums each non-Sun/non-Moon body after temporal normalization by its body-specific cache-wide peak, emphasizing timing relationships over intensity.
           </p>
         </div>
       </div>

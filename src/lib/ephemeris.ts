@@ -35,7 +35,7 @@ export const EPHEMERIS_METRIC_CONFIG = [
   },
   {
     key: 'torque_proxy',
-    label: 'Torque Proxy (mass/r^3 * angular speed)',
+    label: 'Torque Proxy (body: mass/r^3 * angular speed; Net: time-normalized sum)',
     shortLabel: 'Torque Proxy',
   },
 ] as const;

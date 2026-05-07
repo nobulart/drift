@@ -32,7 +32,7 @@ const sourceRows = [
     name: 'JPL DE442',
     cadence: 'Static kernel, pre-extracted to daily cache',
     latency: 'Local extraction artifact',
-    role: 'Earth-geocentric planetary distance, angular velocity, longitude, and torque-screening overlays',
+    role: 'Earth-geocentric planetary distance, angular velocity, longitude, and temporal-normalized Net torque overlays',
     href: 'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/',
   },
 ];
@@ -43,7 +43,7 @@ const sourcePaperHref =
 const pipelineSteps = [
   'Fetch upstream geodetic and geomagnetic source files only when local caches may be stale.',
   'Normalize and cache the source products into local JSON artifacts.',
-  'Extract daily Earth-geocentric DE442 ephemeris overlays for the tracked bodies.',
+  'Extract daily Earth-geocentric DE442 ephemeris overlays and refresh derived temporal-normalized Net torque rows.',
   'Aggregate GFZ geomagnetic inputs into dashboard-friendly daily records.',
   'Compute drift, rolling diagnostics, lag models, and transition-probability inputs.',
   'Serve combined artifacts through API routes and prebuilt data files.',
@@ -88,8 +88,8 @@ const apiRows = [
   },
   {
     route: '/api/ephemeris',
-    purpose: 'DE442 Earth-geocentric overlay cache for 1962-01-01 through 2050-12-31. Optional `start` and `end` query parameters return the requested slice and can populate missing cache dates on demand when SPICE assets are available.',
-    fields: 'source metadata, records[].bodies[bodyKey].distance_au/angular_velocity_deg_per_day/radial_velocity_km_s/ecliptic_longitude_deg/torque_proxy',
+    purpose: 'DE442 Earth-geocentric overlay cache for 1962-01-01 through 2050-12-31. Optional `start` and `end` query parameters return the requested slice and can populate missing cache dates or refresh missing Net rows on demand.',
+    fields: 'source metadata, records[].bodies[bodyKey].distance_au/angular_velocity_deg_per_day/radial_velocity_km_s/ecliptic_longitude_deg/torque_proxy; bodies.net.torque_proxy is a per-body peak-normalized temporal comparison sum',
   },
   {
     route: '/api/rolling-stats',
@@ -129,7 +129,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.2
+                Version v1.5.3
               </span>
               <Link
                 href="/"
@@ -175,9 +175,9 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.2 EOP Dataset Selection</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.3 Net Torque Normalization</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added a Data Settings selector for finals.all IAU1980, finals.all IAU2000, and EOP 20u24 C04 IAU2000A backfills. The selected EOP product now flows through dashboard loading, rolling statistics, conditional lag, and phase-escape diagnostics.
+                The Net torque proxy now normalizes each non-Sun/non-Moon body by its own cache-wide peak before summing, making it a temporal-alignment signal. Ephemeris cache refreshes backfill missing Net rows, and overlay loading is bounded to the active data window.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
@@ -274,7 +274,7 @@ export default function DocsPage() {
               `/api/eop` accepts `dataset=finals`, `dataset=finals2000a`, or `dataset=c04`.
             </p>
             <p className="mt-2 text-xs text-[#9ca3af]">
-              `/api/ephemeris` accepts `start` and `end` in `YYYY-MM-DD` format and can extend the local DE442 cache for missing requested dates.
+              `/api/ephemeris` accepts `start` and `end` in `YYYY-MM-DD` format and can extend the local DE442 cache for missing requested dates or refresh older records without Net rows.
             </p>
             <p className="mt-2 text-xs text-[#9ca3af]">
               `/api/rolling-stats` accepts `dataset`, `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, and `conditionalTargetState`.

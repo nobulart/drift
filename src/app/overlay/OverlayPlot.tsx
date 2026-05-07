@@ -27,6 +27,8 @@ const CORE_SIGNALS = {
   ap: { label: 'ap' },
 } as const;
 
+const EPHEMERIS_DISPLAY_RANGE: [string, string] = ['1900-01-01', '2100-12-31'];
+
 function normalize(series: number[]): number[] {
   const valid = series.filter(v => Number.isFinite(v));
   if (valid.length === 0) return series;
@@ -122,18 +124,7 @@ export default function OverlayPage() {
       return null;
     }
 
-    const ephemerisStart = '1900-01-01';
-    const ephemerisEnd = '2100-12-31';
-    
-    const eopDataStart = data[0].t;
-    const eopDataEnd = data[data.length - 1].t;
-    
-    // Use ephemeris range if available, otherwise fall back to EOP range
-    // But ensure we don't go beyond what the ephemeris data covers
-    const start = ephemerisStart < eopDataStart ? ephemerisStart : eopDataStart;
-    const end = ephemerisEnd > eopDataEnd ? ephemerisEnd : eopDataEnd;
-    
-    return [start, end];
+    return [data[0].t.slice(0, 10), data[data.length - 1].t.slice(0, 10)];
   }, [data]);
 
   const visibleXRange = useMemo<[string, string] | undefined>(() => {
@@ -141,22 +132,26 @@ export default function OverlayPage() {
       return [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()];
     }
 
-    return observationRange ?? undefined;
-  }, [observationRange, timeLockEnabled, timeRange]);
+    return EPHEMERIS_DISPLAY_RANGE;
+  }, [timeLockEnabled, timeRange]);
 
-  const ephemerisWindow = useMemo(() => {
-    if (!timeLockEnabled) {
+  const ephemerisWindow = useMemo<{ start: string; end: string } | undefined>(() => {
+    if (timeLockEnabled && timeRange) {
+      return {
+        start: new Date(timeRange[0]).toISOString().slice(0, 10),
+        end: new Date(timeRange[1]).toISOString().slice(0, 10),
+      };
+    }
+
+    if (!observationRange) {
       return undefined;
     }
-    
-    const range = visibleXRange;
-    if (!range) return undefined;
-    
+
     return {
-      start: range[0].slice(0, 10),
-      end: range[1].slice(0, 10)
+      start: observationRange[0],
+      end: observationRange[1],
     };
-  }, [visibleXRange, timeLockEnabled]);
+  }, [observationRange, timeLockEnabled, timeRange]);
 
   const selectedSeries = useMemo(() => {
     if (!rollingStats || data.length === 0) {
@@ -217,7 +212,7 @@ export default function OverlayPage() {
     return () => {
       active = false;
     };
-  }, [observationRange]);
+  }, [ephemerisWindow]);
 
   useEffect(() => {
     if (!rollingStats || data.length === 0) {
@@ -296,6 +291,7 @@ export default function OverlayPage() {
       title: { text: 'Date', standoff: 20 },
       gridcolor: '#374151',
       zerolinecolor: '#4b5563',
+      ...(visibleXRange ? { range: visibleXRange } : {}),
     },
     yaxis: {
       title: { text: 'Normalized Value (z-score)', standoff: 20 },
@@ -312,7 +308,7 @@ export default function OverlayPage() {
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
-  }), []);
+  }), [visibleXRange]);
 
   const lagLayout = useMemo(() => ({
     title: { text: 'Lag Response Function' },
@@ -385,8 +381,8 @@ export default function OverlayPage() {
 
         <div className="max-w-md rounded-lg border border-[#1f2937] bg-[#111827] px-4 py-3">
           <p className="text-sm font-medium text-[#e5e7eb]">DE442 dataset</p>
-          <p className="mt-1 text-sm text-[#9ca3af]">Geocentric overlays include distance, angular velocity, radial velocity, ecliptic longitude, and torque(proxy for each major body plus a combined Net row.</p>
-          <p className="mt-2 text-xs text-[#6b7280]">Torque proxy = mass / r^3 * angular speed. Net row sums individual torques (excluding Sun and Moon) for total net torque from Earth perspective.</p>
+          <p className="mt-1 text-sm text-[#9ca3af]">Geocentric overlays include distance, angular velocity, radial velocity, ecliptic longitude, and torque proxy for each major body plus a combined Net row.</p>
+          <p className="mt-2 text-xs text-[#6b7280]">Torque proxy = mass / r^3 * angular speed. The Net torque row sums each non-Sun/non-Moon body after temporal normalization by its body-specific cache-wide peak, emphasizing timing relationships over intensity.</p>
         </div>
 
         <label className="flex items-center gap-2 cursor-pointer pt-2">
