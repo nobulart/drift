@@ -39,8 +39,6 @@ const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
   ap: { label: 'ap' },
 };
 
-const EPHEMERIS_DISPLAY_RANGE: [string, string] = ['1900-01-01', '2100-12-31'];
-
 function normalize(series: number[]): number[] {
   const valid = series.filter(v => Number.isFinite(v));
   if (valid.length === 0) return series;
@@ -169,8 +167,8 @@ export default function OverlayPlot() {
       return [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()];
     }
 
-    return EPHEMERIS_DISPLAY_RANGE;
-  }, [timeLockEnabled, timeRange]);
+    return observationRange ?? undefined;
+  }, [observationRange, timeLockEnabled, timeRange]);
 
   const overlaySources = useMemo(() => {
     const sources: string[] = [];
