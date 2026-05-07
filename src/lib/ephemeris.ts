@@ -9,6 +9,7 @@ export const EPHEMERIS_BODY_CONFIG = [
   { key: 'uranus', label: 'Uranus' },
   { key: 'neptune', label: 'Neptune' },
   { key: 'pluto', label: 'Pluto' },
+  { key: 'net', label: 'Net' },
 ] as const;
 
 export const EPHEMERIS_METRIC_CONFIG = [

@@ -118,7 +118,7 @@ def angle_wrap_degrees(value: float) -> float:
     return (value + 360.0) % 360.0
 
 
-def build_body_record(spice: Any, body: dict[str, Any], et: float) -> dict[str, float]:
+def build_body_record(spice: Any, body: dict[str, Any], et: float, all_bodies_data: list[dict[str, Any]]) -> dict[str, float]:
     state, light_time = spice.spkezr(body["target"], et, "ECLIPJ2000", "LT+S", "EARTH")
     rx, ry, rz, vx, vy, vz = state
 
@@ -131,17 +131,92 @@ def build_body_record(spice: Any, body: dict[str, Any], et: float) -> dict[str, 
     angular_velocity_rad_s = cross_mag / max(radius_km * radius_km, 1e-12)
     radial_velocity_km_s = (rx * vx + ry * vy + rz * vz) / max(radius_km, 1e-12)
 
-    longitude_deg = angle_wrap_degrees(math.degrees(math.atan2(ry, rx)))
+    longitude_rad = math.atan2(ry, rx)
+    longitude_deg = angle_wrap_degrees(math.degrees(longitude_rad))
     distance_au = radius_km / KM_PER_AU
     tidal_force_proxy = body["mass_kg"] / max(radius_km ** 3, 1e-12)
     torque_proxy = tidal_force_proxy * angular_velocity_rad_s
 
-    return {
+    result = {
         "distance_au": distance_au,
         "angular_velocity_deg_per_day": math.degrees(angular_velocity_rad_s) * SECONDS_PER_DAY,
         "radial_velocity_km_s": radial_velocity_km_s,
         "ecliptic_longitude_deg": longitude_deg,
         "torque_proxy": torque_proxy,
+    }
+
+    all_bodies_data.append({
+        "key": body["key"],
+        "mass_kg": body["mass_kg"],
+        "radius_km": radius_km,
+        "angular_velocity_rad_s": angular_velocity_rad_s,
+        "radial_velocity_km_s": radial_velocity_km_s,
+        "longitude_rad": longitude_rad,
+        "longitude_deg": longitude_deg,
+        "distance_au": distance_au,
+        "torque_proxy": torque_proxy,
+    })
+
+    return result
+
+
+def compute_net_values(all_bodies_data: list[dict[str, Any]]) -> dict[str, float]:
+    if not all_bodies_data:
+        return {
+            'distance_au': 0.0,
+            'angular_velocity_deg_per_day': 0.0,
+            'radial_velocity_km_s': 0.0,
+            'ecliptic_longitude_deg': 0.0,
+            'torque_proxy': 0.0,
+        }
+
+    total_mass = sum(body['mass_kg'] for body in all_bodies_data)
+
+    net_position_x = sum(body['radius_km'] * math.cos(body['longitude_rad']) for body in all_bodies_data)
+    net_position_y = sum(body['radius_km'] * math.sin(body['longitude_rad']) for body in all_bodies_data)
+    net_distance_km = math.sqrt(net_position_x * net_position_x + net_position_y * net_position_y)
+    net_longitude_rad = math.atan2(net_position_y, net_position_x)
+    net_distance_au = net_distance_km / KM_PER_AU
+
+    total_angular_momentum = sum(body['mass_kg'] * body['radius_km'] * body['radius_km'] * body['angular_velocity_rad_s'] for body in all_bodies_data)
+    total_moment_of_inertia = sum(body['mass_kg'] * body['radius_km'] * body['radius_km'] for body in all_bodies_data)
+    net_angular_velocity_rad_s = total_angular_momentum / max(total_moment_of_inertia, 1e-12)
+
+    total_mass_weighted_radial_velocity = sum(body['mass_kg'] * body['radial_velocity_km_s'] for body in all_bodies_data)
+    net_radial_velocity_km_s = total_mass_weighted_radial_velocity / total_mass
+
+    total_mass_weighted_longitude = sum(body['mass_kg'] * body['longitude_rad'] for body in all_bodies_data)
+    net_longitude_rad = total_mass_weighted_longitude / total_mass
+    net_longitude_deg = angle_wrap_degrees(math.degrees(net_longitude_rad))
+
+    # Net torque proxy: sum of individually normalized torques (excluding Sun and Moon)
+    # Normalize each torque by its own max value for timing comparison
+    torque_values = [
+        body['torque_proxy'] for body in all_bodies_data
+        if body['key'] not in ('sun', 'moon') and body['torque_proxy'] != 0
+    ]
+    
+    if torque_values:
+        max_torque = max(abs(t) for t in torque_values)
+        min_torque = min(abs(t) for t in torque_values)
+        torque_range = max_torque - min_torque if max_torque != min_torque else 1.0
+        
+        # Normalize each torque to [0, 1] range before summing
+        normalized_torques = [
+            (body['torque_proxy'] - min_torque) / max(torque_range, 1e-12)
+            for body in all_bodies_data
+            if body['key'] not in ('sun', 'moon')
+        ]
+        net_torque_proxy = sum(normalized_torques)
+    else:
+        net_torque_proxy = 0.0
+
+    return {
+        'distance_au': net_distance_au,
+        'angular_velocity_deg_per_day': math.degrees(net_angular_velocity_rad_s) * SECONDS_PER_DAY,
+        'radial_velocity_km_s': net_radial_velocity_km_s,
+        'ecliptic_longitude_deg': net_longitude_deg,
+        'torque_proxy': net_torque_proxy,
     }
 
 
@@ -244,10 +319,15 @@ def main() -> None:
     for index, current_date in enumerate(dates_to_generate):
         date_str = current_date.isoformat()
         et = spice.utc2et(f"{date_str}T00:00:00")
-        bodies = {
-            body["key"]: build_body_record(spice, body, et)
-            for body in BODIES
-        }
+
+        all_bodies_data = []
+        bodies = {}
+        for body in BODIES:
+            body_record = build_body_record(spice, body, et, all_bodies_data)
+            bodies[body["key"]] = body_record
+
+        bodies["net"] = compute_net_values(all_bodies_data)
+
         generated.append({"t": date_str, "bodies": bodies})
 
         if index and index % 1000 == 0:

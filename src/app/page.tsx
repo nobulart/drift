@@ -86,19 +86,22 @@ function WelcomeModal({ onAcknowledge }: { onAcknowledge: () => void }) {
           <p>
             The dashboard is updated daily from IERS Earth orientation data. Some panels are marked experimental. These explore concepts that extend beyond the data’s current capacity to prove. They are included as honest scientific work-in-progress, not as forecasts or predictions.
           </p>
-          <p>
-            For the full scientific context, the source paper is available{' '}
-            <a
-              href={SOURCE_PAPER_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/60 underline-offset-4 transition-colors hover:text-white"
-            >
-              here
-            </a>
-            .
-          </p>
-        </div>
+           <p>
+             For the full scientific context, the source paper is available{' '}
+             <a
+               href={SOURCE_PAPER_URL}
+               target="_blank"
+               rel="noreferrer"
+               className="font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/60 underline-offset-4 transition-colors hover:text-white"
+             >
+               here
+             </a>
+             .
+           </p>
+           <p className="mt-2 text-xs text-[#9ca3af]">
+             Penguin emoji is a nod to the question which inspired the DRIFT project: <a href="https://x.com/cognitivecarbon/status/2036909809681801282?s=20" target="_blank" rel="noreferrer" className="text-[#60a5fa] hover:underline">https://x.com/cognitivecarbon/status/2036909809681801282</a>
+           </p>
+         </div>
         <div className="flex justify-end border-t border-[#1f2937] bg-[#111827]/65 px-6 py-4 sm:px-8">
           <button
             type="button"
@@ -480,19 +483,15 @@ export default function Home() {
                 <h1 className="text-xl font-bold text-[#3b82f6]">
                   <span>DRIFT</span>
                 </h1>
-                <button
-                  type="button"
-                  onClick={() => setShowWelcomeModal(true)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#374151] bg-[#111827] text-[#93c5fd] transition-colors hover:border-[#60a5fa] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#93c5fd]/70"
-                  aria-label="Show DRIFT Dashboard information"
-                  title="Show DRIFT Dashboard information"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4" />
-                    <path d="M12 8h.01" />
-                  </svg>
-                </button>
+                 <button
+                   type="button"
+                   onClick={() => setShowWelcomeModal(true)}
+                   className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#374151] bg-[#111827] text-[#93c5fd] transition-colors hover:border-[#60a5fa] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#93c5fd]/70 text-xl"
+                   aria-label="Show DRIFT Dashboard information"
+                   title="Show DRIFT Dashboard information"
+                 >
+                   🐧
+                 </button>
                 <span className="text-xl font-bold text-[#3b82f6]">Dashboard</span>
               </div>
               <p className="text-xs text-[#9ca3af] uppercase tracking-widest font-medium">

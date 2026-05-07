@@ -90,6 +90,21 @@ function getEphemerisSignalSeries(
   });
 }
 
+function getNetEphemerisSignalSeries(
+  metricKey: string,
+  timestamps: string[],
+  ephemerisByDate: Record<string, EphemerisRecord['bodies']>
+): number[] | undefined {
+  return timestamps.map(timestamp => {
+    const dateKey = timestamp.split('T')[0];
+    const netBody = ephemerisByDate[dateKey]?.['net'];
+    if (!netBody) {
+      return NaN;
+    }
+    return netBody[metricKey as keyof EphemerisRecord['bodies'][string]] ?? NaN;
+  });
+}
+
 export default function OverlayPage() {
   const [selectedSignals, setSelectedSignals] = useState<string[]>(['drift']);
   const [showTurningPoints, setShowTurningPoints] = useState(false);
@@ -107,8 +122,41 @@ export default function OverlayPage() {
       return null;
     }
 
-    return [data[0].t, data[data.length - 1].t];
+    const ephemerisStart = '1900-01-01';
+    const ephemerisEnd = '2100-12-31';
+    
+    const eopDataStart = data[0].t;
+    const eopDataEnd = data[data.length - 1].t;
+    
+    // Use ephemeris range if available, otherwise fall back to EOP range
+    // But ensure we don't go beyond what the ephemeris data covers
+    const start = ephemerisStart < eopDataStart ? ephemerisStart : eopDataStart;
+    const end = ephemerisEnd > eopDataEnd ? ephemerisEnd : eopDataEnd;
+    
+    return [start, end];
   }, [data]);
+
+  const visibleXRange = useMemo<[string, string] | undefined>(() => {
+    if (timeLockEnabled && timeRange) {
+      return [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()];
+    }
+
+    return observationRange ?? undefined;
+  }, [observationRange, timeLockEnabled, timeRange]);
+
+  const ephemerisWindow = useMemo(() => {
+    if (!timeLockEnabled) {
+      return undefined;
+    }
+    
+    const range = visibleXRange;
+    if (!range) return undefined;
+    
+    return {
+      start: range[0].slice(0, 10),
+      end: range[1].slice(0, 10)
+    };
+  }, [visibleXRange, timeLockEnabled]);
 
   const selectedSeries = useMemo(() => {
     if (!rollingStats || data.length === 0) {
@@ -117,9 +165,16 @@ export default function OverlayPage() {
 
     const timestamps = data.map(d => d.t);
     return selectedSignals.map(signalKey => {
-      const raw = signalKey.includes(':')
-        ? getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate)
-        : getCoreSignalSeries(signalKey, rollingStats, data);
+      let raw: number[] | undefined;
+
+      if (signalKey.startsWith('net:')) {
+        const metricKey = signalKey.split(':')[1];
+        raw = getNetEphemerisSignalSeries(metricKey, timestamps, ephemerisByDate);
+      } else if (signalKey.includes(':')) {
+        raw = getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate);
+      } else {
+        raw = getCoreSignalSeries(signalKey, rollingStats, data);
+      }
 
       if (!raw) {
         return null;
@@ -143,11 +198,7 @@ export default function OverlayPage() {
   useEffect(() => {
     let active = true;
 
-    loadEphemerisData(
-      observationRange
-        ? { start: observationRange[0], end: observationRange[1] }
-        : undefined
-    )
+    loadEphemerisData(ephemerisWindow)
       .then((dataset: EphemerisDataset) => {
         if (!active || !dataset?.records) {
           return;
@@ -290,12 +341,16 @@ export default function OverlayPage() {
 
   const signalOptions = useMemo(() => ([
     ...Object.entries(CORE_SIGNALS).map(([key, config]) => ({ key, label: config.label })),
-    ...EPHEMERIS_METRIC_CONFIG.flatMap(metric =>
-      EPHEMERIS_BODY_CONFIG.map(body => ({
+    ...EPHEMERIS_BODY_CONFIG.filter(body => body.key !== 'net').flatMap(body =>
+      EPHEMERIS_METRIC_CONFIG.map(metric => ({
         key: `${body.key}:${metric.key}`,
         label: `${body.label} ${metric.shortLabel}`,
       }))
     ),
+    ...EPHEMERIS_METRIC_CONFIG.map(metric => ({
+      key: `net:${metric.key}`,
+      label: `Net ${metric.shortLabel}`,
+    })),
   ]), []);
 
   const overlayCsvConfig = useMemo(() => createCsvExportConfig(
@@ -330,8 +385,8 @@ export default function OverlayPage() {
 
         <div className="max-w-md rounded-lg border border-[#1f2937] bg-[#111827] px-4 py-3">
           <p className="text-sm font-medium text-[#e5e7eb]">DE442 dataset</p>
-          <p className="mt-1 text-sm text-[#9ca3af]">Geocentric overlays include distance, angular velocity, radial velocity, ecliptic longitude, and a heuristic torque proxy for each major body.</p>
-          <p className="mt-2 text-xs text-[#6b7280]">Torque proxy = mass / r^3 * angular speed. Useful for correlation hunting, not a closed-form physical torque.</p>
+          <p className="mt-1 text-sm text-[#9ca3af]">Geocentric overlays include distance, angular velocity, radial velocity, ecliptic longitude, and torque(proxy for each major body plus a combined Net row.</p>
+          <p className="mt-2 text-xs text-[#6b7280]">Torque proxy = mass / r^3 * angular speed. Net row sums individual torques (excluding Sun and Moon) for total net torque from Earth perspective.</p>
         </div>
 
         <label className="flex items-center gap-2 cursor-pointer pt-2">

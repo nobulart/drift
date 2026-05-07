@@ -101,6 +101,21 @@ function getEphemerisSignalSeries(
   });
 }
 
+function getNetEphemerisSignalSeries(
+  metricKey: string,
+  timestamps: string[],
+  ephemerisByDate: Record<string, EphemerisRecord['bodies']>
+): number[] | undefined {
+  return timestamps.map(timestamp => {
+    const dateKey = timestamp.split('T')[0];
+    const netBody = ephemerisByDate[dateKey]?.['net'];
+    if (!netBody) {
+      return NaN;
+    }
+    return netBody[metricKey as keyof EphemerisRecord['bodies'][string]] ?? NaN;
+  });
+}
+
 function getEphemerisTraceSeries(
   key: string,
   records: EphemerisRecord[]
@@ -108,6 +123,15 @@ function getEphemerisTraceSeries(
   const [bodyKey, metricKey] = key.split(':');
   if (!bodyKey || !metricKey) {
     return undefined;
+  }
+
+  if (bodyKey === 'net') {
+    return {
+      x: records.map(record => record.t),
+      raw: records.map(record =>
+        record.bodies['net']?.[metricKey as keyof EphemerisRecord['bodies'][string]] ?? NaN
+      ),
+    };
   }
 
   return {
@@ -134,41 +158,77 @@ export default function OverlayPlot() {
       return null;
     }
 
-    return [data[0].t, data[data.length - 1].t];
-  }, [data]);
+    const ephemerisStart = '1900-01-01';
+    const ephemerisEnd = '2100-12-31';
+    
+    const eopDataStart = data[0].t;
+    const eopDataEnd = data[data.length - 1].t;
+    
+    // Use ephemeris range if available, otherwise fall back to EOP range
+    // But ensure we don't go beyond what the ephemeris data covers
+    const start = ephemerisStart < eopDataStart ? ephemerisStart : eopDataStart;
+    const end = ephemerisEnd > eopDataEnd ? ephemerisEnd : eopDataEnd;
+    
+    return [start, end];
+   }, [data]);
 
-  const selectedSeries = useMemo(() => {
-    if (!rollingStats || data.length === 0) {
-      return [];
+  const visibleXRange = useMemo<[string, string] | undefined>(() => {
+    if (timeLockEnabled && timeRange) {
+      return [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()];
     }
 
-    const timestamps = data.map(d => d.t);
-    return selectedSignals.map(signalKey => {
-      const raw = signalKey.includes(':')
-        ? getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate)
-        : getCoreSignalSeries(signalKey, rollingStats, data);
+    return observationRange ?? undefined;
+  }, [observationRange, timeLockEnabled, timeRange]);
 
-      if (!raw) {
-        return null;
+  const ephemerisWindow = useMemo(() => {
+    if (!timeLockEnabled) {
+      return undefined;
+    }
+    
+    const range = visibleXRange;
+    if (!range) return undefined;
+    
+    return {
+      start: range[0].slice(0, 10),
+      end: range[1].slice(0, 10)
+    };
+  }, [visibleXRange, timeLockEnabled]);
+
+  const selectedSeries = useMemo(() => {
+      if (!rollingStats || data.length === 0) {
+        return [];
       }
 
-      return {
-        key: signalKey,
-        label: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey]?.label ?? signalKey,
-        raw,
-        normalized: normalize(raw),
-      };
-    }).filter(Boolean) as Array<WideCsvSeries & { key: string }>;
-  }, [data, ephemerisByDate, rollingStats, selectedSignals]);
+      const timestamps = data.map(d => d.t);
+      return selectedSignals.map(signalKey => {
+        let raw: number[] | undefined;
+
+        if (signalKey.startsWith('net:')) {
+          const metricKey = signalKey.split(':')[1];
+          raw = getNetEphemerisSignalSeries(metricKey, timestamps, ephemerisByDate);
+        } else if (signalKey.includes(':')) {
+          raw = getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate);
+        } else {
+          raw = getCoreSignalSeries(signalKey, rollingStats, data);
+        }
+
+        if (!raw) {
+          return null;
+        }
+
+        return {
+          key: signalKey,
+          label: signalKey.includes(':') ? getEphemerisSignalLabel(signalKey) : CORE_SIGNALS[signalKey]?.label ?? signalKey,
+          raw,
+          normalized: normalize(raw),
+        };
+      }).filter(Boolean) as Array<WideCsvSeries & { key: string }>;
+    }, [data, ephemerisByDate, rollingStats, selectedSignals]);
 
   useEffect(() => {
     let active = true;
 
-    loadEphemerisData(
-      observationRange
-        ? { start: observationRange[0], end: observationRange[1] }
-        : undefined
-    )
+    loadEphemerisData(ephemerisWindow)
       .then((dataset: EphemerisDataset) => {
         if (!active || !dataset?.records) {
           return;
@@ -188,7 +248,7 @@ export default function OverlayPlot() {
     return () => {
       active = false;
     };
-  }, [observationRange]);
+  }, [ephemerisWindow]);
 
   useEffect(() => {
     writeOverlaySignals(selectedSignals);
@@ -259,14 +319,6 @@ export default function OverlayPlot() {
 
     setTraces(nextTraces);
   }, [data, ephemerisRecords, rollingStats, selectedSeries, selectedSignals, timeLockEnabled, timeRange]);
-
-  const visibleXRange = useMemo<[string, string] | undefined>(() => {
-    if (timeLockEnabled && timeRange) {
-      return [new Date(timeRange[0]).toISOString(), new Date(timeRange[1]).toISOString()];
-    }
-
-    return observationRange ?? undefined;
-  }, [observationRange, timeLockEnabled, timeRange]);
 
   const nowIso = useMemo(() => new Date().toISOString(), []);
 
@@ -370,7 +422,7 @@ export default function OverlayPlot() {
           <div className="mb-2 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-[#e5e7eb]">DE442 Geocentric Ephemerides</p>
-              <p className="text-xs text-[#9ca3af]">Overlay planetary distance, angular motion, longitude, radial speed, and a torque-screening proxy.</p>
+              <p className="text-xs text-[#9ca3af]">Overlay planetary distance, angular motion, longitude, radial speed, and torque(proxy for each major body plus a combined Net row.</p>
             </div>
             <p className="text-xs text-[#6b7280]">Observer: Earth geocenter</p>
           </div>
@@ -387,7 +439,7 @@ export default function OverlayPlot() {
                   {metric.shortLabel}
                 </div>
               ))}
-              {EPHEMERIS_BODY_CONFIG.map(body => (
+              {EPHEMERIS_BODY_CONFIG.filter(body => body.key !== 'net').map(body => (
                 <div key={body.key} className="contents">
                   <div className="sticky left-0 z-10 bg-[#111827] px-2 py-1.5 font-medium text-[#d1d5db]">
                     {body.label}
@@ -412,10 +464,33 @@ export default function OverlayPlot() {
                   })}
                 </div>
               ))}
+              <div className="contents">
+                <div className="sticky left-0 z-10 bg-[#0b1220] px-2 py-1.5 font-bold text-[#fbbf24] border-t-2 border-[#fbbf24]">
+                  Net
+                </div>
+                {EPHEMERIS_METRIC_CONFIG.map(metric => {
+                  const signalKey = `net:${metric.key}`;
+                  return (
+                    <label
+                      key={signalKey}
+                      className="flex cursor-pointer items-center justify-center bg-[#0b1220] px-2 py-1.5 transition-colors hover:bg-[#1f2937]"
+                      title={`Net combined ${metric.label}`}
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={`Net ${metric.shortLabel}`}
+                        checked={selectedSignals.includes(signalKey)}
+                        onChange={() => toggleSignal(signalKey)}
+                        className="h-4 w-4 rounded border-gray-600 text-[#fbbf24] focus:ring-[#fbbf24]"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <p className="mt-3 text-xs text-[#9ca3af]">
-            `Torque Proxy` is a heuristic `mass / r^3 * angular speed`, intended for screening correlations rather than physical torque closure.
+            `Torque Proxy` is a heuristic `mass / r^3 * angular speed`. Net row sums individual torques (excluding Sun and Moon) for total net torque from Earth perspective.
           </p>
         </div>
       </div>
