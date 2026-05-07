@@ -115,6 +115,7 @@ interface AppState {
 }
 
 const PANEL_PREFERENCES_STORAGE_KEY = 'drift-panel-preferences-v1';
+const EOP_DATASET_STORAGE_KEY = 'drift-eop-dataset-v1';
 const DEFAULT_VISIBLE_PANELS = new Set<string>();
 const KNOWN_PANEL_IDS = new Set<string>(DEFAULT_PANEL_ORDER);
 
@@ -206,7 +207,32 @@ function writePanelPreferences({
   }
 }
 
+function readStoredEOPDataset(): EOPDatasetId {
+  if (typeof window === 'undefined') {
+    return DEFAULT_EOP_DATASET_ID;
+  }
+
+  try {
+    return getEOPDataset(window.localStorage.getItem(EOP_DATASET_STORAGE_KEY)).id;
+  } catch {
+    return DEFAULT_EOP_DATASET_ID;
+  }
+}
+
+function writeStoredEOPDataset(dataset: EOPDatasetId) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(EOP_DATASET_STORAGE_KEY, dataset);
+  } catch {
+    // Ignore storage failures so dataset switching still works in restricted browsers.
+  }
+}
+
 const initialPanelPreferences = readPanelPreferences();
+const initialEOPDataset = readStoredEOPDataset();
 
 const useStore = create<AppState>((set, get) => ({
    data: [],
@@ -226,7 +252,7 @@ const useStore = create<AppState>((set, get) => ({
   hiddenPanels: initialPanelPreferences?.hiddenPanels ?? new Set(DEFAULT_VISIBLE_PANELS),
   panelOrder: initialPanelPreferences?.panelOrder ?? [...DEFAULT_PANEL_ORDER],
   lastUpdated: null,
-  eopDataset: DEFAULT_EOP_DATASET_ID,
+  eopDataset: initialEOPDataset,
   setData: (data) => {
     const transformedData = data.map(item => {
       const pos: [number, number, number] = [item.xp, item.yp, 0];
@@ -501,6 +527,7 @@ const useStore = create<AppState>((set, get) => ({
   },
   setEOPDataset: async (dataset) => {
     const nextDataset = getEOPDataset(dataset);
+    writeStoredEOPDataset(nextDataset.id);
     set({ eopDataset: nextDataset.id, rollingStats: null });
     await get().refetchData();
   }

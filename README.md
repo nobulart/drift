@@ -2,6 +2,8 @@
 
 Constraint-first polar-motion diagnostics dashboard for geometry, phase structure, and experimental transition-probability diagnostics
 
+Live deployment: [drift.nobulart.com](https://drift.nobulart.com)
+
 Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Locked Planetary Torque Coupling in Polar Motion](https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion)
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
