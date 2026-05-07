@@ -181,15 +181,15 @@ export default function DocsPage() {
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.6 Live Refresh</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.2 EOP Dataset Selection</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                The sidebar Update Data control now runs the source refresh pipeline from the app, skips upstream retrievals while local files are fresh, and keeps fullscreen panel state consistent with panel state.
+                Added Data Settings for alternate IERS EOP backfills: finals.all IAU1980, finals.all IAU2000, and EOP 20u24 C04 IAU2000A. The selected EOP product now flows through dashboard loading, rolling statistics, conditional lag, transition probability, and phase-escape diagnostics.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.4.5 Real Data Only</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.1 Loop-Center Angular Velocity</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Synthetic fallback series were removed from the active pipeline, the unstable Angle Diagnostics and Alignment panels were taken out of the UI, and the transition-probability/lag tooling now reads only the current real-data cache.
+                Added the Loop-Center Angular Velocity panel from the live EOP store, preserved completed-loop smoothing, and showed the newest incomplete-loop estimate as a provisional endpoint with low-radius confidence labeling and endpoint uncertainty guidance.
               </p>
             </article>
           </div>
