@@ -15,6 +15,13 @@ const sourceRows = [
     href: 'https://datacenter.iers.org/productMetadata.php?id=221',
   },
   {
+    name: 'JPL EOP2',
+    cadence: 'Daily / rapid updates',
+    latency: 'Updated with latest long and short EOP2 files',
+    role: 'Selectable PMx/PMy Earth orientation backend converted from milliarcseconds to arcseconds',
+    href: 'https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long',
+  },
+  {
     name: 'GFZ Kp',
     cadence: 'Sub-daily upstream, normalized daily in cache',
     latency: 'Usually under 1 hour upstream',
@@ -53,7 +60,7 @@ const pipelineSteps = [
 const apiRows = [
   {
     route: '/api/eop',
-    purpose: 'Historical Earth Orientation Parameters cache. Optional `dataset` values: `finals` for finals.all IAU1980, `finals2000a` for finals.all IAU2000, and `c04` for EOP 20u24 C04 IAU2000A. Unknown or omitted values fall back to `finals`; the response header `X-DRIFT-EOP-Dataset` reports the resolved id.',
+    purpose: 'Historical Earth Orientation Parameters cache. Optional `dataset` values: `finals` for finals.all IAU1980, `finals2000a` for finals.all IAU2000, `c04` for EOP 20u24 C04 IAU2000A, and `jpl` for JPL EOP2. Unknown or omitted values fall back to `finals`; the response header `X-DRIFT-EOP-Dataset` reports the resolved id.',
     fields: 't, xp, yp',
   },
   {
@@ -129,7 +136,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.3
+                Version v1.5.4
               </span>
               <Link
                 href="/"
@@ -175,6 +182,12 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.4 JPL EOP2 Backend</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added JPL EOP2 as a selectable Earth-orientation backend. PMx/PMy are converted from milliarcseconds to the dashboard arcsecond contract, prediction rows are excluded, and `dataset=jpl` is available through `/api/eop`.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.3 Net Torque Normalization</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 The Net torque proxy now normalizes each non-Sun/non-Moon body by its own cache-wide peak before summing, making it a temporal-alignment signal. Ephemeris cache refreshes backfill missing Net rows, and overlay loading is bounded to the active data window.
@@ -184,12 +197,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.2 EOP Dataset Selection</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added Data Settings for alternate IERS EOP backfills: finals.all IAU1980, finals.all IAU2000, and EOP 20u24 C04 IAU2000A. The selected EOP product now flows through dashboard loading, rolling statistics, conditional lag, transition probability, and phase-escape diagnostics.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.1 Loop-Center Angular Velocity</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added the Loop-Center Angular Velocity panel from the live EOP store, preserved completed-loop smoothing, and showed the newest incomplete-loop estimate as a provisional endpoint with low-radius confidence labeling and endpoint uncertainty guidance.
               </p>
             </article>
           </div>
@@ -271,7 +278,7 @@ export default function DocsPage() {
           <div className="mt-4 rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4 text-sm leading-6 text-[#cbd5e1]">
             <p>Analysis query routes accept URL parameters.</p>
             <p className="mt-2 text-xs text-[#9ca3af]">
-              `/api/eop` accepts `dataset=finals`, `dataset=finals2000a`, or `dataset=c04`.
+              `/api/eop` accepts `dataset=finals`, `dataset=finals2000a`, `dataset=c04`, or `dataset=jpl`.
             </p>
             <p className="mt-2 text-xs text-[#9ca3af]">
               `/api/ephemeris` accepts `start` and `end` in `YYYY-MM-DD` format and can extend the local DE442 cache for missing requested dates or refresh older records without Net rows.

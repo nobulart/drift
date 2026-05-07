@@ -123,6 +123,11 @@ export default function Controls({
       href: selectedDataset.sourceUrl,
     },
     {
+      name: 'JPL EOP2',
+      description: 'selectable PMx/PMy Earth orientation backend.',
+      href: 'https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long',
+    },
+    {
       name: 'GFZ Kp',
       description: 'geomagnetic activity indices and dipole-strength proxy context.',
       href: 'https://kp.gfz-potsdam.de/en/data',

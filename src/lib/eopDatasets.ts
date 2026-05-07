@@ -23,6 +23,14 @@ export const EOP_DATASETS = [
     sourceUrl: 'https://datacenter.iers.org/versionMetadata.php?filename=latestVersionMeta/254_EOP_C04_20u24.62-NOW254.txt',
     description: 'Daily C04 20u24 IAU2000A combined EOP solution, 1962 onward.',
   },
+  {
+    id: 'jpl',
+    label: 'JPL EOP2',
+    shortLabel: 'JPL EOP2',
+    filename: 'eop_jpl_eop2_historic.json',
+    sourceUrl: 'https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long',
+    description: 'JPL Earth Orientation Parameter 2 PMx/PMy series, 1962 onward, with short-tail updates.',
+  },
 ] as const;
 
 export type EOPDatasetId = typeof EOP_DATASETS[number]['id'];

@@ -4,9 +4,9 @@ This document describes the automated data retrieval and integration system for 
 
 ## Data Sources
 
-### 1. IERS EOP Data (Earth Orientation Parameters)
-- **Source**: IERS Data Center (datacenter.iers.org)
-- **Formats**: JSON (`finals.all`, `finals2000A.all`) and fixed-width text (`EOP 20u24 C04`)
+### 1. EOP Data (Earth Orientation Parameters)
+- **Sources**: IERS Data Center (datacenter.iers.org) and JPL EOP2 (eop2-external.jpl.nasa.gov)
+- **Formats**: JSON (`finals.all`, `finals2000A.all`), fixed-width text (`EOP 20u24 C04`), and JPL EOP2 comma-delimited text
 - **Content**: 
   - Pole coordinates (X, Y) in arcseconds
   - UT1-UTC in seconds
@@ -16,9 +16,10 @@ This document describes the automated data retrieval and integration system for 
   - `finals.all (IAU1980)`: default dashboard EOP backfill
   - `finals.all (IAU2000)`: alternate rapid EOP backfill
   - `EOP 20u24 C04 (IAU2000A)`: alternate combined C04 backfill
+  - `JPL EOP2`: JPL PMx/PMy EOP2 long series plus short rapid tail, converted from milliarcseconds to arcseconds
 - **Time Range**: 1962-present or 1973-present depending on selected product
 - **Resolution**: Daily
-- **License**: IERS Data Policy
+- **License**: IERS Data Policy / JPL EOP2 upstream terms
 
 ### 2. GRACE MASCON Data
 - **Source**: NASA PO.DAAC (podaac.jpl.nasa.gov)
@@ -60,7 +61,7 @@ This document describes the automated data retrieval and integration system for 
 ### Build Scripts
 
 #### `scripts/build_eop.py`
-Parse IERS EOP data from the default `finals.all (IAU1980)` feed and generate alternate selectable backfills for `finals.all (IAU2000)` and `EOP 20u24 C04 (IAU2000A)`.
+Parse EOP data from the default IERS `finals.all (IAU1980)` feed and generate alternate selectable backfills for IERS `finals.all (IAU2000)`, IERS `EOP 20u24 C04 (IAU2000A)`, and JPL EOP2.
 
 #### `scripts/build_grace.py`
 Process GRACE Zarr manifest to extract time coordinates and create time series.
@@ -96,6 +97,7 @@ Timestamp-aware retrieval script that:
 | `eop_historic.json` | EOP polar motion data, finals.all (IAU1980) | 19,000+ | Daily |
 | `eop_finals2000a_historic.json` | EOP polar motion data, finals.all (IAU2000) | 19,000+ | Weekly / rebuilt by pipeline |
 | `eop_c04_historic.json` | EOP polar motion data, EOP 20u24 C04 (IAU2000A) | 23,000+ | Rebuilt by pipeline |
+| `eop_jpl_eop2_historic.json` | EOP polar motion data, JPL EOP2 PMx/PMy converted to arcseconds | 23,000+ | Rebuilt by pipeline |
 | `eop_latest.json` | Recent EOP data (last 30 days) | 30 | Daily |
 | `grace_historic.json` | GRACE LWE time series | 245 | Monthly |
 | `grace_latest.json` | Latest GRACE data | 245 | Monthly |
@@ -109,7 +111,7 @@ Timestamp-aware retrieval script that:
 ## API Routes
 
 ### `/api/eop`
-Returns IERS EOP polar motion data (xp, yp). Accepts `dataset=finals`, `dataset=finals2000a`, or `dataset=c04`; unknown values fall back to `finals`.
+Returns EOP polar motion data (xp, yp). Accepts `dataset=finals`, `dataset=finals2000a`, `dataset=c04`, or `dataset=jpl`; unknown values fall back to `finals`.
 
 ### `/api/geomag`
 Returns GFZ-KP geomagnetic indices (Kp, ap, Ap).
@@ -182,12 +184,13 @@ python3 scripts/fetch_latest.py --force
 
 ## Citation
 
-- **EOP**: IERS (2026). IERS Earth Orientation Parameters.
+- **EOP**: IERS (2026). IERS Earth Orientation Parameters; JPL (2026). Earth Orientation Parameter 2 (EOP2).
 - **GRACE**: Wiese, D. et al. (2026). JPL GRACE и GRACE-FO MASCON RL06.3Mv04 CRI.
 - **KP**: Matzka, J. et al. (2021). The geomagnetic Kp index. Space Weather.
 
 ## License
 
 - IERS EOP: IERS Data Policy
+- JPL EOP2: JPL upstream data terms
 - GRACE: NASA Earth Science Data Policy
 - GFZ-KP: CC BY 4.0

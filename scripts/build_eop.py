@@ -23,6 +23,8 @@ from data_paths import DATA_DIR, write_json
 DAILY_JSON_URL = "https://datacenter.iers.org/data/json/finals.daily.json"
 DAILY_2000A_JSON_URL = "https://datacenter.iers.org/data/json/finals2000A.daily.json"
 ALL_JSON_URL = "https://datacenter.iers.org/data/json/finals.all.json"
+JPL_EOP2_LONG_URL = "https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long"
+JPL_EOP2_SHORT_URL = "https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.short"
 EOP_DATASETS = {
     "finals2000a": {
         "label": "finals.all (IAU2000)",
@@ -39,6 +41,14 @@ EOP_DATASETS = {
         "output": "eop_c04_historic.json",
         "parser": "c04",
         "daily_tail": "finals2000a",
+    },
+    "jpl": {
+        "label": "JPL EOP2",
+        "download_url": JPL_EOP2_LONG_URL,
+        "tail_url": JPL_EOP2_SHORT_URL,
+        "output": "eop_jpl_eop2_historic.json",
+        "parser": "jpl_eop2",
+        "daily_tail": "jpl_eop2",
     },
 }
 
@@ -218,6 +228,57 @@ def parse_c04_text(content):
     return sorted(records, key=lambda item: item["t"])
 
 
+def parse_jpl_eop2_text(content):
+    """Parse JPL EOP2 text records.
+
+    JPL EOP2 provides PMx/PMy in milliarcseconds. The dashboard EOP contract
+    uses arcseconds, so polar motion values are divided by 1000.
+    """
+    records = []
+    last_observed_date = None
+    last_observed_match = re.search(r"Last UTPM Data Point\s+(\d{4}-\d{2}-\d{2})T", content)
+    if last_observed_match:
+        last_observed_date = last_observed_match.group(1)
+
+    for line in content.splitlines():
+        if "$" not in line:
+            continue
+
+        data_part, comment = line.split("$", 1)
+        if "," not in data_part:
+            continue
+
+        parts = [part.strip() for part in data_part.split(",")]
+        if len(parts) < 4:
+            continue
+
+        date_match = re.search(r"\d{4}-\d{2}-\d{2}", comment)
+        if not date_match:
+            continue
+
+        try:
+            pmx_mas = float(parts[1])
+            pmy_mas = float(parts[2])
+            tai_minus_ut1_ms = float(parts[3])
+        except (TypeError, ValueError):
+            continue
+
+        date_str = date_match.group(0)
+        if last_observed_date and date_str > last_observed_date:
+            continue
+
+        records.append(
+            {
+                "t": date_str,
+                "xp": pmx_mas / 1000.0,
+                "yp": pmy_mas / 1000.0,
+                "tai_ut1_ms": tai_minus_ut1_ms,
+            }
+        )
+
+    return sorted(records, key=lambda item: item["t"])
+
+
 def fetch_alternate_eop_dataset(config):
     """Fetch and parse one alternate IERS EOP backfill dataset."""
     if config["parser"] == "finals_json":
@@ -225,6 +286,14 @@ def fetch_alternate_eop_dataset(config):
         try:
             with urllib.request.urlopen(config["json_url"], timeout=60) as response:
                 return extract_finals(json.loads(response.read().decode("utf-8")))
+        except Exception as exc:
+            print(f"  ERROR: Could not fetch {config['label']}: {exc}")
+            return []
+
+    if config["parser"] == "jpl_eop2":
+        print(f"  Fetching {config['download_url']} ...")
+        try:
+            return parse_jpl_eop2_text(fetch_text(config["download_url"]))
         except Exception as exc:
             print(f"  ERROR: Could not fetch {config['label']}: {exc}")
             return []
@@ -242,6 +311,15 @@ def fetch_alternate_eop_dataset(config):
         return parse_c04_text(content)
 
     raise ValueError(f"Unknown EOP parser: {config['parser']}")
+
+
+def fetch_jpl_eop2_tail(config):
+    print(f"  Fetching {config['tail_url']} ...")
+    try:
+        return parse_jpl_eop2_text(fetch_text(config["tail_url"]))
+    except Exception as exc:
+        print(f"  ERROR: Could not fetch {config['label']} short tail: {exc}")
+        return []
 
 
 def merge_eop_records(historic_data, daily_data):
@@ -435,6 +513,7 @@ def main():
     print()
     print("4. Fetching alternate EOP backfill datasets ...")
     daily_2000a_data = None
+    jpl_eop2_tail = None
     for dataset_id, config in EOP_DATASETS.items():
         print()
         print(f"   {config['label']}")
@@ -458,6 +537,22 @@ def main():
                 )
             else:
                 print("   WARN: No IAU2000A daily tail available; writing backfill only.")
+
+        if config.get("daily_tail") == "jpl_eop2":
+            if jpl_eop2_tail is None:
+                print("   Fetching JPL EOP2 short rapid tail ...")
+                jpl_eop2_tail = fetch_jpl_eop2_tail(config)
+
+            if jpl_eop2_tail:
+                before_count = len(records)
+                before_end = records[-1]["t"]
+                records = merge_eop_records(records, jpl_eop2_tail)
+                print(
+                    f"   Merged {before_count} long-series records through {before_end} "
+                    f"with {len(jpl_eop2_tail)} short-tail records"
+                )
+            else:
+                print("   WARN: No JPL EOP2 short tail available; writing long series only.")
 
         output_file = write_json(config["output"], records)
         print(f"   Saved {len(records)} records to {output_file}")

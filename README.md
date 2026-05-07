@@ -8,9 +8,16 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.3`
+Current release: `v1.5.4`
 
 ## Release Notes
+
+### v1.5.4
+
+- Added JPL EOP2 as a selectable EOP backend using `latest_eop2.long` plus the observed short-tail updates.
+- Converted JPL PMx/PMy milliarcsecond values into the dashboard's arcsecond `xp`/`yp` contract and excluded prediction rows beyond the last observed UTPM datum.
+- Added generated JPL EOP2 JSON caches and documented `dataset=jpl` for `/api/eop`.
+- Added JPL EOP2 to the sidebar and inline docs source lists.
 
 ### v1.5.3
 
@@ -421,7 +428,8 @@ drift/
   - `finals`: `finals.all (IAU1980)`, served from `eop_historic.json`; this is the default when `dataset` is omitted or unknown.
   - `finals2000a`: `finals.all (IAU2000)`, served from `eop_finals2000a_historic.json`.
   - `c04`: `EOP 20u24 C04 (IAU2000A)`, served from `eop_c04_historic.json`.
-- Examples: `/api/eop?dataset=finals2000a`, `/api/eop?dataset=c04`.
+  - `jpl`: `JPL EOP2`, served from `eop_jpl_eop2_historic.json`.
+- Examples: `/api/eop?dataset=finals2000a`, `/api/eop?dataset=c04`, `/api/eop?dataset=jpl`.
 - Response header: `X-DRIFT-EOP-Dataset` contains the resolved dataset id.
 
 #### `GET /api/inertia`
