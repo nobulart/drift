@@ -6,6 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface CouplingPlotProps {
   dates: string[];
@@ -27,6 +28,8 @@ export default function CouplingPlot({
   const [smoothedAp, setSmoothedAp] = useState<number[]>([]);
   const [smoothedAlignment, setSmoothedAlignment] = useState<number[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
+  const sourceNames = useMemo(() => ['GFZ Kp'], []);
+  const chartTitle = useChartTitle('Alignment: Drift vs Geomagnetic', dates, sourceNames);
 
   const hasMeaningfulAlignment = useMemo(() => {
     const finite = smoothedAlignment.filter((value) => Number.isFinite(value));
@@ -208,7 +211,7 @@ export default function CouplingPlot({
   };
 
   const layout = useMemo(() => ({
-    title: { text: 'Alignment: Drift vs Geomagnetic' } as any,
+    title: chartTitle as any,
     xaxis: { 
       title: { text: 'Date', standoff: 20 },
       gridcolor: '#374151',
@@ -242,8 +245,9 @@ export default function CouplingPlot({
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
+    margin: { l: 60, r: 60, t: 78, b: 60 },
     autosize: true
-    }), [plotHeight]);
+    }), [chartTitle, plotHeight]);
 
     const layoutWithRange = useMemo(() => {
       const axisRange = timeLockEnabled && timeRange

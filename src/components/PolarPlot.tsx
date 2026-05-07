@@ -6,6 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface PolarPlotProps {
   xpData: number[];
@@ -26,6 +27,7 @@ export default function PolarPlot({
   const isInternalUpdate = useRef(false);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
+  const chartTitle = useChartTitle('Polar Motion (xp, yp)', dates);
 
   const turningPoints = useMemo(() => rollingStats?.turningPoints || [], [rollingStats]);
 
@@ -111,7 +113,7 @@ export default function PolarPlot({
   };
 
   const layout = useMemo(() => ({
-    title: 'Polar Motion (xp, yp)' as any,
+    title: chartTitle as any,
     xaxis: { 
       title: { text: 'Date', standoff: 20 },
       gridcolor: '#374151',
@@ -148,7 +150,7 @@ export default function PolarPlot({
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-  } as any), [plotHeight]);
+  } as any), [chartTitle, plotHeight]);
 
   const layoutWithRange = useMemo(() => {
     const axisRange = timeLockEnabled && timeRange

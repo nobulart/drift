@@ -6,6 +6,7 @@ import { ConditionalLagResult } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useStore } from '@/store/useStore';
+import { useChartTitle } from '@/lib/chartTitles';
 
 type StateOption = 'Stable' | 'Pre' | 'Transition' | 'Post';
 const STATE_TO_INDEX: Record<StateOption, number> = {
@@ -27,6 +28,7 @@ export default function ConditionalLagPlot() {
   const windowSize = useStore((state) => state.windowSize);
   const turnThreshold = useStore((state) => state.turnThreshold);
   const eopDataset = useStore((state) => state.eopDataset);
+  const heatmapTitle = useChartTitle(`Conditional Lag Response (${targetState} State)`);
 
   useEffect(() => {
     const loadConditionalLag = async () => {
@@ -98,7 +100,7 @@ export default function ConditionalLagPlot() {
     if (!conditionalLagResult) return null;
     
     return {
-      title: { text: `Conditional Lag Response (${targetState} State)` },
+      title: heatmapTitle,
       xaxis: { 
         title: { text: 'Phase (θ) bins' },
         gridcolor: '#374151',
@@ -117,7 +119,7 @@ export default function ConditionalLagPlot() {
       height: heatmapHeight,
       autosize: true
     };
-  }, [conditionalLagResult, heatmapHeight, targetState]);
+  }, [conditionalLagResult, heatmapHeight, heatmapTitle]);
 
   const sliceData = useMemo(() => {
     if (!conditionalLagResult) return [];
@@ -150,8 +152,13 @@ export default function ConditionalLagPlot() {
     
     const phaseMid = phaseLabels.length > selectedPhase ? phaseLabels[selectedPhase] : 'Unknown';
     
+    const titleText = `Lag Response at PhaseBin ${selectedPhase}: ${phaseMid}`;
+
     return {
-      title: { text: `Lag Response at PhaseBin ${selectedPhase}: ${phaseMid}` },
+      title: {
+        ...heatmapTitle,
+        text: heatmapTitle.text.replace(`Conditional Lag Response (${targetState} State)`, titleText),
+      },
       xaxis: { 
         title: { text: 'Lag (days)' },
         gridcolor: '#374151',
@@ -179,7 +186,7 @@ export default function ConditionalLagPlot() {
       height: sliceHeight,
       autosize: true
     };
-  }, [conditionalLagResult, phaseLabels, selectedPhase, sliceHeight]);
+  }, [conditionalLagResult, heatmapTitle, phaseLabels, selectedPhase, sliceHeight, targetState]);
 
   useEffect(() => {
     if (populatedPhaseIndices.length === 0) {

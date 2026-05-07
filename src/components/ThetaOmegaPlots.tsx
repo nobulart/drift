@@ -7,6 +7,7 @@ import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { computeDisplayOmega } from '@/lib/phase';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface ThetaOmegaPlotsProps {
   dates: string[];
@@ -25,6 +26,7 @@ export default function ThetaOmegaPlots({
   const isInternalUpdate = useRef(false);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
+  const chartTitle = useChartTitle('Phase Diagnostics: theta(t) and omega(t)', dates);
 
   useEffect(() => {
     if (theta.length === 0 || omega.length === 0) {
@@ -87,7 +89,7 @@ export default function ThetaOmegaPlots({
    };
 
    const layout = useMemo(() => ({
-     title: { text: 'Phase Diagnostics: θ(t) and ω(t)' } as any,
+     title: chartTitle as any,
      xaxis: { 
        title: { text: 'Date', standoff: 20 },
        gridcolor: '#374151'
@@ -119,7 +121,7 @@ export default function ThetaOmegaPlots({
      paper_bgcolor: '#0b1220',
      font: { color: '#e5e7eb' },
      autosize: true
-   }), [plotHeight]);
+   }), [chartTitle, plotHeight]);
 
    const layoutWithRange = useMemo(() => {
      const axisRange = timeLockEnabled && timeRange

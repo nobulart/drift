@@ -7,6 +7,7 @@ import { useStore } from '@/store/useStore';
 import { LagResult } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 export default function LagModelPlot() {
   const [lagResult, setLagResult] = useState<LagResult | null>(null);
@@ -16,6 +17,7 @@ export default function LagModelPlot() {
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
   const [lagTraces, setLagTraces] = useState<Plotly.Data[]>([]);
+  const chartTitle = useChartTitle('Lag Response Function');
 
   useEffect(() => {
     if (rollingStats?.lagModel) {
@@ -55,7 +57,7 @@ export default function LagModelPlot() {
   };
 
   const lagLayout = useMemo(() => ({
-    title: { text: 'Lag Response Function' },
+    title: chartTitle,
     xaxis: { 
       title: { text: 'Lag (days)', standoff: 20 },
       gridcolor: '#374151',
@@ -80,7 +82,7 @@ export default function LagModelPlot() {
     font: { color: '#e5e7eb' },
     height: plotHeight,
     autosize: true
-  }), [plotHeight]);
+  }), [chartTitle, plotHeight]);
 
   return (
     <div className="p-4 bg-[#0b1220] h-full w-full min-w-0">

@@ -6,6 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface OrthogonalDeviationPlotProps {
   dates: string[];
@@ -78,6 +79,7 @@ export default function OrthogonalDeviationPlot({
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const [rollingMean, setRollingMean] = useState<number[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
+  const chartTitle = useChartTitle('R(t): Orthogonal Deviation Ratio', dates);
 
   useEffect(() => {
     if (rRatio.length === 0) {
@@ -169,7 +171,7 @@ export default function OrthogonalDeviationPlot({
   };
 
   const layout = useMemo(() => ({
-    title: { text: 'R(t): Orthogonal Deviation Ratio' } as any,
+    title: chartTitle as any,
     xaxis: { 
       title: { text: 'Date', standoff: 20 },
       gridcolor: '#374151'
@@ -193,7 +195,7 @@ export default function OrthogonalDeviationPlot({
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-  }), [plotHeight]);
+  }), [chartTitle, plotHeight]);
 
   const axisRange = timeLockEnabled && timeRange
     ? [new Date(timeRange[0]), new Date(timeRange[1])]

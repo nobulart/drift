@@ -5,6 +5,7 @@ import Plot from 'react-plotly.js';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface PhasePortraitProps {
   dates: string[];
@@ -23,6 +24,7 @@ export default function PhasePortrait({
   const fallbackHeight = usePlotDisplayHeight(500, 860);
   const [containerWidth, setContainerWidth] = useState(0);
   const plotSize = Math.round(containerWidth > 0 ? Math.min(containerWidth, fallbackHeight) : fallbackHeight);
+  const chartTitle = useChartTitle('Phase Portrait: theta vs omega', dates);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -139,7 +141,7 @@ export default function PhasePortrait({
   }, [dates, omega, theta, turningPoints]);
 
   const layout = {
-    title: { text: 'Phase Portrait: θ vs ω' } as any,
+    title: chartTitle as any,
     xaxis: { 
       title: { text: 'Phase Angle θ (radians)', standoff: 20 },
       gridcolor: '#374151',

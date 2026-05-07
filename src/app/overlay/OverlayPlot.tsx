@@ -13,6 +13,7 @@ import { EphemerisDataset, EphemerisRecord, LagResult } from '@/lib/types';
 import { buildSelectedSeriesCsvRows, createCsvExportConfig, plotlyXRange, WideCsvSeries } from '@/lib/plotlyCsvExport';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
+import { useChartTitle } from '@/lib/chartTitles';
 
 const CORE_SIGNALS = {
   xp: { label: 'xp' },
@@ -134,6 +135,20 @@ export default function OverlayPage() {
 
     return EPHEMERIS_DISPLAY_RANGE;
   }, [timeLockEnabled, timeRange]);
+
+  const overlaySources = useMemo(() => {
+    const sources: string[] = [];
+    if (selectedSignals.some(signal => signal.includes(':'))) {
+      sources.push('JPL DE442');
+    }
+    if (selectedSignals.some(signal => signal === 'kp' || signal === 'ap')) {
+      sources.push('GFZ Kp');
+    }
+    return sources;
+  }, [selectedSignals]);
+
+  const overlayTitle = useChartTitle('Overlay Plot', undefined, overlaySources);
+  const lagTitle = useChartTitle('Lag Response Function');
 
   const ephemerisWindow = useMemo<{ start: string; end: string } | undefined>(() => {
     if (timeLockEnabled && timeRange) {
@@ -286,6 +301,7 @@ export default function OverlayPage() {
   }, [lagResult]);
 
   const overlayLayout = useMemo(() => ({
+    title: overlayTitle as any,
     template: 'plotly_dark',
     xaxis: {
       title: { text: 'Date', standoff: 20 },
@@ -308,10 +324,11 @@ export default function OverlayPage() {
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
-  }), [visibleXRange]);
+    margin: { l: 60, r: 20, t: 78, b: 60 },
+  }), [overlayTitle, visibleXRange]);
 
   const lagLayout = useMemo(() => ({
-    title: { text: 'Lag Response Function' },
+    title: lagTitle as any,
     xaxis: {
       title: { text: 'Lag (days)', standoff: 20 },
       gridcolor: '#374151',
@@ -333,7 +350,8 @@ export default function OverlayPage() {
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
-  }), []);
+    margin: { l: 60, r: 20, t: 78, b: 60 },
+  }), [lagTitle]);
 
   const signalOptions = useMemo(() => ([
     ...Object.entries(CORE_SIGNALS).map(([key, config]) => ({ key, label: config.label })),

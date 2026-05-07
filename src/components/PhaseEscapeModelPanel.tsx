@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import { useStore } from '@/store/useStore';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { useChartTitle } from '@/lib/chartTitles';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import {
   DEFAULT_PHASE_ESCAPE_MODELS,
@@ -497,6 +498,12 @@ export default function PhaseEscapeModelPanel() {
   const recentLastDate = recentSeries.dates[recentSeries.dates.length - 1] ?? null;
   const basinOverlayEndDate = recentLastDate;
   const basinOverlayStartDate = maxIsoDate(recentFirstDate, shiftIsoDate(basinOverlayEndDate, -BASIN_WINDOW_DAYS));
+  const phaseEscapeSources = useMemo(
+    () => [`DE442 ${dataset?.source?.ephemerisKernel ?? 'ephemeris'} cache`],
+    [dataset?.source?.ephemerisKernel]
+  );
+  const curveTitle = useChartTitle('Phase-Dependent Escape Probability', recentSeries.dates, phaseEscapeSources);
+  const timeSeriesTitle = useChartTitle(`Recent ${daysShown} Days`, recentSeries.dates, phaseEscapeSources);
 
   const timeSeriesData = useMemo(() => {
     const traces: Plotly.Data[] = [
@@ -620,22 +627,22 @@ export default function PhaseEscapeModelPanel() {
   }, [expandedChart]);
 
   const curveLayout = useMemo(() => ({
-    title: { text: 'Phase-Dependent Escape Probability' },
+    title: curveTitle as any,
     template: 'plotly_dark',
     xaxis: { title: { text: 'Residual phase misalignment phi (deg)' }, range: [-180, 180], gridcolor: '#374151' },
     yaxis: { title: { text: 'P(escape | phi)' }, range: [0, 1], gridcolor: '#374151' },
     yaxis2: { title: { text: 'Phase potential energy' }, overlaying: 'y', side: 'right', showgrid: false },
     legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
-    margin: { l: 56, r: 78, t: 48, b: 70 },
+    margin: { l: 56, r: 78, t: 78, b: 70 },
     plot_bgcolor: '#111827',
     paper_bgcolor: '#111827',
     font: { color: '#e5e7eb' },
     height: plotHeight,
     autosize: true,
-  }), [plotHeight]);
+  }), [curveTitle, plotHeight]);
 
   const timeSeriesLayout = useMemo(() => ({
-    title: { text: `Recent ${daysShown} Days` },
+    title: timeSeriesTitle as any,
     template: 'plotly_dark',
     xaxis: {
       title: { text: 'Date' },
@@ -715,13 +722,13 @@ export default function PhaseEscapeModelPanel() {
       },
     ] : [],
     legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
-    margin: { l: 92, r: 112, t: 48, b: 70 },
+    margin: { l: 92, r: 112, t: 78, b: 70 },
     plot_bgcolor: '#111827',
     paper_bgcolor: '#111827',
     font: { color: '#e5e7eb' },
     height: plotHeight,
     autosize: true,
-  }), [basinOverlayEndDate, basinOverlayStartDate, daysShown, plotHeight, recentFirstDate, recentLastDate]);
+  }), [basinOverlayEndDate, basinOverlayStartDate, plotHeight, recentFirstDate, recentLastDate, timeSeriesTitle]);
 
   if (loading && !dataset) {
     return (
@@ -964,8 +971,8 @@ export default function PhaseEscapeModelPanel() {
                   height: undefined,
                   autosize: true,
                   margin: expandedChart === 'curve'
-                    ? { l: 72, r: 92, t: 54, b: 82 }
-                    : { l: 104, r: 132, t: 54, b: 82 },
+                    ? { l: 72, r: 92, t: 84, b: 82 }
+                    : { l: 104, r: 132, t: 84, b: 82 },
                 } as any}
                 config={createCsvExportConfig(
                   expandedChart === 'curve' ? 'phase-escape-curve.csv' : 'phase-escape-timeseries.csv',

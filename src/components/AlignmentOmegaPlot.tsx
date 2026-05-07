@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Plot from 'react-plotly.js';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
+import { useChartTitle } from '@/lib/chartTitles';
 
 const EVENT_YEARS = [1978, 1991, 1999, 2003];
 
@@ -21,6 +22,7 @@ export default function AlignmentOmegaPlot({
 }: AlignmentOmegaPlotProps) {
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const plotHeight = usePlotDisplayHeight(400, 720);
+  const chartTitle = useChartTitle('Alignment vs Angular Velocity (Coupling Diagnostic)', dates);
 
   useEffect(() => {
     const alignmentSmooth = alignment.map(a => (a * 180) / Math.PI);
@@ -88,8 +90,8 @@ export default function AlignmentOmegaPlot({
     // Note: Layout will include annotations for event years
   }, [dates, alignment, omega, turningPoints]);
 
-  const layout: Plotly.Layout = {
-    title: { text: 'Alignment vs Angular Velocity (Coupling Diagnostic)' } as any,
+  const layout = useMemo<Plotly.Layout>(() => ({
+    title: chartTitle as any,
     xaxis: { title: { text: 'Date' } },
     yaxis: {
       title: { text: 'Alignment (degrees)' },
@@ -108,8 +110,9 @@ export default function AlignmentOmegaPlot({
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
+    margin: { l: 60, r: 60, t: 78, b: 60 },
     shapes: [], // Event lines will be added dynamically if needed
-  } as any;
+  } as any), [chartTitle, plotHeight]);
 
   return <Plot data={traces} layout={layout} config={{ displayModeBar: false, responsive: true }} style={{ width: '100%', height: `${plotHeight}px` }} useResizeHandler />;
 }

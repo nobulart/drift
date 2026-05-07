@@ -7,6 +7,7 @@ import { LagKernel, TransitionForecast } from '@/lib/types';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { computeTransitionForecast } from '@/lib/transitionForecast';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 export default function TransitionForecastPanel() {
   const [lagKernel, setLagKernel] = useState<LagKernel | null>(null);
@@ -24,6 +25,7 @@ export default function TransitionForecastPanel() {
   const turnThreshold = useStore(state => state.turnThreshold);
   const eopDataset = useStore(state => state.eopDataset);
   const data = useStore(state => state.data);
+  const chartTitle = useChartTitle('Transition Probability Curve');
   const presentTimeIndex = useMemo(() => {
     return data.length > 0 ? data.length - 1 : -1;
   }, [data]);
@@ -187,7 +189,7 @@ export default function TransitionForecastPanel() {
     const yMax = Math.max(densityMax, cumulativeMax, 0.05);
     
     return {
-      title: { text: 'Transition Probability Curve', standoff: 20 },
+      title: { ...chartTitle, standoff: 20 },
       xaxis: { 
         title: { text: 'Days Ahead (τ)', standoff: 20 },
         gridcolor: '#374151',
@@ -216,7 +218,7 @@ export default function TransitionForecastPanel() {
       height: plotHeight,
       autosize: true
     };
-  }, [forecast, lagKernel, plotHeight, width]);
+  }, [chartTitle, forecast, lagKernel, plotHeight, width]);
 
   const stateColors = ['#10b981', '#f59e0b', '#ef4444', '#6b7280'];  // emerald, amber, red, gray
 

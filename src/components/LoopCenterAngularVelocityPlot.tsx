@@ -6,6 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface LoopCenterAngularVelocityPlotProps {
   xpData: number[];
@@ -444,6 +445,7 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
   const isInternalUpdate = useRef(false);
   const plotHeight = usePlotDisplayHeight(500, 860);
   const velocity = useMemo(() => computeAngularVelocity(xpData, ypData, dates), [dates, xpData, ypData]);
+  const chartTitle = useChartTitle('Angular Velocity of Loop-Center Evolution', dates);
 
   const handleRelayout = (event: any) => {
     if (isInternalUpdate.current || !timeLockEnabled) return;
@@ -460,7 +462,7 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
       : undefined;
 
     return {
-      title: { text: 'Angular Velocity of Loop-Center Evolution' } as any,
+      title: chartTitle as any,
       xaxis: {
         title: { text: 'Year', standoff: 20 },
         gridcolor: '#4b5563',
@@ -492,7 +494,7 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
         ? `${axisRange[0].toISOString()}-${axisRange[1].toISOString()}`
         : 'loop-center-angular-velocity-free-zoom',
     };
-  }, [plotHeight, timeLockEnabled, timeRange, velocity.yRange]);
+  }, [chartTitle, plotHeight, timeLockEnabled, timeRange, velocity.yRange]);
 
   if (velocity.traces.length === 0) {
     return (

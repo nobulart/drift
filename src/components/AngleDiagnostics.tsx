@@ -7,6 +7,7 @@ import { unwrap } from '@/lib/math';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface AngleDiagnosticsProps {
   dates: string[];
@@ -82,6 +83,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
   const [smoothedTheta3, setSmoothedTheta3] = useState<number[]>([]);
   const [smoothedTheta12, setSmoothedTheta12] = useState<number[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
+  const chartTitle = useChartTitle('Angle Diagnostics', dates);
 
   useEffect(() => {
     setSmoothedTheta3(smoothAndUnwrap(theta3));
@@ -127,7 +129,7 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
   };
 
   const layout = useMemo(() => ({
-    title: { text: 'Angle Diagnostics' } as any,
+    title: chartTitle as any,
     xaxis: { 
       title: { text: 'Date', standoff: 20 },
       gridcolor: '#374151',
@@ -150,8 +152,9 @@ export default function AngleDiagnostics({ dates, theta3, theta12 }: AngleDiagno
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
+    margin: { l: 60, r: 20, t: 78, b: 60 },
     autosize: true
-  }), [plotHeight]);
+  }), [chartTitle, plotHeight]);
 
   const layoutWithRange = useMemo(() => {
     const axisRange = timeLockEnabled && timeRange

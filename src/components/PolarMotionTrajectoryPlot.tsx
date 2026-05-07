@@ -6,6 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { PanelFullscreenContext } from '@/components/LayoutPanel';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface PolarMotionTrajectoryPlotProps {
   xpData: number[];
@@ -63,6 +64,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
     ? Math.min(containerSize.width, containerSize.height)
     : (containerSize.width || fallbackHeight);
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
+  const chartTitle = useChartTitle('Polar Motion Trajectory', dates);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -197,7 +199,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       <Plot
         data={traces}
         layout={{
-          title: { text: 'Polar Motion Trajectory' },
+          title: chartTitle,
           xaxis: {
             title: { text: 'y pole (mas, +90°W left)', standoff: 18 },
             range: axisRanges.x,

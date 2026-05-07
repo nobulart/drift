@@ -14,6 +14,7 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildSelectedSeriesCsvRows, createCsvExportConfig, plotlyXRange, WideCsvSeries } from '@/lib/plotlyCsvExport';
 import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
+import { useChartTitle } from '@/lib/chartTitles';
 import {
   DEFAULT_OVERLAY_SIGNALS,
   OVERLAY_SIGNAL_RESET_EVENT,
@@ -171,6 +172,19 @@ export default function OverlayPlot() {
     return EPHEMERIS_DISPLAY_RANGE;
   }, [timeLockEnabled, timeRange]);
 
+  const overlaySources = useMemo(() => {
+    const sources: string[] = [];
+    if (selectedSignals.some(signal => signal.includes(':'))) {
+      sources.push('JPL DE442');
+    }
+    if (selectedSignals.some(signal => signal === 'kp' || signal === 'ap')) {
+      sources.push('GFZ Kp');
+    }
+    return sources;
+  }, [selectedSignals]);
+
+  const chartTitle = useChartTitle('Overlay Plot', undefined, overlaySources);
+
   const ephemerisWindow = useMemo<{ start: string; end: string } | undefined>(() => {
     if (timeLockEnabled && timeRange) {
       return {
@@ -318,6 +332,7 @@ export default function OverlayPlot() {
   const nowIso = useMemo(() => new Date().toISOString(), []);
 
   const overlayLayout = useMemo(() => ({
+    title: chartTitle as any,
     template: 'plotly_dark',
     xaxis: {
       title: { text: 'Date', standoff: 20 },
@@ -362,13 +377,13 @@ export default function OverlayPlot() {
         font: { color: '#fbbf24', size: 11 },
       },
     ],
-    margin: { l: 60, r: 20, t: 40, b: 60 },
+    margin: { l: 60, r: 20, t: 78, b: 60 },
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     height: plotHeight,
     autosize: true,
-  }), [nowIso, plotHeight, visibleXRange]);
+  }), [chartTitle, nowIso, plotHeight, visibleXRange]);
 
   const overlayCsvConfig = useMemo(() => createCsvExportConfig(
     'overlay-plot.csv',

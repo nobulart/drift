@@ -5,6 +5,7 @@ import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface ResidualPolarMotionPlotProps {
   xpData: number[];
@@ -215,6 +216,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
     ? Math.min(containerSize.width, containerSize.height)
     : fallbackHeight;
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
+  const chartTitle = useChartTitle('Residual Polar Motion Phase Space (XY)', dates);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -353,7 +355,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
       <Plot
         data={traces}
         layout={{
-          title: { text: 'Residual Polar Motion Phase Space (XY)' },
+          title: chartTitle,
           xaxis: {
             title: { text: 'y_res (mas, +90°W left)', standoff: 18 },
             range: [maxExtent, -maxExtent],

@@ -7,6 +7,7 @@ import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { driftAxisLongitude } from '@/lib/transforms';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { useChartTitle } from '@/lib/chartTitles';
 
 interface DriftDirectionPlotProps {
   dates: string[];
@@ -30,6 +31,10 @@ export default function DriftDirectionPlot({
   const [e1Angles, setE1Angles] = useState<number[]>([]);
   const [e2Angles, setE2Angles] = useState<number[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
+  const driftLon = driftAxisTimeSeries.length > 0
+    ? driftAxisLongitude(driftAxisTimeSeries[driftAxisTimeSeries.length - 1])
+    : 0;
+  const chartTitle = useChartTitle(`Drift Direction (Current: ${driftLon.toFixed(2)}°)`, dates);
 
    useEffect(() => {
       const angleOffset = 90;
@@ -120,12 +125,8 @@ export default function DriftDirectionPlot({
     setTimeout(() => { isInternalUpdate.current = false; }, 0);
   };
 
-  const driftLon = driftAxisTimeSeries.length > 0 ? (() => {
-    return driftAxisLongitude(driftAxisTimeSeries[driftAxisTimeSeries.length - 1]);
-  })() : 0;
-
   const layout = useMemo(() => ({
-    title: { text: `Drift Direction (Longitude of Drift Axis)\nCurrent: ${driftLon.toFixed(2)}°` } as any,
+    title: chartTitle as any,
     xaxis: { 
       title: { text: 'Date', standoff: 20 },
       gridcolor: '#374151',
@@ -149,7 +150,7 @@ export default function DriftDirectionPlot({
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     autosize: true
-  }), [driftLon, plotHeight]);
+  }), [chartTitle, plotHeight]);
 
   const layoutWithRange = useMemo(() => {
     const axisRange = timeLockEnabled && timeRange
