@@ -502,8 +502,8 @@ export default function PhaseEscapeModelPanel() {
     () => [`DE442 ${dataset?.source?.ephemerisKernel ?? 'ephemeris'} cache`],
     [dataset?.source?.ephemerisKernel]
   );
-  const curveTitle = useChartTitle('Phase-Dependent Escape Probability', recentSeries.dates, phaseEscapeSources);
-  const timeSeriesTitle = useChartTitle(`Recent ${daysShown} Days`, recentSeries.dates, phaseEscapeSources);
+  const curveTitle = useChartTitle('Phase-Dependent Escape Probability', recentSeries.dates, phaseEscapeSources, { showDateRange: false });
+  const timeSeriesTitle = useChartTitle(`Recent ${daysShown} Days`, recentSeries.dates, phaseEscapeSources, { showDateRange: false });
 
   const timeSeriesData = useMemo(() => {
     const traces: Plotly.Data[] = [

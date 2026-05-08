@@ -146,7 +146,7 @@ export default function OverlayPage() {
   }, [selectedSignals]);
 
   const overlayTitle = useChartTitle('Overlay Plot', undefined, overlaySources);
-  const lagTitle = useChartTitle('Lag Response Function');
+  const lagTitle = useChartTitle('Lag Response Function', undefined, [], { showDateRange: false });
 
   const ephemerisWindow = useMemo<{ start: string; end: string } | undefined>(() => {
     if (timeLockEnabled && timeRange) {

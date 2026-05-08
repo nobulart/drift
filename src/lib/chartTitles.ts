@@ -30,16 +30,22 @@ function dateRangeFromDates(dates?: string[]): [string, string] | null {
   return start && end ? [start, end] : null;
 }
 
+interface ChartTitleOptions {
+  showDateRange?: boolean;
+}
+
 export function useChartTitle(
   title: string,
   dates?: string[],
-  extraSources: string[] = []
+  extraSources: string[] = [],
+  options: ChartTitleOptions = {}
 ) {
   const eopDataset = useStore(state => state.eopDataset);
   const data = useStore(state => state.data);
   const { timeRange, timeLockEnabled } = useTimeStore();
 
   return useMemo(() => {
+    const showDateRange = options.showDateRange ?? true;
     const lockedStart = timeLockEnabled && timeRange ? toDateString(timeRange[0]) : null;
     const lockedEnd = timeLockEnabled && timeRange ? toDateString(timeRange[1]) : null;
     const lockedRange: [string, string] | null = lockedStart && lockedEnd ? [lockedStart, lockedEnd] : null;
@@ -50,11 +56,12 @@ export function useChartTitle(
       getEOPDataset(eopDataset).shortLabel,
       ...extraSources,
     ].filter(Boolean)));
+    const titleText = showDateRange ? `${title} (${rangeLabel})` : title;
 
     return {
-      text: `${title} (${rangeLabel})<br><sup>Source: ${sourceNames.join(' + ')}</sup>`,
+      text: `${titleText}<br><sup>Source: ${sourceNames.join(' + ')}</sup>`,
       x: 0.5,
       xanchor: 'center' as const,
     };
-  }, [data, dates, eopDataset, extraSources, timeLockEnabled, timeRange, title]);
+  }, [data, dates, eopDataset, extraSources, options.showDateRange, timeLockEnabled, timeRange, title]);
 }

@@ -17,7 +17,7 @@ export default function LagModelPlot() {
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
   const [lagTraces, setLagTraces] = useState<Plotly.Data[]>([]);
-  const chartTitle = useChartTitle('Lag Response Function');
+  const chartTitle = useChartTitle('Lag Response Function', undefined, [], { showDateRange: false });
 
   useEffect(() => {
     if (rollingStats?.lagModel) {

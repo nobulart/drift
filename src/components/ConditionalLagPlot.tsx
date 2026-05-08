@@ -28,7 +28,7 @@ export default function ConditionalLagPlot() {
   const windowSize = useStore((state) => state.windowSize);
   const turnThreshold = useStore((state) => state.turnThreshold);
   const eopDataset = useStore((state) => state.eopDataset);
-  const heatmapTitle = useChartTitle(`Conditional Lag Response (${targetState} State)`);
+  const heatmapTitle = useChartTitle(`Conditional Lag Response (${targetState} State)`, undefined, [], { showDateRange: false });
 
   useEffect(() => {
     const loadConditionalLag = async () => {

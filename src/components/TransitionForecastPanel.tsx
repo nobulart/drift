@@ -25,7 +25,7 @@ export default function TransitionForecastPanel() {
   const turnThreshold = useStore(state => state.turnThreshold);
   const eopDataset = useStore(state => state.eopDataset);
   const data = useStore(state => state.data);
-  const chartTitle = useChartTitle('Transition Probability Curve');
+  const chartTitle = useChartTitle('Transition Probability Curve', undefined, [], { showDateRange: false });
   const presentTimeIndex = useMemo(() => {
     return data.length > 0 ? data.length - 1 : -1;
   }, [data]);
