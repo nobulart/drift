@@ -8,9 +8,18 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.4`
+Current release: `v1.5.5`
 
 ## Release Notes
+
+### v1.5.5
+
+- Optimized the DRIFT data and UI pipelines after profiling the route, JSON, and Python analysis hot paths.
+- Added yearly ephemeris shards and shard-aware ephemeris/phase-escape reads, reducing one-year ephemeris range requests from roughly 580 ms to tens of milliseconds.
+- Reworked rolling diagnostics with prefix-sum covariance windows, reducing cold rolling-stat computation from roughly 4.7 s to 2.3 s locally.
+- Added route projections for conditional lag and phase-escape panels, cutting conditional-lag panel payloads from about 6.05 MB to 66 KB and phase-escape panel payloads from about 14.5 MB to 3.16 MB.
+- Added in-flight compute deduping, client-side stale request cancellation, parsed JSON reuse for stable pipeline files, and compact JSON writes for derived artifacts.
+- Documented the benchmark comparison in `PERFORMANCE_REVIEW.md`.
 
 ### v1.5.4
 

@@ -14,8 +14,33 @@ const ParamsSchema = z.object({
   turnThreshold: z.number().positive().default(0.05),
   smoothDays: z.number().int().positive().default(31),
 });
+const ViewSchema = z.enum(['full', 'panel']).default('full');
 
 let pythonCommand: string | null = null;
+const activeComputations = new Map<string, Promise<void>>();
+
+function projectPanelPayload(payload: any, composite: string | null) {
+  if (!composite || !Array.isArray(payload?.records)) {
+    return payload;
+  }
+
+  return {
+    source: {
+      ...payload.source,
+      projectedView: 'panel',
+      projectedComposite: composite,
+    },
+    records: payload.records.map((record: any) => ({
+      t: record?.t,
+      thetaRaw: record?.thetaRaw ?? null,
+      thetaResidual: record?.thetaResidual ?? null,
+      rRatio: record?.rRatio ?? null,
+      misalignment: {
+        [composite]: record?.misalignment?.[composite] ?? null,
+      },
+    })),
+  };
+}
 
 function getPythonCommand() {
   if (pythonCommand) {
@@ -54,14 +79,20 @@ export async function GET(request: NextRequest) {
       turnThreshold: searchParams.get('turnThreshold') ? Number(searchParams.get('turnThreshold')) : 0.05,
       smoothDays: searchParams.get('smoothDays') ? Number(searchParams.get('smoothDays')) : 31,
     });
+    const view = ViewSchema.parse(searchParams.get('view') || 'full');
+    const composite = searchParams.get('composite');
 
     const dataset = getEOPDataset(searchParams.get('dataset'));
     const eopPath = await materializePipelineJson(dataset.filename);
     const ephemerisPath = await materializePipelineJson('ephemeris_historic.json');
 
-    const [eopStat, ephemerisStat] = await Promise.all([
+    const phaseScriptPath = join(process.cwd(), 'scripts', 'compute_phase_escape.py');
+    const rollingScriptPath = join(process.cwd(), 'scripts', 'compute_rolling_stats.py');
+    const [eopStat, ephemerisStat, phaseScriptStat, rollingScriptStat] = await Promise.all([
       fs.stat(eopPath),
       fs.stat(ephemerisPath),
+      fs.stat(phaseScriptPath),
+      fs.stat(rollingScriptPath),
     ]);
 
     const cacheKey = crypto.createHash('md5')
@@ -69,6 +100,8 @@ export async function GET(request: NextRequest) {
       .update(dataset.id)
       .update(`${eopStat.mtimeMs}:${eopStat.size}`)
       .update(`${ephemerisStat.mtimeMs}:${ephemerisStat.size}`)
+      .update(`${phaseScriptStat.mtimeMs}:${phaseScriptStat.size}`)
+      .update(`${rollingScriptStat.mtimeMs}:${rollingScriptStat.size}`)
       .digest('hex');
 
     const cacheDir = join(process.cwd(), 'public', 'data', '.phase-escape-cache', dataset.id);
@@ -77,14 +110,24 @@ export async function GET(request: NextRequest) {
 
     try {
       const cached = await fs.readFile(cachePath, 'utf8');
-      return NextResponse.json(JSON.parse(cached));
+      const payload = JSON.parse(cached);
+      return NextResponse.json(view === 'panel' ? projectPanelPayload(payload, composite) : payload);
     } catch {
       // Cache miss.
     }
 
-    await runPythonComputation(eopPath, ephemerisPath, cachePath, params);
+    let activeComputation = activeComputations.get(cachePath);
+    if (!activeComputation) {
+      activeComputation = runPythonComputation(eopPath, ephemerisPath, cachePath, params).finally(() => {
+        activeComputations.delete(cachePath);
+      });
+      activeComputations.set(cachePath, activeComputation);
+    }
+
+    await activeComputation;
     const dataStr = await fs.readFile(cachePath, 'utf8');
-    return NextResponse.json(JSON.parse(dataStr));
+    const payload = JSON.parse(dataStr);
+    return NextResponse.json(view === 'panel' ? projectPanelPayload(payload, composite) : payload);
   } catch (error) {
     console.error('Error computing phase escape model:', error);
     return NextResponse.json({ error: 'Failed to compute phase escape model' }, { status: 500 });

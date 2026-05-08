@@ -88,6 +88,50 @@ def load_json(path: Path) -> Any:
         return json.load(handle)
 
 
+def load_ephemeris_payload(path: Path, start_date: str, end_date: str) -> Any:
+    """Load only needed yearly ephemeris shards when a manifest is available."""
+    manifest_path = path.with_name("ephemeris_historic.manifest.json")
+    if not manifest_path.exists():
+        return load_json(path)
+
+    manifest = load_json(manifest_path)
+    partition_dir = manifest.get("partition_dir", "ephemeris_by_year")
+    years = manifest.get("years", [])
+    if not isinstance(years, list):
+        return load_json(path)
+
+    start_year = int(start_date[:4])
+    end_year = int(end_date[:4])
+    available_years = {str(year) for year in years}
+    requested_years = [str(year) for year in range(start_year, end_year + 1)]
+    if any(year not in available_years for year in requested_years):
+        return load_json(path)
+
+    records = []
+    shard_dir = path.parent / partition_dir
+    for year in requested_years:
+        shard_path = shard_dir / f"{year}.json"
+        if not shard_path.exists():
+            return load_json(path)
+
+        shard = load_json(shard_path)
+        shard_records = shard.get("records", [])
+        if not isinstance(shard_records, list):
+            return load_json(path)
+
+        records.extend(
+            record for record in shard_records
+            if isinstance(record, dict)
+            and isinstance(record.get("t"), str)
+            and start_date <= record["t"][:10] <= end_date
+        )
+
+    return {
+        "source": manifest.get("source", {}),
+        "records": records,
+    }
+
+
 def finite_or_none(value: float) -> float | None:
     if value is None:
         return None
@@ -108,14 +152,18 @@ def main() -> None:
     args = parser.parse_args()
 
     eop_rows = load_json(Path(args.eop))
-    ephemeris_payload = load_json(Path(args.ephemeris))
-    ephemeris_rows = ephemeris_payload.get("records", [])
 
     eop_by_date = {
         row["t"][:10]: row
         for row in eop_rows
         if row.get("t") and row.get("xp") is not None and row.get("yp") is not None
     }
+    if not eop_by_date:
+        raise RuntimeError("No usable EOP samples for phase-escape computation.")
+
+    eop_dates = sorted(eop_by_date)
+    ephemeris_payload = load_ephemeris_payload(Path(args.ephemeris), eop_dates[0], eop_dates[-1])
+    ephemeris_rows = ephemeris_payload.get("records", [])
     ephemeris_by_date = {
         row["t"][:10]: row.get("bodies", {})
         for row in ephemeris_rows
@@ -216,7 +264,7 @@ def main() -> None:
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8") as handle:
-        json.dump(nan_to_none(payload), handle)
+        json.dump(nan_to_none(payload), handle, separators=(",", ":"))
 
 
 if __name__ == "__main__":

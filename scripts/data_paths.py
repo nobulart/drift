@@ -20,16 +20,28 @@ def ensure_data_dirs() -> None:
     PUBLIC_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def write_json(filename: str, data: Any, *, mirror_to_public: bool = True) -> Path:
+def write_json(
+    filename: str,
+    data: Any,
+    *,
+    mirror_to_public: bool = True,
+    compact: bool = False,
+) -> Path:
     """Write a JSON payload into data/ and optionally mirror it to public/data/."""
     ensure_data_dirs()
 
     output_path = DATA_DIR / filename
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as handle:
-        json.dump(data, handle, indent=2)
+        if compact:
+            json.dump(data, handle, separators=(",", ":"))
+        else:
+            json.dump(data, handle, indent=2)
 
     if mirror_to_public:
-        shutil.copy2(output_path, PUBLIC_DATA_DIR / filename)
+        public_path = PUBLIC_DATA_DIR / filename
+        public_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(output_path, public_path)
 
     return output_path
 

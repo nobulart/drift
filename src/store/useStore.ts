@@ -104,7 +104,7 @@ interface AppState {
   computeDrift: () => void;
   setRollingStats: (stats: RollingStats | null) => void;
   setTurnThreshold: (threshold: number) => void;
-  computeRollingStats: () => void;
+  computeRollingStats: () => Promise<void>;
   setCurrentAlignment: (alignment: number[] | null) => void;
   togglePanelVisibility: (panelId: string) => void;
   togglePanelCollapse: (panelId: string) => void;
@@ -233,6 +233,9 @@ function writeStoredEOPDataset(dataset: EOPDatasetId) {
 
 const initialPanelPreferences = readPanelPreferences();
 const initialEOPDataset = readStoredEOPDataset();
+let rollingStatsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let rollingStatsRequestId = 0;
+let rollingStatsAbortController: AbortController | null = null;
 
 const useStore = create<AppState>((set, get) => ({
    data: [],
@@ -277,7 +280,13 @@ const useStore = create<AppState>((set, get) => ({
    setWindowSize: (size) => {
      set({ windowSize: size });
      get().computeDrift();
-     get().computeRollingStats();
+     if (rollingStatsDebounceTimer) {
+       clearTimeout(rollingStatsDebounceTimer);
+     }
+     rollingStatsDebounceTimer = setTimeout(() => {
+       rollingStatsDebounceTimer = null;
+       get().computeRollingStats();
+     }, 250);
    },
 
    setCurrentTimeIndex: (idx) => {
@@ -390,13 +399,20 @@ const useStore = create<AppState>((set, get) => ({
 
   computeRollingStats: async () => {
     const { windowSize, turnThreshold, data } = get();
+    const requestId = ++rollingStatsRequestId;
+    rollingStatsAbortController?.abort();
+    rollingStatsAbortController = new AbortController();
     
     try {
       const dataset = getEOPDataset(get().eopDataset);
       const response = await fetch(
-        `/api/rolling-stats?windowSize=${windowSize}&turnThreshold=${turnThreshold}&pathResolution=medium&dataset=${dataset.id}`
+        `/api/rolling-stats?windowSize=${windowSize}&turnThreshold=${turnThreshold}&pathResolution=medium&dataset=${dataset.id}`,
+        { signal: rollingStatsAbortController.signal }
       );
       const stats = await response.json();
+      if (requestId !== rollingStatsRequestId) {
+        return;
+      }
       const stabilizedBasis = stabilizePlanarBasis(stats.e1, stats.e2);
       
       const lagModel = computeLagModel({ ...stats, e1: stabilizedBasis.e1, e2: stabilizedBasis.e2 }, 30, 180);
@@ -484,7 +500,9 @@ const useStore = create<AppState>((set, get) => ({
         }
       }
     } catch (err) {
-      console.error('Failed to compute rolling stats:', err);
+      if (!(err instanceof DOMException && err.name === 'AbortError')) {
+        console.error('Failed to compute rolling stats:', err);
+      }
     }
   },
 

@@ -103,6 +103,7 @@ OUTPUT_METRICS = [
     "ecliptic_longitude_deg",
     "torque_proxy",
 ]
+PARTITION_DIR = "ephemeris_by_year"
 NORMALIZED_TORQUE_BODY_KEYS = [
     body["key"] for body in BODIES
     if body["key"] not in ("sun", "moon")
@@ -353,6 +354,42 @@ def build_source_metadata(start_date: date, end_date: date) -> dict[str, Any]:
     }
 
 
+def write_year_partitions(source: dict[str, Any], records: list[dict[str, Any]]) -> None:
+    records_by_year: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        date_value = record.get("t")
+        if not isinstance(date_value, str) or len(date_value) < 4:
+            continue
+        records_by_year.setdefault(date_value[:4], []).append(record)
+
+    years = sorted(records_by_year)
+    for year in years:
+        write_json(
+            f"{PARTITION_DIR}/{year}.json",
+            {
+                "source": {
+                    **source,
+                    "partition_year": year,
+                },
+                "records": records_by_year[year],
+            },
+            mirror_to_public=False,
+            compact=True,
+        )
+
+    write_json(
+        "ephemeris_historic.manifest.json",
+        {
+            "source": source,
+            "partition_dir": PARTITION_DIR,
+            "years": years,
+            "record_count": len(records),
+        },
+        mirror_to_public=False,
+        compact=True,
+    )
+
+
 def load_existing_records() -> list[dict[str, Any]]:
     try:
         payload = read_json("ephemeris_historic.json")
@@ -447,7 +484,8 @@ def main() -> None:
         "records": output,
     }
 
-    output_path = write_json("ephemeris_historic.json", payload)
+    output_path = write_json("ephemeris_historic.json", payload, compact=True)
+    write_year_partitions(payload["source"], output)
     print(f"Saved {len(output)} ephemeris samples to {output_path}")
     print(f"Date range: {output[0]['t']} to {output[-1]['t']}")
 

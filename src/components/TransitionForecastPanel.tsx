@@ -54,6 +54,7 @@ export default function TransitionForecastPanel() {
   }, [rollingStats]);
 
   useEffect(() => {
+    const controller = new AbortController();
     const loadConditionalLag = async () => {
       setLoadingKernel(true);
       setKernelError(null);
@@ -63,8 +64,11 @@ export default function TransitionForecastPanel() {
           windowSize: String(windowSize),
           turnThreshold: String(turnThreshold),
           dataset: eopDataset,
+          select: 'conditionalLagModel',
         });
-        const response = await fetch(`/api/rolling-stats?${params.toString()}`);
+        const response = await fetch(`/api/rolling-stats?${params.toString()}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error(`Failed to load lag kernel for state ${currentState}`);
         }
@@ -72,14 +76,20 @@ export default function TransitionForecastPanel() {
         const stats = await response.json();
         setConditionalLagModel(stats.conditionalLagModel || null);
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return;
+        }
         setConditionalLagModel(null);
         setKernelError(err instanceof Error ? err.message : 'Failed to load lag kernel');
       } finally {
-        setLoadingKernel(false);
+        if (!controller.signal.aborted) {
+          setLoadingKernel(false);
+        }
       }
     };
 
     loadConditionalLag();
+    return () => controller.abort();
   }, [currentState, eopDataset, turnThreshold, windowSize]);
 
   useEffect(() => {

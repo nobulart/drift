@@ -1,4 +1,5 @@
 import { noStoreJson, readPipelineJson } from '@/lib/serverData';
+import { promises as fs } from 'fs';
 import { spawn, spawnSync } from 'child_process';
 import { join } from 'path';
 
@@ -50,6 +51,85 @@ function filterRecords(data: any, start: string | null, end: string | null) {
     ...data,
     source: {
       ...data.source,
+      requested_start_date: start,
+      requested_end_date: end,
+      returned_start_date: records[0]?.t,
+      returned_end_date: records[records.length - 1]?.t,
+    },
+    records,
+  };
+}
+
+function yearsBetween(start: string, end: string) {
+  const startYear = Number(start.slice(0, 4));
+  const endYear = Number(end.slice(0, 4));
+  if (!Number.isInteger(startYear) || !Number.isInteger(endYear)) {
+    return [];
+  }
+
+  const years: string[] = [];
+  for (let year = startYear; year <= endYear; year++) {
+    years.push(String(year));
+  }
+  return years;
+}
+
+async function readPipelineJsonCandidate(filename: string) {
+  const candidates = [
+    join(process.cwd(), 'data', filename),
+    join(process.cwd(), 'public', 'data', filename),
+  ];
+
+  for (const filePath of candidates) {
+    try {
+      return JSON.parse(await fs.readFile(filePath, 'utf8'));
+    } catch (error: any) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function readPartitionedEphemeris(start: string, end: string) {
+  const manifest = await readPipelineJsonCandidate('ephemeris_historic.manifest.json');
+  if (!manifest?.source || !Array.isArray(manifest.years)) {
+    return null;
+  }
+
+  const firstYear = manifest.years[0];
+  const lastYear = manifest.years[manifest.years.length - 1];
+  if (typeof firstYear !== 'string' || typeof lastYear !== 'string') {
+    return null;
+  }
+
+  if (start.slice(0, 4) < firstYear || end.slice(0, 4) > lastYear) {
+    return null;
+  }
+
+  const partitionDir = typeof manifest.partition_dir === 'string'
+    ? manifest.partition_dir
+    : 'ephemeris_by_year';
+  const records: any[] = [];
+
+  for (const year of yearsBetween(start, end)) {
+    const payload = await readPipelineJsonCandidate(`${partitionDir}/${year}.json`);
+    if (!Array.isArray(payload?.records)) {
+      return null;
+    }
+
+    for (const record of payload.records) {
+      if (typeof record?.t === 'string' && record.t >= start && record.t <= end) {
+        records.push(record);
+      }
+    }
+  }
+
+  return {
+    source: {
+      ...manifest.source,
       requested_start_date: start,
       requested_end_date: end,
       returned_start_date: records[0]?.t,
@@ -123,10 +203,21 @@ export async function GET(request: Request) {
   }
 
   try {
+    if (start && end) {
+      const partitionedData = await readPartitionedEphemeris(start, end);
+      if (partitionedData && hasCoverage(partitionedData, start, end)) {
+        return noStoreJson(partitionedData);
+      }
+    }
+
     let data = await readPipelineJson<any>('ephemeris_historic.json');
 
     if (start && end && !hasCoverage(data, start, end)) {
       await runEphemerisBuild(start, end);
+      const partitionedData = await readPartitionedEphemeris(start, end);
+      if (partitionedData && hasCoverage(partitionedData, start, end)) {
+        return noStoreJson(partitionedData);
+      }
       data = await readPipelineJson<any>('ephemeris_historic.json');
     }
 

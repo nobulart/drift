@@ -190,11 +190,12 @@ export default function Home() {
         useStore.getState().setData(mergedData as TimeSample[]);
         useStore.setState({ lastUpdated: new Date().toISOString() });
         useStore.getState().computeDrift();
-        await useStore.getState().computeRollingStats();
-        setRollingStatsLoaded(true);
+        setLoading(false);
+        useStore.getState().computeRollingStats().finally(() => {
+          setRollingStatsLoaded(true);
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
         setLoading(false);
       }
     };
@@ -498,7 +499,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                 Version v1.5.4
+                 Version v1.5.5
               </p>
             </div>
             <Link

@@ -46,6 +46,83 @@ def detrend(x: np.ndarray, t: np.ndarray) -> np.ndarray:
     return x - np.polyval(coeffs, t)
 
 
+def prefix_sum(values: np.ndarray) -> np.ndarray:
+    """Return a zero-padded prefix sum array for O(1) range sums."""
+    return np.concatenate(([0.0], np.cumsum(values)))
+
+
+def range_sum(prefix: np.ndarray, start: np.ndarray, end: np.ndarray) -> np.ndarray:
+    """Compute sums over half-open index ranges [start, end)."""
+    return prefix[end] - prefix[start]
+
+
+def centered_window_bounds(t: np.ndarray, half_window: float) -> Tuple[np.ndarray, np.ndarray]:
+    """Compute sorted-time centered window bounds for every sample."""
+    starts = np.searchsorted(t, t - half_window, side="left")
+    ends = np.searchsorted(t, t + half_window, side="right")
+    return starts, ends
+
+
+def covariance_terms(
+    x: np.ndarray,
+    y: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Compute sample covariance terms for many 2D windows via prefix sums."""
+    sum_x = prefix_sum(x)
+    sum_y = prefix_sum(y)
+    sum_x2 = prefix_sum(x * x)
+    sum_y2 = prefix_sum(y * y)
+    sum_xy = prefix_sum(x * y)
+
+    n = ends - starts
+    valid = n >= 2
+    denom = np.maximum(n - 1, 1)
+    count = np.maximum(n, 1)
+
+    sx = range_sum(sum_x, starts, ends)
+    sy = range_sum(sum_y, starts, ends)
+    var_x = (range_sum(sum_x2, starts, ends) - (sx * sx / count)) / denom
+    var_y = (range_sum(sum_y2, starts, ends) - (sy * sy / count)) / denom
+    cov_xy = (range_sum(sum_xy, starts, ends) - (sx * sy / count)) / denom
+
+    var_x[~valid] = np.nan
+    var_y[~valid] = np.nan
+    cov_xy[~valid] = np.nan
+
+    return var_x, var_y, cov_xy, n
+
+
+def principal_axes_from_covariance(
+    var_x: np.ndarray,
+    var_y: np.ndarray,
+    cov_xy: np.ndarray,
+    counts: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Compute principal axes for a sequence of 2x2 covariance matrices."""
+    e1 = np.zeros((len(var_x), 2))
+    e2 = np.zeros((len(var_x), 2))
+
+    for i in range(len(var_x)):
+        if counts[i] < 2 or not (
+            np.isfinite(var_x[i]) and np.isfinite(var_y[i]) and np.isfinite(cov_xy[i])
+        ):
+            e1[i] = [1, 0]
+            e2[i] = [0, 1]
+            continue
+
+        cov = np.array([[var_x[i], cov_xy[i]], [cov_xy[i], var_y[i]]])
+        eigvals, eigvecs = np.linalg.eigh(cov)
+        idx = np.argsort(eigvals)[::-1]
+        eigvecs = eigvecs[:, idx]
+
+        e1[i] = eigvecs[:, 0]
+        e2[i] = eigvecs[:, 1]
+
+    return e1, e2
+
+
 def rolling_pca(
     x_res: np.ndarray, y_res: np.ndarray, t: np.ndarray, window_days: float = 365
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -56,38 +133,10 @@ def rolling_pca(
         e1: Time series of principal eigenvectors [n, 2]
         e2: Time series of secondary eigenvectors [n, 2]
     """
-    n = len(t)
-    e1 = np.zeros((n, 2))
-    e2 = np.zeros((n, 2))
-
     half_window = window_days / 2.0
-
-    for i in range(n):
-        # Select data within window
-        mask = np.abs(t - t[i]) <= half_window
-        x_window = x_res[mask]
-        y_window = y_res[mask]
-
-        if len(x_window) < 2:
-            # Fallback to global if not enough points
-            e1[i] = [1, 0]
-            e2[i] = [0, 1]
-            continue
-
-        # Compute covariance matrix
-        cov = np.cov(np.vstack([x_window, y_window]))
-
-        # Eigen decomposition
-        eigvals, eigvecs = np.linalg.eigh(cov)
-
-        # Sort by eigenvalue (descending)
-        idx = np.argsort(eigvals)[::-1]
-        eigvecs = eigvecs[:, idx]
-
-        e1[i] = eigvecs[:, 0]
-        e2[i] = eigvecs[:, 1]
-
-    return e1, e2
+    starts, ends = centered_window_bounds(t, half_window)
+    var_x, var_y, cov_xy, counts = covariance_terms(x_res, y_res, starts, ends)
+    return principal_axes_from_covariance(var_x, var_y, cov_xy, counts)
 
 
 def compute_centers(
@@ -105,16 +154,12 @@ def compute_centers(
         cy: Center y coordinates at each timestep
         center_times: Time values for centers
     """
-    n = len(t)
-    cx = np.zeros(n)
-    cy = np.zeros(n)
-
     half_window = window_days / 2.0
+    starts, ends = centered_window_bounds(t, half_window)
+    counts = np.maximum(ends - starts, 1)
 
-    for i in range(n):
-        mask = np.abs(t - t[i]) <= half_window
-        cx[i] = np.mean(x_res[mask])
-        cy[i] = np.mean(y_res[mask])
+    cx = range_sum(prefix_sum(x_res), starts, ends) / counts
+    cy = range_sum(prefix_sum(y_res), starts, ends) / counts
 
     return cx, cy, t.copy()
 
@@ -317,18 +362,15 @@ def compute_r_ratio(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     r_ratio = np.full(n, np.nan)
     min_window = 20
 
-    for i in range(n):
-        # Use trailing local windows so the latest samples update as new data
-        # arrives instead of being forward-filled from an artificial tail pad.
-        window_size = min(365, i + 1)
-        x_win = x[max(0, i - window_size + 1) : i + 1]
-        y_win = y[max(0, i - window_size + 1) : i + 1]
+    ends = np.arange(1, n + 1)
+    starts = np.maximum(0, ends - 365)
+    var_x, var_y, cov_xy, counts = covariance_terms(x, y, starts, ends)
 
-        if len(x_win) < min_window:
-            r_ratio[i] = np.nan
+    for i in range(n):
+        if counts[i] < min_window:
             continue
 
-        cov = np.cov(np.vstack([x_win, y_win]))
+        cov = np.array([[var_x[i], cov_xy[i]], [cov_xy[i], var_y[i]]])
         eigvals = np.linalg.eigvals(cov)
         max_eig = np.max(np.abs(eigvals))
         r_ratio[i] = np.min(np.abs(eigvals)) / max_eig if max_eig > 0 else np.nan
@@ -359,25 +401,10 @@ def compute_drift_axis_rolling(
     Returns:
         drift_axis: Time-varying drift axis [n, 3] where z=0 for 2D
     """
-    n = len(t)
-    drift = np.zeros((n, 2))
-
     half_window = window_days / 2.0
-
-    for i in range(n):
-        mask = np.abs(t - t[i]) <= half_window
-        x_window = x_res[mask]
-        y_window = y_res[mask]
-
-        if len(x_window) < 2:
-            drift[i] = [1, 0]
-            continue
-
-        cov = np.cov(np.vstack([x_window, y_window]))
-        eigvals, eigvecs = np.linalg.eigh(cov)
-        idx = np.argsort(eigvals)[::-1]
-        eigvecs = eigvecs[:, idx]
-        drift[i] = eigvecs[:, 0]
+    starts, ends = centered_window_bounds(t, half_window)
+    var_x, var_y, cov_xy, counts = covariance_terms(x_res, y_res, starts, ends)
+    drift, _secondary = principal_axes_from_covariance(var_x, var_y, cov_xy, counts)
 
     # --- STEP 1: enforce vector sign continuity ---
     for i in range(1, len(drift)):
@@ -385,7 +412,7 @@ def compute_drift_axis_rolling(
             drift[i] *= -1
 
     # Return drift as 2D unit vectors (no longitude conversion)
-    drift_axis = np.zeros((n, 3))
+    drift_axis = np.zeros((len(t), 3))
     drift_axis[:, 0] = drift[:, 0]
     drift_axis[:, 1] = drift[:, 1]
 
@@ -1356,7 +1383,7 @@ def main():
 
     # Save output
     with open(args.output, "w") as f:
-        json.dump(stats, f, indent=2)
+        json.dump(stats, f, separators=(",", ":"))
 
     print(f"Saved {len(stats['t'])} data points to {args.output}")
 

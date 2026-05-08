@@ -48,10 +48,10 @@ interface PhaseEscapeRecord {
   t: string;
   thetaRaw: number | null;
   thetaResidual: number | null;
-  sunPhase: number | null;
+  sunPhase?: number | null;
   rRatio: number | null;
-  bodyPhases: Record<string, number | null>;
-  composites: Record<PhaseEscapeCompositeKey, number | null>;
+  bodyPhases?: Record<string, number | null>;
+  composites?: Record<PhaseEscapeCompositeKey, number | null>;
   misalignment: Record<PhaseEscapeCompositeKey, number | null>;
 }
 
@@ -200,17 +200,24 @@ export default function PhaseEscapeModelPanel() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
+    setDataset(null);
 
     const params = new URLSearchParams({
       windowSize: String(windowSize),
       turnThreshold: String(turnThreshold),
       smoothDays: '31',
       dataset: eopDataset,
+      view: 'panel',
+      composite: selectedComposite,
     });
 
-    fetch(`/api/phase-escape?${params.toString()}`, { cache: 'no-store' })
+    fetch(`/api/phase-escape?${params.toString()}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to load phase escape model data');
@@ -223,6 +230,9 @@ export default function PhaseEscapeModelPanel() {
         }
       })
       .catch(err => {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return;
+        }
         if (active) {
           setError(err instanceof Error ? err.message : 'Failed to load phase escape model data');
         }
@@ -235,8 +245,9 @@ export default function PhaseEscapeModelPanel() {
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [eopDataset, turnThreshold, windowSize]);
+  }, [eopDataset, selectedComposite, turnThreshold, windowSize]);
 
   const model = DEFAULT_PHASE_ESCAPE_MODELS[selectedComposite];
   const records = useMemo(() => dataset?.records ?? [], [dataset]);
@@ -301,6 +312,15 @@ export default function PhaseEscapeModelPanel() {
   );
   const latestIndex = latest ? enrichedRecords.indexOf(latest) : -1;
   const phiNowDeg = latest?.phi !== null && latest?.phi !== undefined ? radiansToDegrees(latest.phi) : NaN;
+  const selectedCompositePhase = latest?.composites?.[selectedComposite]
+    ?? (
+      latest?.thetaResidual !== null &&
+      latest?.thetaResidual !== undefined &&
+      latest?.phi !== null &&
+      latest?.phi !== undefined
+        ? wrapPhase(latest.thetaResidual - latest.phi)
+        : null
+    );
   const dphiNow = latestIndex >= 0 ? phaseDriftSeries[latestIndex] : NaN;
   const latestAccelerationIndex = latestIndex >= phaseAccelerationSeries.length - 1 ? latestIndex - 1 : latestIndex;
   const d2phiNow = latestAccelerationIndex >= 0 ? phaseAccelerationSeries[latestAccelerationIndex] : NaN;
@@ -784,7 +804,7 @@ export default function PhaseEscapeModelPanel() {
         <StatCard label="R(t)" value={formatNumber(latest.rRatio)} title="Orthogonal deviation ratio from the rolling DRIFT geometry; lower values indicate stronger directional organization." />
         <StatCard label="Theta raw" value={formatDegrees(latest.thetaRaw)} title="Raw DRIFT phase angle from the rolling state-space pipeline." />
         <StatCard label="Theta residual" value={formatDegrees(latest.thetaResidual)} title="Solar-residual DRIFT phase: theta_res = wrap(theta raw - solar analytic phase)." />
-        <StatCard label="Composite phase" value={formatDegrees(latest.composites[selectedComposite])} title="Equal-weight circular composite of the selected DE442 torque-proxy analytic phases." />
+        <StatCard label="Composite phase" value={formatDegrees(selectedCompositePhase)} title="Equal-weight circular composite of the selected DE442 torque-proxy analytic phases." />
         <StatCard label="Residual phi" value={formatDegrees(latest.phi)} title="Residual phase misalignment: phi = wrap(theta_res - selected composite phase)." />
         <StatCard label="Escape probability" value={`${(latest.escapeProbability * 100).toFixed(1)}%`} title="Phase-dependent escape probability from the harmonic logistic model for the selected composite." />
         <StatCard label="Preferred phi0" value={`${model.phi0Deg.toFixed(1)} deg`} title="Residual phase angle where the fitted model reaches maximum escape-probability modulation." />

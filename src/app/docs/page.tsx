@@ -136,7 +136,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.4
+                Version v1.5.5
               </span>
               <Link
                 href="/"
@@ -181,6 +181,12 @@ export default function DocsPage() {
         <section className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.5 Pipeline Performance</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added ephemeris year shards, route projections, in-flight compute deduping, parsed JSON reuse, compact derived artifacts, and prefix-sum rolling covariance. Cold rolling diagnostics and phase-escape computations are materially faster while panel payloads are much smaller.
+              </p>
+            </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.4 JPL EOP2 Backend</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">

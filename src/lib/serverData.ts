@@ -10,6 +10,15 @@ const NO_STORE_HEADERS = {
   Pragma: 'no-cache',
   Expires: '0',
 };
+const MAX_PARSED_CACHE_BYTES = 25 * 1024 * 1024;
+
+interface ParsedJsonCacheEntry {
+  mtimeMs: number;
+  size: number;
+  value: unknown;
+}
+
+const parsedJsonCache = new Map<string, ParsedJsonCacheEntry>();
 
 export function noStoreJson<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, {
@@ -29,8 +38,26 @@ export async function readPipelineJson<T>(filename: string): Promise<T> {
 
   for (const filePath of candidates) {
     try {
+      const stat = await fs.stat(filePath);
+      const cached = parsedJsonCache.get(filePath);
+      if (
+        cached &&
+        cached.mtimeMs === stat.mtimeMs &&
+        cached.size === stat.size
+      ) {
+        return cached.value as T;
+      }
+
       const dataStr = await fs.readFile(filePath, 'utf8');
-      return JSON.parse(dataStr) as T;
+      const value = JSON.parse(dataStr) as T;
+      if (stat.size <= MAX_PARSED_CACHE_BYTES) {
+        parsedJsonCache.set(filePath, {
+          mtimeMs: stat.mtimeMs,
+          size: stat.size,
+          value,
+        });
+      }
+      return value;
     } catch (error: any) {
       if (error?.code !== 'ENOENT') {
         throw error;

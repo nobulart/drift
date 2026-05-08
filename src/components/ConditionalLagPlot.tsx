@@ -31,6 +31,7 @@ export default function ConditionalLagPlot() {
   const heatmapTitle = useChartTitle(`Conditional Lag Response (${targetState} State)`, undefined, [], { showDateRange: false });
 
   useEffect(() => {
+    const controller = new AbortController();
     const loadConditionalLag = async () => {
       setLoading(true);
       setError(null);
@@ -40,22 +41,31 @@ export default function ConditionalLagPlot() {
           windowSize: String(windowSize),
           turnThreshold: String(turnThreshold),
           dataset: eopDataset,
+          select: 'conditionalLagModel',
         });
-        const response = await fetch(`/api/rolling-stats?${params.toString()}`);
+        const response = await fetch(`/api/rolling-stats?${params.toString()}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error(`Failed to load conditional lag data for ${targetState}`);
         }
         const stats = await response.json();
         setConditionalLagResult(stats.conditionalLagModel || null);
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return;
+        }
         setConditionalLagResult(null);
         setError(err instanceof Error ? err.message : 'Failed to load conditional lag data');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     loadConditionalLag();
+    return () => controller.abort();
   }, [eopDataset, targetState, turnThreshold, windowSize]);
 
   const populatedPhaseIndices = useMemo(() => {
