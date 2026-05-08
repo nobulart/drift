@@ -136,7 +136,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.5
+                Version v1.5.6
               </span>
               <Link
                 href="/"
@@ -182,6 +182,12 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.6 Overlay Heatmaps</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added a Plot selector to the Overlay Plot for Line Chart and scientific heatmap palette modes. Heatmaps compare selected core and DE442 ephemeris rows by date, use explicit palette color stops, and reset Plotly state cleanly when switching modes.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.5 Pipeline Performance</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added ephemeris year shards, route projections, in-flight compute deduping, parsed JSON reuse, compact derived artifacts, and prefix-sum rolling covariance. Cold rolling diagnostics and phase-escape computations are materially faster while panel payloads are much smaller.
@@ -197,12 +203,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.3 Net Torque Normalization</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 The Net torque proxy now normalizes each non-Sun/non-Moon body by its own cache-wide peak before summing, making it a temporal-alignment signal. Ephemeris cache refreshes backfill missing Net rows, and overlay loading is bounded to the active data window.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.2 EOP Dataset Selection</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added Data Settings for alternate IERS EOP backfills: finals.all IAU1980, finals.all IAU2000, and EOP 20u24 C04 IAU2000A. The selected EOP product now flows through dashboard loading, rolling statistics, conditional lag, transition probability, and phase-escape diagnostics.
               </p>
             </article>
           </div>

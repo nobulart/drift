@@ -8,9 +8,17 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.5`
+Current release: `v1.5.6`
 
 ## Release Notes
+
+### v1.5.6
+
+- Increased the Overlay Plot vertical display area by 10% in normal and fullscreen panel modes.
+- Added a Plot selector beside the core overlay data selectors with Line Chart plus scientific heatmap palette modes.
+- Added heatmap comparison rows for all selected overlay signals, including DE442 ephemeris selections aligned by date.
+- Reset Plotly chart state when switching between line and heatmap modes to avoid stale axis and trace artifacts.
+- Switched heatmap palettes to explicit scientific color stops so Viridis, Plasma, Magma, Inferno, Turbo, Spectral, and related modes render distinctly.
 
 ### v1.5.5
 

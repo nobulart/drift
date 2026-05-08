@@ -1,6 +1,6 @@
 {
   "name": "drift",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "Geodetic-Geomagnetic Coupling Dashboard",
   "scripts": {
     "dev": "next dev",

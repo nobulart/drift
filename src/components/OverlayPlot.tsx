@@ -26,6 +26,142 @@ interface CoreSignalConfig {
   label: string;
 }
 
+const LINE_CHART_MODE = 'line';
+
+const HEATMAP_PALETTES = [
+  { value: 'Viridis', label: 'Viridis' },
+  { value: 'Cividis', label: 'Cividis' },
+  { value: 'Plasma', label: 'Plasma' },
+  { value: 'Inferno', label: 'Inferno' },
+  { value: 'Magma', label: 'Magma' },
+  { value: 'Turbo', label: 'Turbo' },
+  { value: 'Spectral', label: 'Spectral' },
+  { value: 'Jet', label: 'Jet' },
+  { value: 'Hot', label: 'Hot' },
+  { value: 'Electric', label: 'Electric' },
+  { value: 'Earth', label: 'Earth' },
+  { value: 'Rainbow', label: 'Rainbow' },
+];
+
+const HEATMAP_COLOR_SCALES: Record<string, Array<[number, string]>> = {
+  Viridis: [
+    [0, '#440154'],
+    [0.13, '#482878'],
+    [0.25, '#3e4989'],
+    [0.38, '#31688e'],
+    [0.5, '#26828e'],
+    [0.63, '#1f9e89'],
+    [0.75, '#35b779'],
+    [0.88, '#6ece58'],
+    [1, '#fde725'],
+  ],
+  Cividis: [
+    [0, '#00204c'],
+    [0.13, '#173b6d'],
+    [0.25, '#4a5772'],
+    [0.38, '#6d6f74'],
+    [0.5, '#8a8878'],
+    [0.63, '#a8a178'],
+    [0.75, '#c8bd73'],
+    [0.88, '#e5d96d'],
+    [1, '#fff838'],
+  ],
+  Plasma: [
+    [0, '#0d0887'],
+    [0.13, '#46039f'],
+    [0.25, '#7201a8'],
+    [0.38, '#9c179e'],
+    [0.5, '#bd3786'],
+    [0.63, '#d8576b'],
+    [0.75, '#ed7953'],
+    [0.88, '#fb9f3a'],
+    [1, '#f0f921'],
+  ],
+  Inferno: [
+    [0, '#000004'],
+    [0.13, '#1b0c41'],
+    [0.25, '#4a0c6b'],
+    [0.38, '#781c6d'],
+    [0.5, '#a52c60'],
+    [0.63, '#cf4446'],
+    [0.75, '#ed6925'],
+    [0.88, '#fb9b06'],
+    [1, '#fcffa4'],
+  ],
+  Magma: [
+    [0, '#000004'],
+    [0.13, '#180f3d'],
+    [0.25, '#440f76'],
+    [0.38, '#721f81'],
+    [0.5, '#9e2f7f'],
+    [0.63, '#cd4071'],
+    [0.75, '#f1605d'],
+    [0.88, '#fd9668'],
+    [1, '#fcfdbf'],
+  ],
+  Turbo: [
+    [0, '#30123b'],
+    [0.13, '#4145ab'],
+    [0.25, '#4675ed'],
+    [0.38, '#39a2fc'],
+    [0.5, '#1bcfd4'],
+    [0.63, '#24eca6'],
+    [0.75, '#a4fc3c'],
+    [0.88, '#f5c83b'],
+    [1, '#7a0403'],
+  ],
+  Spectral: [
+    [0, '#9e0142'],
+    [0.13, '#d53e4f'],
+    [0.25, '#f46d43'],
+    [0.38, '#fdae61'],
+    [0.5, '#ffffbf'],
+    [0.63, '#abdda4'],
+    [0.75, '#66c2a5'],
+    [0.88, '#3288bd'],
+    [1, '#5e4fa2'],
+  ],
+  Jet: [
+    [0, '#000083'],
+    [0.35, '#003cff'],
+    [0.5, '#00ff66'],
+    [0.65, '#ffff00'],
+    [1, '#800000'],
+  ],
+  Hot: [
+    [0, '#000000'],
+    [0.35, '#b00000'],
+    [0.7, '#ffff00'],
+    [1, '#ffffff'],
+  ],
+  Electric: [
+    [0, '#000000'],
+    [0.15, '#1e0063'],
+    [0.35, '#5500ff'],
+    [0.55, '#00c2ff'],
+    [0.75, '#00ff85'],
+    [1, '#ffffff'],
+  ],
+  Earth: [
+    [0, '#102f4a'],
+    [0.18, '#236477'],
+    [0.35, '#4f8f66'],
+    [0.52, '#8f9b54'],
+    [0.7, '#c19a5b'],
+    [0.86, '#d8c49a'],
+    [1, '#f6f0d8'],
+  ],
+  Rainbow: [
+    [0, '#6e40aa'],
+    [0.17, '#be3caf'],
+    [0.33, '#fe4b83'],
+    [0.5, '#ff7847'],
+    [0.67, '#e2b72f'],
+    [0.83, '#8bd646'],
+    [1, '#1ac7c2'],
+  ],
+};
+
 const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
   xp: { label: 'xp' },
   yp: { label: 'yp' },
@@ -145,10 +281,12 @@ function getEphemerisTraceSeries(
 
 export default function OverlayPlot() {
   const [selectedSignals, setSelectedSignals] = useState<string[]>(readOverlaySignals);
+  const [plotMode, setPlotMode] = useState<string>(LINE_CHART_MODE);
   const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});
   const [ephemerisRecords, setEphemerisRecords] = useState<EphemerisRecord[]>([]);
   const isInternalUpdate = useRef(false);
-  const plotHeight = usePlotDisplayHeight(500, 860);
+  const plotHeight = usePlotDisplayHeight(550, 946);
+  const isHeatmapMode = plotMode !== LINE_CHART_MODE;
 
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
@@ -289,6 +427,56 @@ export default function OverlayPlot() {
     const filteredIndices = timestamps.map((_, i) => i).filter(i => rangeFilter(timestamps[i]));
     const filteredTime = filteredIndices.map(i => timestamps[i]);
 
+    if (isHeatmapMode) {
+      const hasCoreSignals = selectedSignals.some(signalKey => !signalKey.includes(':'));
+      const heatmapTime = hasCoreSignals
+        ? filteredTime
+        : ephemerisRecords.map(record => record.t).filter(rangeFilter);
+
+      const heatmapSeries = selectedSignals.map(signalKey => {
+        if (signalKey.includes(':')) {
+          const series = getEphemerisTraceSeries(signalKey, ephemerisRecords);
+          if (!series) {
+            return null;
+          }
+
+          const valueByDate = new Map(
+            series.x.map((timestamp, index) => [timestamp.split('T')[0], series.raw[index] ?? NaN])
+          );
+
+          return {
+            label: getEphemerisSignalLabel(signalKey),
+            values: normalize(heatmapTime.map(timestamp => valueByDate.get(timestamp.split('T')[0]) ?? NaN)),
+          };
+        }
+
+        const series = selectedSeries.find(entry => entry.key === signalKey);
+        if (!series) {
+          return null;
+        }
+
+        return {
+          label: series.label,
+          values: normalize(filteredIndices.map(i => series.raw[i] ?? NaN)),
+        };
+      }).filter(Boolean) as Array<{ label: string; values: number[] }>;
+
+      setTraces(heatmapSeries.length > 0 ? [{
+        x: heatmapTime,
+        y: heatmapSeries.map(series => series.label),
+        z: heatmapSeries.map(series => series.values),
+        type: 'heatmap',
+        colorscale: HEATMAP_COLOR_SCALES[plotMode],
+        colorbar: {
+          title: { text: 'z-score' },
+          thickness: 14,
+        },
+        hovertemplate: '%{y}<br>%{x}<br>z=%{z:.3f}<extra></extra>',
+        zmid: 0,
+      } as Plotly.Data] : []);
+      return;
+    }
+
     const nextTraces = selectedSignals.map(signalKey => {
       if (signalKey.includes(':')) {
         const series = getEphemerisTraceSeries(signalKey, ephemerisRecords);
@@ -325,7 +513,7 @@ export default function OverlayPlot() {
     }).filter(Boolean) as Plotly.Data[];
 
     setTraces(nextTraces);
-  }, [data, ephemerisRecords, rollingStats, selectedSeries, selectedSignals, timeLockEnabled, timeRange]);
+  }, [data, ephemerisRecords, isHeatmapMode, plotMode, rollingStats, selectedSeries, selectedSignals, timeLockEnabled, timeRange]);
 
   const nowIso = useMemo(() => new Date().toISOString(), []);
 
@@ -334,14 +522,17 @@ export default function OverlayPlot() {
     template: 'plotly_dark',
     xaxis: {
       title: { text: 'Date', standoff: 20 },
+      type: 'date' as const,
       gridcolor: '#374151',
       zerolinecolor: '#4b5563',
       ...(visibleXRange ? { range: visibleXRange } : {}),
     },
     yaxis: {
-      title: { text: 'Normalized Value (z-score)', standoff: 20 },
+      title: { text: isHeatmapMode ? 'Selected Data' : 'Normalized Value (z-score)', standoff: 20 },
+      type: isHeatmapMode ? 'category' as const : 'linear' as const,
       gridcolor: '#374151',
       zerolinecolor: '#4b5563',
+      ...(isHeatmapMode ? { automargin: true } : {}),
     },
     legend: {
       orientation: 'h' as const,
@@ -350,6 +541,7 @@ export default function OverlayPlot() {
       xanchor: 'center' as const,
       x: 0.5,
     },
+    showscale: isHeatmapMode,
     shapes: [
       {
         type: 'line' as const,
@@ -375,13 +567,13 @@ export default function OverlayPlot() {
         font: { color: '#fbbf24', size: 11 },
       },
     ],
-    margin: { l: 60, r: 20, t: 78, b: 60 },
+    margin: { l: isHeatmapMode ? 140 : 60, r: isHeatmapMode ? 70 : 20, t: 78, b: 60 },
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
     height: plotHeight,
     autosize: true,
-  }), [chartTitle, nowIso, plotHeight, visibleXRange]);
+  }), [chartTitle, isHeatmapMode, nowIso, plotHeight, visibleXRange]);
 
   const overlayCsvConfig = useMemo(() => createCsvExportConfig(
     'overlay-plot.csv',
@@ -409,21 +601,44 @@ export default function OverlayPlot() {
     ));
   };
 
+  const handlePlotModeChange = (nextMode: string) => {
+    setTraces([]);
+    setPlotMode(nextMode);
+  };
+
   return (
     <div className="p-4 bg-[#0b1220] h-full w-full min-w-0">
       <div className="mb-4 space-y-4">
-        <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
-          {(Object.keys(CORE_SIGNALS) as Array<keyof typeof CORE_SIGNALS>).map(key => (
-            <label key={key} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedSignals.includes(key)}
-                onChange={() => toggleSignal(key)}
-                className="w-4 h-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
-              />
-              <span className="text-sm text-[#e5e7eb]">{CORE_SIGNALS[key].label}</span>
-            </label>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
+            {(Object.keys(CORE_SIGNALS) as Array<keyof typeof CORE_SIGNALS>).map(key => (
+              <label key={key} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedSignals.includes(key)}
+                  onChange={() => toggleSignal(key)}
+                  className="w-4 h-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
+                />
+                <span className="text-sm text-[#e5e7eb]">{CORE_SIGNALS[key].label}</span>
+              </label>
+            ))}
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-[#e5e7eb]">
+            <span className="text-[#9ca3af]">Plot</span>
+            <select
+              value={plotMode}
+              onChange={(event) => handlePlotModeChange(event.target.value)}
+              className="h-9 rounded-md border border-[#374151] bg-[#111827] px-3 text-sm text-[#e5e7eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+            >
+              <option value={LINE_CHART_MODE}>Line Chart</option>
+              {HEATMAP_PALETTES.map(palette => (
+                <option key={palette.value} value={palette.value}>
+                  {palette.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="rounded-lg border border-[#1f2937] bg-[#111827] p-3">
@@ -505,12 +720,13 @@ export default function OverlayPlot() {
 
       <div className="w-full min-w-0">
         <Plot
+          key={`overlay-plot-${plotMode}`}
           data={traces}
           layout={{
             ...overlayLayout,
             uirevision: timeLockEnabled && timeRange
-              ? `${new Date(timeRange[0]).toISOString()}-${new Date(timeRange[1]).toISOString()}`
-              : 'overlay-free-zoom',
+              ? `${plotMode}-${new Date(timeRange[0]).toISOString()}-${new Date(timeRange[1]).toISOString()}`
+              : `overlay-free-zoom-${plotMode}`,
           } as any}
           config={overlayCsvConfig}
           style={{ width: '100%', height: `${plotHeight}px` }}
