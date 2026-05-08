@@ -2,8 +2,6 @@
 
 Constraint-first polar-motion diagnostics dashboard for geometry, phase structure, and experimental transition-probability diagnostics
 
-Live deployment: [drift.nobulart.com](https://drift.nobulart.com)
-
 Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Locked Planetary Torque Coupling in Polar Motion](https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion)
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
@@ -170,13 +168,7 @@ npm run dev
 
 ## Docker Deployment
 
-The project can be packaged as a standalone Docker image. The published image is:
-
-```text
-sunbear73/drift-dashboard:latest
-```
-
-The image runs the Next.js standalone server on port `3000`, bundles the Python runtime used by analysis API routes, and includes the checked-in `data/`, `public/data/`, and `scripts/` directories.
+The project can be packaged as a standalone Docker image. The image runs the Next.js standalone server on port `3000`, bundles the Python runtime used by analysis API routes, and includes the checked-in `data/`, `public/data/`, and `scripts/` directories.
 
 ### Build Locally
 
@@ -204,73 +196,76 @@ docker logs --tail=100 drift-dashboard
 curl -I http://127.0.0.1:3000
 ```
 
-### Build And Publish Docker Hub Image
+### Build And Publish A Registry Image
 
-Build and publish the Linux image used by external Docker hosts:
+Build and publish the Linux image used by external Docker hosts. Replace `<registry>/<image>:<tag>` with your registry path, for example `ghcr.io/<owner>/<image>:latest` or `docker.io/<user>/<image>:latest`.
 
 ```bash
 docker buildx build \
   --platform linux/amd64 \
-  -t sunbear73/drift-dashboard:latest \
+  -t <registry>/<image>:<tag> \
   --push .
 ```
 
 Useful checks after publishing:
 
 ```bash
-docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedSince}}' sunbear73/drift-dashboard
-docker buildx imagetools inspect sunbear73/drift-dashboard:latest
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedSince}}' <image>
+docker buildx imagetools inspect <registry>/<image>:<tag>
 ```
 
-If `imagetools inspect` cannot resolve Docker Hub because of a local DNS/network issue, rely on the completed `buildx --push` output and re-run the inspect command when network resolution returns.
+If `imagetools inspect` cannot resolve your registry because of a local DNS/network issue, rely on the completed `buildx --push` output and re-run the inspect command when network resolution returns.
 
 ## Production Hosting
 
-The public hostname is:
-
-```text
-https://drift.nobulart.com
-```
-
-As of v1.5.6, public traffic for `drift.nobulart.com` is served by Railway:
+DRIFT can be deployed on any host that can run a Node.js or Docker workload. Two common patterns are:
 
 ```text
 Internet
-  -> Railway edge
-  -> Next.js app built from this repository
+  -> managed app platform
+  -> app built from this repository or Dockerfile
 ```
 
-The repository includes `railway.toml` configured to build from the Dockerfile:
-
-```toml
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+```text
+Internet
+  -> reverse proxy on ports 80/443
+  -> Docker container on 127.0.0.1:3000
 ```
 
-For routine production releases, push the release commit to GitHub and verify the Railway-served site:
+For routine production releases, push the release commit and verify the deployed site:
 
 ```bash
 git status --short --branch
 npm run build
 git push origin main
-curl -I https://drift.nobulart.com
-curl -s https://drift.nobulart.com/docs | rg 'Version v'
+curl -I https://<your-domain.example>
+curl -s https://<your-domain.example>/docs | rg 'Version v'
 ```
 
 The docs badge at `/docs` is the most reliable user-visible version check.
 
-### Optional Manual VM Deployment
+### Managed App Platform
 
-These instructions are for a separate Linux VM deployment of the published Docker image. They are not the current public Railway path unless DNS is intentionally moved back to the VM.
+Use your platform's Dockerfile or Node.js build flow. Most managed app platforms can either build this repository directly or consume a published Docker image from a registry.
+
+The exact deployment trigger, environment variables, domain setup, and cache behavior are provider-specific. After a deployment, verify the site and the visible version badge:
+
+```bash
+curl -I https://<your-domain.example>
+curl -s https://<your-domain.example>/docs | rg 'Version v'
+```
+
+### Manual VM Deployment
+
+These instructions are for a Linux VM deployment of the published Docker image.
 
 Target shape:
 
 ```text
 Internet
-  -> nginx on ports 80/443
+  -> reverse proxy on ports 80/443
   -> reverse proxy to 127.0.0.1:3000
-  -> Docker container running sunbear73/drift-dashboard:latest
+  -> Docker container running <registry>/<image>:<tag>
 ```
 
 Install Docker on the VM:
@@ -281,7 +276,7 @@ apt-get install -y docker.io
 systemctl enable --now docker
 ```
 
-Install nginx and TLS tooling:
+Install a reverse proxy and TLS tooling. For nginx with Certbot:
 
 ```bash
 apt-get install -y nginx certbot python3-certbot-nginx
@@ -291,13 +286,13 @@ systemctl enable --now nginx
 Pull the latest image and replace the running container:
 
 ```bash
-docker pull sunbear73/drift-dashboard:latest
+docker pull <registry>/<image>:<tag>
 docker rm -f drift-dashboard || true
 docker run -d \
   --name drift-dashboard \
   --restart unless-stopped \
   -p 3000:3000 \
-  sunbear73/drift-dashboard:latest
+  <registry>/<image>:<tag>
 ```
 
 Verify locally on the server:
@@ -308,13 +303,13 @@ docker logs --tail=100 drift-dashboard
 curl -I http://127.0.0.1:3000
 ```
 
-Create `/etc/nginx/sites-available/drift.nobulart.com`:
+Create a reverse-proxy config for your domain. For nginx, create `/etc/nginx/sites-available/<your-domain.example>`:
 
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name drift.nobulart.com;
+    server_name <your-domain.example>;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -332,28 +327,28 @@ server {
 Enable the site:
 
 ```bash
-ln -sf /etc/nginx/sites-available/drift.nobulart.com /etc/nginx/sites-enabled/drift.nobulart.com
+ln -sf /etc/nginx/sites-available/<your-domain.example> /etc/nginx/sites-enabled/<your-domain.example>
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
 ```
 
-After the DNS `A` record for `drift.nobulart.com` points to the server public IP, issue the certificate:
+After the DNS `A` or `AAAA` record for your domain points to the server public IP, issue the certificate:
 
 ```bash
-certbot --nginx -d drift.nobulart.com --redirect
+certbot --nginx -d <your-domain.example> --redirect
 ```
 
 Useful checks:
 
 ```bash
-dig +short drift.nobulart.com
-curl -I http://drift.nobulart.com
-curl -I https://drift.nobulart.com
+dig +short <your-domain.example>
+curl -I http://<your-domain.example>
+curl -I https://<your-domain.example>
 certbot certificates
 ```
 
-If SSH to `drift.nobulart.com` reports `REMOTE HOST IDENTIFICATION HAS CHANGED`, stop and verify that DNS is meant to point at the VM before changing `~/.ssh/known_hosts`. A host-key mismatch is expected if the hostname currently resolves to Railway or to a different host than the previous VM.
+If SSH to your host reports `REMOTE HOST IDENTIFICATION HAS CHANGED`, stop and verify that you are connecting to the intended server before changing `~/.ssh/known_hosts`.
 
 ### Release Checklist
 
@@ -379,25 +374,24 @@ git push origin main
 ```bash
 docker buildx build \
   --platform linux/amd64 \
-  -t sunbear73/drift-dashboard:latest \
+  -t <registry>/<image>:<tag> \
   --push .
 ```
 
-4. Verify the public Railway deployment and visible version:
+4. Verify the public deployment and visible version:
 
 ```bash
-curl -I https://drift.nobulart.com
-curl -s https://drift.nobulart.com/docs | rg 'Version v'
+curl -I https://<your-domain.example>
+curl -s https://<your-domain.example>/docs | rg 'Version v'
 ```
 
-5. If the public site still appears stale in a browser, hard-refresh first. If `curl` still shows the old version, check the Railway deployment status for the pushed commit.
+5. If the public site still appears stale in a browser, hard-refresh first. If `curl` still shows the old version, check your hosting provider's deployment status for the pushed commit or image.
 
 ### Notes From Recent Deploys
 
-- A successful Docker image push does not by itself update Railway unless the Railway project is configured to consume that image. The current repository config builds Railway from the Dockerfile.
-- The v1.5.6 Docker image was built and pushed as `sunbear73/drift-dashboard:latest`; the local image ID after build was `39c3caf6c9b2`.
+- A successful Docker image push does not by itself update a managed app host unless that host is configured to consume the pushed image.
 - The most reliable user-visible version check is the docs badge at `/docs`.
-- If DNS is moved back to a VM, use the current VM address from the hosting console rather than hard-coding server IPs or credentials into the repo.
+- Keep domain names, registry namespaces, server IPs, and credentials in your hosting provider or local environment rather than hard-coding them into the repository.
 
 ## Project Structure
 
