@@ -136,7 +136,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.8
+                Version v1.5.9
               </span>
               <Link
                 href="/"
@@ -180,7 +180,14 @@ export default function DocsPage() {
 
         <section className="rounded-2xl border border-[#374151] bg-[#111827] p-6">
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
+          {/* Keep this inline release-card list to the latest six versions. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.9 Default Markers</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                First-time visitors now start with the curated default marker set from data/markers.json. Marker file loads use the same merge, replace, or cancel confirmation as the default-marker control, while later visits keep each user&apos;s saved marker preferences.
+              </p>
+            </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.8 Palette Persistence</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
@@ -209,12 +216,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.4 JPL EOP2 Backend</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added JPL EOP2 as a selectable Earth-orientation backend. PMx/PMy are converted from milliarcseconds to the dashboard arcsecond contract, prediction rows are excluded, and `dataset=jpl` is available through `/api/eop`.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.3 Net Torque Normalization</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                The Net torque proxy now normalizes each non-Sun/non-Moon body by its own cache-wide peak before summing, making it a temporal-alignment signal. Ephemeris cache refreshes backfill missing Net rows, and overlay loading is bounded to the active data window.
               </p>
             </article>
           </div>

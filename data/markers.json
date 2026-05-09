@@ -1,0 +1,140 @@
+{
+  "schema": "drift-chart-markers-v1",
+  "exportedAt": "2026-05-09T21:02:13.813Z",
+  "chartMarkers": [
+    {
+      "id": "1962-03-05-moylihyv",
+      "date": "1962-03-05",
+      "emoji": "🧭"
+    },
+    {
+      "id": "1967-06-02-moyla0m8",
+      "date": "1967-06-02",
+      "emoji": "⭐",
+      "label": "Loop 1967"
+    },
+    {
+      "id": "1968-02-06-moylidyw",
+      "date": "1968-02-06",
+      "emoji": "🧭"
+    },
+    {
+      "id": "1974-07-03-moyl13os",
+      "date": "1974-07-12",
+      "emoji": "⭐",
+      "label": "Loop 1974"
+    },
+    {
+      "id": "1974-10-18-moyliohd",
+      "date": "1974-10-18",
+      "emoji": "🧭"
+    },
+    {
+      "id": "1981-02-17-moylc9vz",
+      "date": "1981-02-17",
+      "emoji": "🐧",
+      "label": "Waltz I"
+    },
+    {
+      "id": "1986-07-17-moylg8sb",
+      "date": "1986-07-17",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1986-08-14-moylg6e7",
+      "date": "1986-08-14",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1987-03-18-moylg384",
+      "date": "1987-03-18",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1987-08-09-moyleyuy",
+      "date": "1987-08-09",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1987-09-19-moylfvzi",
+      "date": "1987-09-19",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1988-02-14-moylf83n",
+      "date": "1988-02-14",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1988-05-23-moylfrog",
+      "date": "1988-05-23",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1988-06-08-moylfb79",
+      "date": "1988-06-08",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1988-07-04-moylfotu",
+      "date": "1988-07-04",
+      "emoji": "⚠️"
+    },
+    {
+      "id": "1988-08-15-moylfhff",
+      "date": "1988-08-15",
+      "emoji": "⚠️",
+      "label": "Tango Sequence"
+    },
+    {
+      "id": "1992-12-02-moylsmns",
+      "date": "1993-11-14",
+      "emoji": "🐧",
+      "label": "Cha-Cha I"
+    },
+    {
+      "id": "1999-12-06-moykrroc",
+      "date": "1999-12-06",
+      "emoji": "🐧",
+      "label": "Penguin Dance"
+    },
+    {
+      "id": "2000-05-10-moylit4j",
+      "date": "2000-05-10",
+      "emoji": "🧭"
+    },
+    {
+      "id": "2005-12-14-moyl26ur",
+      "date": "2005-12-14",
+      "emoji": "⭐",
+      "label": "Loop 2005"
+    },
+    {
+      "id": "2006-05-24-moyliza7",
+      "date": "2006-05-24",
+      "emoji": "🧭"
+    },
+    {
+      "id": "2012-07-04-moylj72m",
+      "date": "2012-07-04",
+      "emoji": "🧭"
+    },
+    {
+      "id": "2020-03-22-moyk51w3",
+      "date": "2020-05-22",
+      "emoji": "🐧",
+      "label": "Cha-Cha II"
+    },
+    {
+      "id": "2026-03-20-moyli7qq",
+      "date": "2026-03-21",
+      "emoji": "🧭"
+    },
+    {
+      "id": "2026-03-29-moyk5cy8",
+      "date": "2026-04-28",
+      "emoji": "🐧",
+      "label": "Cha-Cha III"
+    }
+  ]
+}

@@ -6,9 +6,15 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.8`
+Current release: `v1.5.9`
 
 ## Release Notes
+
+### v1.5.9
+
+- Seed first-time visitors with the curated default marker set from `data/markers.json`.
+- Added the read-only `/api/markers` route used by the marker DEFAULT control.
+- Routed both DEFAULT and LOAD marker imports through the same merge, replace, or cancel confirmation modal.
 
 ### v1.5.8
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { memo, useEffect, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 import { MARKER_EMOJI_OPTIONS } from '@/lib/chartMarkers';
 import { ChartMarker, useStore } from '@/store/useStore';
 
@@ -17,6 +17,41 @@ interface ChartMarkerRowProps {
   maxDate: string;
   updateChartMarker: (id: string, updates: Partial<Pick<ChartMarker, 'date' | 'emoji' | 'label'>>) => void;
   deleteChartMarker: (id: string) => void;
+}
+
+interface PendingMarkerImport {
+  markers: unknown[];
+  source: string;
+}
+
+function extractMarkerArray(value: unknown): unknown[] | null {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const candidate = value as { chartMarkers?: unknown; markers?: unknown };
+  if (Array.isArray(candidate.chartMarkers)) {
+    return candidate.chartMarkers;
+  }
+
+  if (Array.isArray(candidate.markers)) {
+    return candidate.markers;
+  }
+
+  return null;
+}
+
+function markerDate(value: unknown) {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const date = (value as { date?: unknown }).date;
+  return typeof date === 'string' && date ? date : null;
 }
 
 const ChartMarkerRow = memo(function ChartMarkerRow({
@@ -101,6 +136,7 @@ const ChartMarkerRow = memo(function ChartMarkerRow({
 });
 
 export default function ChartMarkerControls({ minDate, maxDate, compact = false }: ChartMarkerControlsProps) {
+  const importInputRef = useRef<HTMLInputElement>(null);
   const chartMarkers = useStore((state) => state.chartMarkers);
   const selectedMarkerEmoji = useStore((state) => state.selectedMarkerEmoji);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
@@ -109,8 +145,103 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
   const setMarkerPlacementEnabled = useStore((state) => state.setMarkerPlacementEnabled);
   const setChartMarkerSize = useStore((state) => state.setChartMarkerSize);
   const updateChartMarker = useStore((state) => state.updateChartMarker);
+  const setChartMarkers = useStore((state) => state.setChartMarkers);
   const deleteChartMarker = useStore((state) => state.deleteChartMarker);
   const clearChartMarkers = useStore((state) => state.clearChartMarkers);
+  const [fileStatus, setFileStatus] = useState('');
+  const [pendingMarkerImport, setPendingMarkerImport] = useState<PendingMarkerImport | null>(null);
+
+  const handleSaveMarkers = () => {
+    const payload = {
+      schema: 'drift-chart-markers-v1',
+      exportedAt: new Date().toISOString(),
+      chartMarkers,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `drift-markers-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setFileStatus(`Saved ${chartMarkers.length} marker${chartMarkers.length === 1 ? '' : 's'}.`);
+  };
+
+  const handleLoadMarkers = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown;
+      const markerSource = extractMarkerArray(parsed);
+
+      if (!markerSource) {
+        throw new Error('Marker JSON must contain a chartMarkers array.');
+      }
+
+      setPendingMarkerImport({
+        markers: markerSource,
+        source: file.name || 'selected JSON file',
+      });
+    } catch {
+      setFileStatus('Could not load marker JSON.');
+    }
+  };
+
+  const handleDefaultMarkers = async () => {
+    try {
+      const response = await fetch('/api/markers', { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error('Default markers request failed.');
+      }
+
+      const markerSource = extractMarkerArray(await response.json());
+      if (!markerSource) {
+        throw new Error('Default marker payload is invalid.');
+      }
+
+      setPendingMarkerImport({
+        markers: markerSource,
+        source: 'data/markers.json',
+      });
+    } catch {
+      setFileStatus('Could not load default markers.');
+    }
+  };
+
+  const replacePendingMarkers = () => {
+    if (!pendingMarkerImport) {
+      return;
+    }
+
+    setChartMarkers(pendingMarkerImport.markers);
+    setFileStatus(`Loaded ${pendingMarkerImport.markers.length} marker${pendingMarkerImport.markers.length === 1 ? '' : 's'}.`);
+    setPendingMarkerImport(null);
+  };
+
+  const mergePendingMarkers = () => {
+    if (!pendingMarkerImport) {
+      return;
+    }
+
+    const existingDates = new Set(chartMarkers.map((marker) => marker.date));
+    const missingMarkers = pendingMarkerImport.markers.filter((marker) => {
+      const date = markerDate(marker);
+      if (!date || existingDates.has(date)) {
+        return false;
+      }
+      existingDates.add(date);
+      return true;
+    });
+    setChartMarkers([...chartMarkers, ...missingMarkers]);
+    setFileStatus(`Merged ${missingMarkers.length} marker${missingMarkers.length === 1 ? '' : 's'}.`);
+    setPendingMarkerImport(null);
+  };
 
   return (
     <div className={`${compact ? 'space-y-2' : 'space-y-3 rounded-xl border border-[#374151] bg-[#0b1220]/60 p-3'} text-[#d1d5db]`}>
@@ -161,17 +292,53 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
+        <div className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ca3af]">Saved markers</p>
-          <button
-            type="button"
-            onClick={clearChartMarkers}
-            disabled={chartMarkers.length === 0}
-            className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#ef4444] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Clear
-          </button>
+          <div className="flex flex-wrap items-center gap-1">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleLoadMarkers}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handleDefaultMarkers}
+              className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
+            >
+              Default
+            </button>
+            <button
+              type="button"
+              onClick={() => importInputRef.current?.click()}
+              className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
+            >
+              Load
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveMarkers}
+              disabled={chartMarkers.length === 0}
+              className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={clearChartMarkers}
+              disabled={chartMarkers.length === 0}
+              className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#ef4444] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Clear
+            </button>
+          </div>
         </div>
+        {fileStatus && (
+          <p className="rounded-md border border-[#1f2937] bg-[#111827] px-2 py-1 text-[11px] text-[#9ca3af]">
+            {fileStatus}
+          </p>
+        )}
         {chartMarkers.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[#374151] px-3 py-2 text-xs text-[#9ca3af]">
             Enable click-to-add, then click a timeline chart. Right-click near a marker to delete it.
@@ -191,6 +358,39 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
           </div>
         )}
       </div>
+      {pendingMarkerImport && (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-[#020617]/80 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-lg border border-[#334155] bg-[#0b1220] p-4 shadow-[0_20px_70px_rgba(0,0,0,0.55)]">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#e5e7eb]">Load markers</h3>
+            <p className="mt-3 text-sm leading-6 text-[#cbd5e1]">
+              Load {pendingMarkerImport.markers.length} marker{pendingMarkerImport.markers.length === 1 ? '' : 's'} from {pendingMarkerImport.source}?
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingMarkerImport(null)}
+                className="rounded-md border border-[#374151] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#9ca3af] transition-colors hover:border-[#94a3b8] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={mergePendingMarkers}
+                className="rounded-md border border-[#2563eb] bg-[#1d4ed8]/30 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#bfdbfe] transition-colors hover:border-[#60a5fa] hover:text-white"
+              >
+                Merge
+              </button>
+              <button
+                type="button"
+                onClick={replacePendingMarkers}
+                className="rounded-md border border-[#f97316] bg-[#7c2d12]/40 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#fed7aa] transition-colors hover:border-[#fb923c] hover:text-white"
+              >
+                Replace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

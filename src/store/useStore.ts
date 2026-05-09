@@ -7,6 +7,7 @@ import { loadEOPData, loadGeomagGFZData, loadGRACEData, loadInertiaData, mergeDa
 import { computeLagModel } from '@/lib/lagModel';
 import { DEFAULT_PANEL_ORDER } from '@/lib/panels';
 import { DEFAULT_EOP_DATASET_ID, EOPDatasetId, getEOPDataset } from '@/lib/eopDatasets';
+import defaultMarkersData from '../../data/markers.json';
 
 export interface ChartMarker {
   id: string;
@@ -128,6 +129,7 @@ interface AppState {
   refetchData: () => Promise<void>;
   setEOPDataset: (dataset: EOPDatasetId) => Promise<void>;
   addChartMarker: (date: string, emoji?: string) => void;
+  setChartMarkers: (markers: unknown[]) => void;
   updateChartMarker: (id: string, updates: Partial<Pick<ChartMarker, 'date' | 'emoji' | 'label'>>) => void;
   deleteChartMarker: (id: string) => void;
   deleteNearestChartMarker: (date: string, maxDistanceDays?: number) => void;
@@ -294,6 +296,48 @@ function normalizeChartMarkerSize(value: unknown) {
   return Math.max(12, Math.min(28, Math.round(numeric)));
 }
 
+function normalizeChartMarkers(value: unknown): ChartMarker[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const usedIds = new Set<string>();
+
+  return value
+    .flatMap((marker, index): ChartMarker[] => {
+      if (!marker || typeof marker !== 'object') {
+        return [];
+      }
+
+      const candidate = marker as Partial<ChartMarker>;
+      const date = typeof candidate.date === 'string' ? normalizeMarkerDate(candidate.date) : null;
+      if (!date) {
+        return [];
+      }
+
+      const baseId = typeof candidate.id === 'string' && candidate.id.trim()
+        ? candidate.id.trim()
+        : `${date}-${index.toString(36)}`;
+      let id = baseId;
+      let suffix = 1;
+      while (usedIds.has(id)) {
+        id = `${baseId}-${suffix}`;
+        suffix += 1;
+      }
+      usedIds.add(id);
+
+      const label = typeof candidate.label === 'string' ? candidate.label.trim() : '';
+
+      return [{
+        id,
+        date,
+        emoji: typeof candidate.emoji === 'string' && candidate.emoji.trim() ? candidate.emoji : DEFAULT_MARKER_EMOJI,
+        label: label || undefined,
+      }];
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled' | 'chartMarkerSize'> {
   if (typeof window === 'undefined') {
     return {
@@ -307,12 +351,14 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
   try {
     const storedValue = window.localStorage.getItem(CHART_MARKERS_STORAGE_KEY);
     if (!storedValue) {
-      return {
-        chartMarkers: [],
+      const firstVisitMarkerState = {
+        chartMarkers: normalizeChartMarkers(defaultMarkersData.chartMarkers),
         selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
         markerPlacementEnabled: false,
         chartMarkerSize: DEFAULT_CHART_MARKER_SIZE,
       };
+      writeStoredChartMarkers(firstVisitMarkerState);
+      return firstVisitMarkerState;
     }
 
     const parsed = JSON.parse(storedValue) as {
@@ -322,26 +368,7 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
       chartMarkerSize?: unknown;
     };
 
-    const chartMarkers = Array.isArray(parsed.chartMarkers)
-      ? parsed.chartMarkers.flatMap((marker): ChartMarker[] => {
-          if (!marker || typeof marker !== 'object') {
-            return [];
-          }
-
-          const candidate = marker as Partial<ChartMarker>;
-          const date = typeof candidate.date === 'string' ? normalizeMarkerDate(candidate.date) : null;
-          if (!date || typeof candidate.id !== 'string') {
-            return [];
-          }
-
-          return [{
-            id: candidate.id,
-            date,
-            emoji: typeof candidate.emoji === 'string' && candidate.emoji.trim() ? candidate.emoji : DEFAULT_MARKER_EMOJI,
-            label: typeof candidate.label === 'string' ? candidate.label : undefined,
-          }];
-        })
-      : [];
+    const chartMarkers = normalizeChartMarkers(parsed.chartMarkers);
 
     return {
       chartMarkers,
@@ -531,6 +558,10 @@ const useStore = create<AppState>((set, get) => ({
         ].sort((a, b) => a.date.localeCompare(b.date));
 
     set({ chartMarkers: nextMarkers });
+    writeStoredChartMarkers(get());
+  },
+  setChartMarkers: (markers) => {
+    set({ chartMarkers: normalizeChartMarkers(markers) });
     writeStoredChartMarkers(get());
   },
   updateChartMarker: (id, updates) => {
