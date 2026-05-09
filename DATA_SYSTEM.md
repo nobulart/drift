@@ -110,6 +110,8 @@ Timestamp-aware retrieval script that:
 
 ## API Routes
 
+Set `DRIFT_API_KEY` or comma-separated `DRIFT_API_KEYS` to require `Authorization: Bearer <key>` or `X-API-Key: <key>` on high-cost routes. Without those environment variables, local development remains unauthenticated.
+
 ### `/api/eop`
 Returns EOP polar motion data (xp, yp). Accepts `dataset=finals`, `dataset=finals2000a`, `dataset=c04`, or `dataset=jpl`; unknown values fall back to `finals`.
 
@@ -120,19 +122,22 @@ Returns GFZ-KP geomagnetic indices (Kp, ap, Ap).
 Returns combined EOP + GRACE data.
 
 ### `/api/combined-full`
-Returns EOP + GRACE + GFZ-KP data.
+Returns EOP + GRACE + GFZ-KP data. Protected by API authentication when configured.
 
 ### `/api/ephemeris`
-Returns the cached DE442-derived Earth-geocentric overlay dataset. Accepts optional `start=YYYY-MM-DD` and `end=YYYY-MM-DD`; if the requested range is outside the local cache, or covered by an older cache without `bodies.net`, the route refreshes/extends the cache before returning the requested slice.
+Returns the cached DE442-derived Earth-geocentric overlay dataset. Accepts optional `start=YYYY-MM-DD` and `end=YYYY-MM-DD`; if the requested range is outside the local cache, or covered by an older cache without `bodies.net`, the route refreshes/extends the cache before returning the requested slice. Protected by API authentication when configured.
 
 ### `/api/rolling-stats`
-Computes or serves cached rolling DRIFT diagnostics, lag models, and transition-state inputs.
+Computes or serves cached rolling DRIFT diagnostics, lag models, and transition-state inputs. Protected by API authentication when configured.
 
 ### `/api/transition-forecast`
 Returns the experimental lag-conditioned transition probability summary.
 
 ### `/api/phase-escape`
-Returns Phase-Locked Escape Model state derived from internal DRIFT EOP state and DE442 composite phases. The experimental panel computes residual phase misalignment, phase drift, phase acceleration, escape probability, barrier ratio, phase stability, and a Kramers-like comparative index from this internal state.
+Returns Phase-Locked Escape Model state derived from internal DRIFT EOP state and DE442 composite phases. The experimental panel computes residual phase misalignment, phase drift, phase acceleration, escape probability, barrier ratio, phase stability, and a Kramers-like comparative index from this internal state. Protected by API authentication when configured.
+
+### `/api/update-data`
+Runs the source refresh and derived-artifact pipeline. Protected by API authentication when configured.
 
 ## Phase-Locked Escape Model
 

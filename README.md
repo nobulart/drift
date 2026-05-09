@@ -6,9 +6,16 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.9`
+Current release: `v1.6.0`
 
 ## Release Notes
+
+### v1.6.0
+
+- Added API key authentication for high-cost and mutating API routes to protect the public instance from abusive usage.
+- Protected `/api/combined-full`, `/api/ephemeris`, `/api/rolling-stats`, `/api/phase-escape`, and `/api/update-data` when `DRIFT_API_KEY` or `DRIFT_API_KEYS` is configured.
+- Documented the accepted `Authorization: Bearer <key>` and `X-API-Key: <key>` request headers in the README, data-system notes, and in-app API documentation.
+- Preserved unauthenticated local development behavior when no API key environment variable is configured.
 
 ### v1.5.9
 
@@ -457,6 +464,12 @@ drift/
 - `scripts/compute_phase_escape.py` - Build phase-escape state inputs from internal EOP and DE442 caches
 
 ### Live API (Next.js)
+
+#### API authentication
+
+High-cost API routes are public by default for local development. Set `DRIFT_API_KEY` to require authentication on the protected routes, or set `DRIFT_API_KEYS` to a comma-separated list for key rotation. Requests may authenticate with either `Authorization: Bearer <key>` or `X-API-Key: <key>`.
+
+Protected routes: `/api/combined-full`, `/api/ephemeris`, `/api/rolling-stats`, `/api/phase-escape`, and `/api/update-data`.
 
 #### `GET /api/eop`
 - Returns cached historical Earth Orientation Parameters from the selected EOP product.

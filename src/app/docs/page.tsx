@@ -90,17 +90,17 @@ const apiRows = [
   },
   {
     route: '/api/combined-full',
-    purpose: 'Full combined dashboard dataset used by the app.',
+    purpose: 'Full combined dashboard dataset used by the app. Access is restricted to API key holders to prevent abuse.',
     fields: 't, xp, yp, geomagnetic context, GRACE context, inertia vectors when available',
   },
   {
     route: '/api/ephemeris',
-    purpose: 'DE442 Earth-geocentric overlay cache for 1962-01-01 through 2050-12-31. Optional `start` and `end` query parameters return the requested slice and can populate missing cache dates or refresh missing Net rows on demand.',
+    purpose: 'DE442 Earth-geocentric overlay cache for 1962-01-01 through 2050-12-31. Optional `start` and `end` query parameters return the requested slice and can populate missing cache dates or refresh missing Net rows on demand. Access is restricted to API key holders to prevent abuse.',
     fields: 'source metadata, records[].bodies[bodyKey].distance_au/angular_velocity_deg_per_day/radial_velocity_km_s/ecliptic_longitude_deg/torque_proxy; bodies.net.torque_proxy is a per-body peak-normalized temporal comparison sum',
   },
   {
     route: '/api/rolling-stats',
-    purpose: 'On-demand or cached rolling diagnostics and lag models.',
+    purpose: 'On-demand or cached rolling diagnostics and lag models. Access is restricted to API key holders to prevent abuse.',
     fields: 'theta, omega, rRatio, turningPoints, lagModel, conditionalLagModel',
   },
   {
@@ -110,12 +110,12 @@ const apiRows = [
   },
   {
     route: '/api/phase-escape',
-    purpose: 'Phase-Locked Escape Model state built from internal DRIFT EOP state and DE442-derived composite phases.',
+    purpose: 'Phase-Locked Escape Model state built from internal DRIFT EOP state and DE442-derived composite phases. Access is restricted to API key holders to prevent abuse.',
     fields: 'thetaRaw, thetaResidual, rRatio, bodyPhases, composites, misalignment',
   },
   {
     route: '/api/update-data',
-    purpose: 'Runs the timestamp-aware source refresh pipeline used by the sidebar Update Data button.',
+    purpose: 'Runs the timestamp-aware source refresh pipeline used by the sidebar Update Data button. Access is restricted to API key holders to prevent abuse.',
     fields: 'ok, completedAt, stdout, stderr, error',
   },
 ];
@@ -136,7 +136,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.5.9
+                Version v1.6.0
               </span>
               <Link
                 href="/"
@@ -183,6 +183,12 @@ export default function DocsPage() {
           {/* Keep this inline release-card list to the latest six versions. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.0 API Access Control</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                High-cost and mutating API routes can now be restricted to key holders, protecting the public instance from abusive requests while leaving local development open when no API key is configured.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.9 Default Markers</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 First-time visitors now start with the curated default marker set from data/markers.json. Marker file loads use the same merge, replace, or cancel confirmation as the default-marker control, while later visits keep each user&apos;s saved marker preferences.
@@ -210,12 +216,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.5 Pipeline Performance</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added ephemeris year shards, route projections, in-flight compute deduping, parsed JSON reuse, compact derived artifacts, and prefix-sum rolling covariance. Cold rolling diagnostics and phase-escape computations are materially faster while panel payloads are much smaller.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.4 JPL EOP2 Backend</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added JPL EOP2 as a selectable Earth-orientation backend. PMx/PMy are converted from milliarcseconds to the dashboard arcsecond contract, prediction rows are excluded, and `dataset=jpl` is available through `/api/eop`.
               </p>
             </article>
           </div>
@@ -282,6 +282,9 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">API Endpoints</h2>
           <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
             These routes are the app&apos;s local JSON and analysis surface. Most of the data routes serve cached pipeline artifacts, while the analysis routes compute or reuse cached derived products on demand.
+          </p>
+          <p className="mt-3 text-sm leading-7 text-[#cbd5e1]">
+            High-cost API access is restricted to key holders to prevent abuse of the public instance. Protected routes accept `Authorization: Bearer &lt;key&gt;` or `X-API-Key: &lt;key&gt;`.
           </p>
           <div className="mt-4 space-y-4">
             {apiRows.map((row) => (

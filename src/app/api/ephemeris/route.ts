@@ -1,4 +1,5 @@
 import { noStoreJson, readPipelineJson } from '@/lib/serverData';
+import { requireApiAuth } from '@/lib/apiAuth';
 import { promises as fs } from 'fs';
 import { spawn, spawnSync } from 'child_process';
 import { join } from 'path';
@@ -190,6 +191,11 @@ function runEphemerisBuild(start: string, end: string) {
 }
 
 export async function GET(request: Request) {
+  const authResponse = requireApiAuth(request);
+  if (authResponse) {
+    return authResponse;
+  }
+
   const { searchParams } = new URL(request.url);
   const start = searchParams.get('start');
   const end = searchParams.get('end');

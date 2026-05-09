@@ -6,6 +6,7 @@ import { join } from 'path';
 import { z } from 'zod';
 import { materializePipelineJson } from '@/lib/serverData';
 import { getEOPDataset } from '@/lib/eopDatasets';
+import { requireApiAuth } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,11 @@ function getPythonCommand() {
 }
 
 export async function GET(request: NextRequest) {
+  const authResponse = requireApiAuth(request);
+  if (authResponse) {
+    return authResponse;
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const params = ParamsSchema.parse({

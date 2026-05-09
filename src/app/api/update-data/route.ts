@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import { join } from 'path';
 import { NextResponse } from 'next/server';
 import { readPipelineJson } from '@/lib/serverData';
+import { requireApiAuth } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -108,7 +109,12 @@ async function collectUpdateSummary(): Promise<UpdateSummary> {
   };
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const authResponse = requireApiAuth(request);
+  if (authResponse) {
+    return authResponse;
+  }
+
   if (activeUpdate) {
     return NextResponse.json(
       { error: 'Data update is already running.' },

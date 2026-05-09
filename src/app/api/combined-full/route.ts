@@ -1,8 +1,14 @@
 import { noStoreJson, readPipelineJson } from '@/lib/serverData';
+import { requireApiAuth } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authResponse = requireApiAuth(request);
+  if (authResponse) {
+    return authResponse;
+  }
+
   try {
     const data = await readPipelineJson<any[]>('combined_historic.json');
     return noStoreJson(data);
