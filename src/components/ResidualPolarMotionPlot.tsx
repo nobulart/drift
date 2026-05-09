@@ -7,6 +7,14 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
 import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
+import {
+  DEFAULT_PATH_COLOR_SCALE,
+  HEATMAP_COLOR_SCALES,
+  HEATMAP_PALETTES,
+  PATH_COLOR_SCALE_RESET_EVENT,
+  readPathColorScale,
+  writePathColorScale,
+} from '@/lib/colorScales';
 import { useStore } from '@/store/useStore';
 
 interface ResidualPolarMotionPlotProps {
@@ -223,6 +231,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
+  const [colorScale, setColorScale] = useState(() => readPathColorScale('residual-polar-motion'));
 
   useEffect(() => {
     const node = containerRef.current;
@@ -238,6 +247,16 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
     });
     observer.observe(node);
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    writePathColorScale('residual-polar-motion', colorScale);
+  }, [colorScale]);
+
+  useEffect(() => {
+    const handleReset = () => setColorScale(DEFAULT_PATH_COLOR_SCALE);
+    window.addEventListener(PATH_COLOR_SCALE_RESET_EVENT, handleReset);
+    return () => window.removeEventListener(PATH_COLOR_SCALE_RESET_EVENT, handleReset);
   }, []);
 
   const residual = useMemo(
@@ -290,7 +309,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
         marker: {
           size: 4,
           color: visiblePoints.map((point) => point.year),
-          colorscale: 'Viridis',
+          colorscale: HEATMAP_COLOR_SCALES[colorScale],
           showscale: true,
           colorbar: {
             title: { text: 'Calendar year', side: 'right' },
@@ -395,7 +414,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
     }
 
     return data;
-  }, [chartMarkerSize, chartMarkers, residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
+  }, [chartMarkerSize, chartMarkers, colorScale, residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
 
   const maxExtent = useMemo(() => {
     const extents = visiblePoints.flatMap((point) => [Math.abs(point.x), Math.abs(point.y)]);
@@ -418,6 +437,22 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
 
   return (
     <div ref={containerRef} className="h-full w-full min-w-0">
+      <div className="mb-2 flex justify-end">
+        <label className="flex items-center gap-2 text-xs text-[#e5e7eb]">
+          <span className="text-[#9ca3af]">Palette</span>
+          <select
+            value={colorScale}
+            onChange={(event) => setColorScale(event.target.value)}
+            className="h-8 rounded-md border border-[#374151] bg-[#111827] px-2 text-xs text-[#e5e7eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+          >
+            {HEATMAP_PALETTES.map((palette) => (
+              <option key={palette.value} value={palette.value}>
+                {palette.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <Plot
         data={traces}
         layout={{

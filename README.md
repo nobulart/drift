@@ -6,9 +6,15 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.7`
+Current release: `v1.5.8`
 
 ## Release Notes
+
+### v1.5.8
+
+- Added a Greyscale gradient to the shared heatmap palette selector.
+- Added the same palette selector to the Residual Polar Motion (XY) phase-space and Polar Motion Trajectory panels.
+- Persisted overlay and path palette choices across sessions, with Reset Defaults restoring the path palettes to Viridis and the overlay to Line Chart.
 
 ### v1.5.7
 

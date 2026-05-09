@@ -9,6 +9,7 @@ import { PANEL_GUIDES } from '@/lib/documentation';
 import { TimeSample } from '@/lib/types';
 import { PANEL_OPTIONS } from '@/lib/panels';
 import { resetOverlayPreferences } from '@/lib/overlayPreferences';
+import { resetPathColorScales } from '@/lib/colorScales';
 
 const Controls = dynamic(() => import('@/components/Controls'), { ssr: false });
 const PolarPlot = dynamic(() => import('@/components/PolarPlot'), { ssr: false });
@@ -500,7 +501,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                 Version v1.5.7
+                 Version v1.5.8
               </p>
             </div>
             <Link
@@ -542,6 +543,7 @@ export default function Home() {
                        resetPanelPreferences();
                        clearChartMarkers();
                        resetOverlayPreferences();
+                       resetPathColorScales();
                      }}
                      className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
                    >

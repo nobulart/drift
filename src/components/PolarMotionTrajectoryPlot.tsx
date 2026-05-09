@@ -8,6 +8,14 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
 import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
+import {
+  DEFAULT_PATH_COLOR_SCALE,
+  HEATMAP_COLOR_SCALES,
+  HEATMAP_PALETTES,
+  PATH_COLOR_SCALE_RESET_EVENT,
+  readPathColorScale,
+  writePathColorScale,
+} from '@/lib/colorScales';
 import { useStore } from '@/store/useStore';
 
 interface PolarMotionTrajectoryPlotProps {
@@ -71,6 +79,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
+  const [colorScale, setColorScale] = useState(() => readPathColorScale('polar-motion-trajectory'));
 
   useEffect(() => {
     const node = containerRef.current;
@@ -86,6 +95,16 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
     });
     observer.observe(node);
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    writePathColorScale('polar-motion-trajectory', colorScale);
+  }, [colorScale]);
+
+  useEffect(() => {
+    const handleReset = () => setColorScale(DEFAULT_PATH_COLOR_SCALE);
+    window.addEventListener(PATH_COLOR_SCALE_RESET_EVENT, handleReset);
+    return () => window.removeEventListener(PATH_COLOR_SCALE_RESET_EVENT, handleReset);
   }, []);
 
   const points = useMemo(
@@ -134,7 +153,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       marker: {
         size: 4,
         color: visiblePoints.map((point) => point.year),
-        colorscale: 'Viridis',
+        colorscale: HEATMAP_COLOR_SCALES[colorScale],
         showscale: true,
         colorbar: {
           title: { text: 'Calendar year', side: 'right' },
@@ -222,7 +241,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
     }
 
     return data;
-  }, [chartMarkerSize, chartMarkers, turningPointIndices, visiblePoints]);
+  }, [chartMarkerSize, chartMarkers, colorScale, turningPointIndices, visiblePoints]);
 
   const axisRanges = useMemo(() => {
     if (visiblePoints.length === 0) {
@@ -261,6 +280,22 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
 
   return (
     <div ref={containerRef} className="h-full w-full min-w-0">
+      <div className="mb-2 flex justify-end">
+        <label className="flex items-center gap-2 text-xs text-[#e5e7eb]">
+          <span className="text-[#9ca3af]">Palette</span>
+          <select
+            value={colorScale}
+            onChange={(event) => setColorScale(event.target.value)}
+            className="h-8 rounded-md border border-[#374151] bg-[#111827] px-2 text-xs text-[#e5e7eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+          >
+            {HEATMAP_PALETTES.map((palette) => (
+              <option key={palette.value} value={palette.value}>
+                {palette.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <Plot
         data={traces}
         layout={{

@@ -1,4 +1,5 @@
 import { EPHEMERIS_BODY_CONFIG, EPHEMERIS_METRIC_CONFIG } from '@/lib/ephemeris';
+import { HEATMAP_PALETTES } from '@/lib/colorScales';
 
 export const DEFAULT_OVERLAY_SIGNALS = ['drift'];
 export const DEFAULT_OVERLAY_PLOT_MODE = 'line';
@@ -8,18 +9,7 @@ export const OVERLAY_SIGNAL_RESET_EVENT = 'drift-overlay-reset-defaults';
 
 const OVERLAY_PLOT_MODE_KEYS = new Set([
   DEFAULT_OVERLAY_PLOT_MODE,
-  'Viridis',
-  'Cividis',
-  'Plasma',
-  'Inferno',
-  'Magma',
-  'Turbo',
-  'Spectral',
-  'Jet',
-  'Hot',
-  'Electric',
-  'Earth',
-  'Rainbow',
+  ...HEATMAP_PALETTES.map((palette) => palette.value),
 ]);
 
 const CORE_SIGNAL_KEYS = new Set(['xp', 'yp', 'ut1_utc', 'lod', 'drift', 'theta', 'omega', 'R', 'kp', 'ap']);
