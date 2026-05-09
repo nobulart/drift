@@ -189,6 +189,23 @@ function normalize(series: number[]): number[] {
   });
 }
 
+function scaleHeatmapRow(series: number[]): number[] {
+  const valid = series.filter(v => Number.isFinite(v));
+  if (valid.length === 0) return series;
+
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  const span = max - min;
+  if (span === 0) {
+    return series.map(v => Number.isFinite(v) ? 0 : NaN);
+  }
+
+  return series.map(v => {
+    if (!Number.isFinite(v)) return NaN;
+    return ((v - min) / span) * 2 - 1;
+  });
+}
+
 function getCoreSignalSeries(
   key: string,
   rollingStats: any,
@@ -464,14 +481,17 @@ export default function OverlayPlot() {
       setTraces(heatmapSeries.length > 0 ? [{
         x: heatmapTime,
         y: heatmapSeries.map(series => series.label),
-        z: heatmapSeries.map(series => series.values),
+        z: heatmapSeries.map(series => scaleHeatmapRow(series.values)),
+        customdata: heatmapSeries.map(series => series.values),
         type: 'heatmap',
         colorscale: HEATMAP_COLOR_SCALES[plotMode],
         colorbar: {
-          title: { text: 'z-score' },
+          title: { text: 'row range' },
           thickness: 14,
         },
-        hovertemplate: '%{y}<br>%{x}<br>z=%{z:.3f}<extra></extra>',
+        hovertemplate: '%{y}<br>%{x}<br>z=%{customdata:.3f}<extra></extra>',
+        zmin: -1,
+        zmax: 1,
         zmid: 0,
       } as Plotly.Data] : []);
       return;
