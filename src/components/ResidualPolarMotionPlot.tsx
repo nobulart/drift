@@ -6,6 +6,8 @@ import { useTimeStore } from '@/store/timeStore';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
+import { getPlotPointDate } from '@/lib/chartMarkers';
+import { useStore } from '@/store/useStore';
 
 interface ResidualPolarMotionPlotProps {
   xpData: number[];
@@ -217,6 +219,9 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
     : fallbackHeight;
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
   const chartTitle = useChartTitle('Residual Polar Motion Phase Space (XY)', dates);
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const addChartMarker = useStore((state) => state.addChartMarker);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -334,8 +339,45 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
       });
     }
 
+    const markerPoints = chartMarkers
+      .map((marker) => {
+        const point = visiblePoints.reduce<ResidualPoint | null>((nearest, candidate) => {
+          const markerTime = new Date(`${marker.date}T00:00:00Z`).getTime();
+          const candidateTime = new Date(`${candidate.date}T00:00:00Z`).getTime();
+          if (!Number.isFinite(markerTime) || !Number.isFinite(candidateTime)) {
+            return nearest;
+          }
+
+          if (!nearest) {
+            return candidate;
+          }
+
+          const nearestTime = new Date(`${nearest.date}T00:00:00Z`).getTime();
+          return Math.abs(candidateTime - markerTime) < Math.abs(nearestTime - markerTime)
+            ? candidate
+            : nearest;
+        }, null);
+
+        return point ? { marker, point } : null;
+      })
+      .filter((entry): entry is { marker: typeof chartMarkers[number]; point: ResidualPoint } => entry !== null);
+
+    if (markerPoints.length > 0) {
+      data.push({
+        x: markerPoints.map(({ point }) => point.y),
+        y: markerPoints.map(({ point }) => point.x),
+        text: markerPoints.map(({ marker }) => marker.emoji),
+        customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.x, point.y]),
+        mode: 'text',
+        type: 'scatter',
+        name: 'Markers',
+        textfont: { size: 22 },
+        hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+      });
+    }
+
     return data;
-  }, [residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
+  }, [chartMarkers, residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
 
   const maxExtent = useMemo(() => {
     const extents = visiblePoints.flatMap((point) => [Math.abs(point.x), Math.abs(point.y)]);
@@ -349,6 +391,12 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
       </div>
     );
   }
+
+  const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
+    if (!markerPlacementEnabled) return;
+    const date = getPlotPointDate(event);
+    if (date) addChartMarker(date);
+  };
 
   return (
     <div ref={containerRef} className="h-full w-full min-w-0">
@@ -392,6 +440,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
         config={createCsvExportConfig('residual-polar-motion-xy.csv', { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' })}
         style={{ width: '100%', height: `${plotSize}px` }}
         useResizeHandler
+        onClick={handleClick}
       />
     </div>
   );

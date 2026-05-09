@@ -7,6 +7,8 @@ import { PanelFullscreenContext } from '@/components/LayoutPanel';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
+import { getPlotPointDate } from '@/lib/chartMarkers';
+import { useStore } from '@/store/useStore';
 
 interface PolarMotionTrajectoryPlotProps {
   xpData: number[];
@@ -65,6 +67,9 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
     : (containerSize.width || fallbackHeight);
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
   const chartTitle = useChartTitle('Polar Motion Trajectory', dates);
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const addChartMarker = useStore((state) => state.addChartMarker);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -122,7 +127,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       y: visiblePoints.map((point) => point.xPole),
       customdata: visiblePoints.map((point) => [point.date, point.xPole, point.yPole]),
       mode: 'lines+markers',
-      type: 'scattergl',
+      type: 'scatter',
       name: 'Polar motion path',
       line: { color: 'rgba(96, 165, 250, 0.45)', width: 1.4 },
       marker: {
@@ -141,18 +146,15 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
     };
     const turningPoints = visiblePoints.filter((point) => turningPointIndices.has(point.index));
 
-    if (turningPoints.length === 0) {
-      return [pathTrace] as Plotly.Data[];
-    }
+    const data: Plotly.Data[] = [pathTrace];
 
-    return [
-      pathTrace,
-      {
+    if (turningPoints.length > 0) {
+      data.push({
         x: turningPoints.map((point) => point.yPole),
         y: turningPoints.map((point) => point.xPole),
         customdata: turningPoints.map((point) => [point.date, point.xPole, point.yPole]),
         mode: 'markers',
-        type: 'scattergl',
+        type: 'scatter',
         name: 'Turning points',
         marker: {
           size: 8,
@@ -161,9 +163,48 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
           line: { color: '#fee2e2', width: 1 },
         },
         hovertemplate: 'Turning point %{customdata[0]}<br>x pole (Greenwich/up) %{customdata[1]:.1f} mas<br>y pole (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
-      },
-    ] as Plotly.Data[];
-  }, [turningPointIndices, visiblePoints]);
+      });
+    }
+
+    const markerPoints = chartMarkers
+      .map((marker) => {
+        const point = visiblePoints.reduce<TrajectoryPoint | null>((nearest, candidate) => {
+          const markerTime = new Date(`${marker.date}T00:00:00Z`).getTime();
+          const candidateTime = new Date(`${candidate.date}T00:00:00Z`).getTime();
+          if (!Number.isFinite(markerTime) || !Number.isFinite(candidateTime)) {
+            return nearest;
+          }
+
+          if (!nearest) {
+            return candidate;
+          }
+
+          const nearestTime = new Date(`${nearest.date}T00:00:00Z`).getTime();
+          return Math.abs(candidateTime - markerTime) < Math.abs(nearestTime - markerTime)
+            ? candidate
+            : nearest;
+        }, null);
+
+        return point ? { marker, point } : null;
+      })
+      .filter((entry): entry is { marker: typeof chartMarkers[number]; point: TrajectoryPoint } => entry !== null);
+
+    if (markerPoints.length > 0) {
+      data.push({
+        x: markerPoints.map(({ point }) => point.yPole),
+        y: markerPoints.map(({ point }) => point.xPole),
+        text: markerPoints.map(({ marker }) => marker.emoji),
+        customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.xPole, point.yPole]),
+        mode: 'text',
+        type: 'scatter',
+        name: 'Markers',
+        textfont: { size: 22 },
+        hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+      });
+    }
+
+    return data;
+  }, [chartMarkers, turningPointIndices, visiblePoints]);
 
   const axisRanges = useMemo(() => {
     if (visiblePoints.length === 0) {
@@ -193,6 +234,12 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       </div>
     );
   }
+
+  const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
+    if (!markerPlacementEnabled) return;
+    const date = getPlotPointDate(event);
+    if (date) addChartMarker(date);
+  };
 
   return (
     <div ref={containerRef} className="h-full w-full min-w-0">
@@ -229,6 +276,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
         config={createCsvExportConfig('polar-motion-trajectory.csv', { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' })}
         style={{ width: '100%', height: `${plotSize}px` }}
         useResizeHandler
+        onClick={handleClick}
       />
     </div>
   );

@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from 'react';
+import type { MouseEvent } from 'react';
 import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
+import { useStore } from '@/store/useStore';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
 
 interface OrthogonalDeviationPlotProps {
   dates: string[];
@@ -80,6 +83,10 @@ export default function OrthogonalDeviationPlot({
   const [rollingMean, setRollingMean] = useState<number[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
   const chartTitle = useChartTitle('R(t): Orthogonal Deviation Ratio', dates);
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const addChartMarker = useStore((state) => state.addChartMarker);
+  const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
 
   useEffect(() => {
     if (rRatio.length === 0) {
@@ -199,10 +206,14 @@ export default function OrthogonalDeviationPlot({
 
   const axisRange = timeLockEnabled && timeRange
     ? [new Date(timeRange[0]), new Date(timeRange[1])]
+    : dates.length > 0
+      ? [new Date(dates[0]), new Date(dates[dates.length - 1])]
     : undefined;
+  const markerLayout = buildMarkerLayout(chartMarkers, layout);
 
   const layoutWithRange = {
     ...layout,
+    ...markerLayout,
     uirevision: axisRange
       ? `${axisRange[0].toISOString()}-${axisRange[1].toISOString()}`
       : 'ortho-free-zoom',
@@ -210,6 +221,20 @@ export default function OrthogonalDeviationPlot({
       ...layout.xaxis,
       range: axisRange
     }
+  };
+
+  const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
+    if (!markerPlacementEnabled) return;
+    const date = getPlotClickDate(event);
+    if (date) addChartMarker(date);
+  };
+
+  const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    const range = layoutWithRange.xaxis?.range as Array<Date | string | number> | undefined;
+    const date = getContextMenuDate(event, range);
+    if (!date) return;
+    event.preventDefault();
+    deleteNearestChartMarker(date, getMarkerDeleteToleranceDays(range));
   };
 
   if (traces.length === 0) {
@@ -221,11 +246,12 @@ export default function OrthogonalDeviationPlot({
   }
 
   return (
-    <div className="h-full w-full min-w-0">
+    <div className="h-full w-full min-w-0" onContextMenu={handleContextMenu}>
       <Plot
         data={traces}
         layout={layoutWithRange}
         onRelayout={handleRelayout}
+        onClick={handleClick}
         config={createCsvExportConfig('orthogonal-deviation.csv', { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' })}
         style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler

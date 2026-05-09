@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 import Plot from 'react-plotly.js';
 import { loadEphemerisData } from '@/lib/dataLoader';
 import {
@@ -24,6 +25,7 @@ import {
   writeOverlayPlotMode,
   writeOverlaySignals,
 } from '@/lib/overlayPreferences';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
 
 interface CoreSignalConfig {
   label: string;
@@ -311,6 +313,10 @@ export default function OverlayPlot() {
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
   const data = useStore(state => state.data);
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const addChartMarker = useStore((state) => state.addChartMarker);
+  const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const observationRange = useMemo<[string, string] | null>(() => {
     if (data.length === 0) {
@@ -546,32 +552,9 @@ export default function OverlayPlot() {
 
   const nowIso = useMemo(() => new Date().toISOString(), []);
 
-  const overlayLayout = useMemo(() => ({
-    title: chartTitle as any,
-    template: 'plotly_dark',
-    xaxis: {
-      title: { text: 'Date', standoff: 20 },
-      type: 'date' as const,
-      gridcolor: '#374151',
-      zerolinecolor: '#4b5563',
-      ...(visibleXRange ? { range: visibleXRange } : {}),
-    },
-    yaxis: {
-      title: { text: isHeatmapMode ? 'Selected Data' : 'Normalized Value (z-score)', standoff: 20 },
-      type: isHeatmapMode ? 'category' as const : 'linear' as const,
-      gridcolor: '#374151',
-      zerolinecolor: '#4b5563',
-      ...(isHeatmapMode ? { automargin: true } : {}),
-    },
-    legend: {
-      orientation: 'h' as const,
-      yanchor: 'top' as const,
-      y: -0.2,
-      xanchor: 'center' as const,
-      x: 0.5,
-    },
-    showscale: isHeatmapMode,
-    shapes: [
+  const overlayLayout = useMemo(() => {
+    const markerLayout = buildMarkerLayout(chartMarkers, {
+      shapes: [
       {
         type: 'line' as const,
         xref: 'x' as const,
@@ -582,8 +565,8 @@ export default function OverlayPlot() {
         y1: 1,
         line: { color: '#f59e0b', width: 2, dash: 'dash' as const },
       },
-    ],
-    annotations: [
+      ],
+      annotations: [
       {
         x: nowIso,
         y: 1,
@@ -595,14 +578,43 @@ export default function OverlayPlot() {
         yanchor: 'bottom' as const,
         font: { color: '#fbbf24', size: 11 },
       },
-    ],
-    margin: { l: isHeatmapMode ? 140 : 60, r: isHeatmapMode ? 70 : 20, t: 78, b: 60 },
-    plot_bgcolor: '#111827',
-    paper_bgcolor: '#0b1220',
-    font: { color: '#e5e7eb' },
-    height: plotHeight,
-    autosize: true,
-  }), [chartTitle, isHeatmapMode, nowIso, plotHeight, visibleXRange]);
+      ],
+    });
+
+    return {
+      title: chartTitle as any,
+      template: 'plotly_dark',
+      xaxis: {
+        title: { text: 'Date', standoff: 20 },
+        type: 'date' as const,
+        gridcolor: '#374151',
+        zerolinecolor: '#4b5563',
+        ...(visibleXRange ? { range: visibleXRange } : {}),
+      },
+      yaxis: {
+        title: { text: isHeatmapMode ? 'Selected Data' : 'Normalized Value (z-score)', standoff: 20 },
+        type: isHeatmapMode ? 'category' as const : 'linear' as const,
+        gridcolor: '#374151',
+        zerolinecolor: '#4b5563',
+        ...(isHeatmapMode ? { automargin: true } : {}),
+      },
+      legend: {
+        orientation: 'h' as const,
+        yanchor: 'top' as const,
+        y: -0.2,
+        xanchor: 'center' as const,
+        x: 0.5,
+      },
+      showscale: isHeatmapMode,
+      ...markerLayout,
+      margin: { l: isHeatmapMode ? 140 : 60, r: isHeatmapMode ? 70 : 20, t: 78, b: 60 },
+      plot_bgcolor: '#111827',
+      paper_bgcolor: '#0b1220',
+      font: { color: '#e5e7eb' },
+      height: plotHeight,
+      autosize: true,
+    };
+  }, [chartMarkers, chartTitle, isHeatmapMode, nowIso, plotHeight, visibleXRange]);
 
   const overlayCsvConfig = useMemo(() => createCsvExportConfig(
     'overlay-plot.csv',
@@ -620,6 +632,20 @@ export default function OverlayPlot() {
     isInternalUpdate.current = true;
     setTimeRange(range);
     setTimeout(() => { isInternalUpdate.current = false; }, 0);
+  };
+
+  const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
+    if (!markerPlacementEnabled) return;
+    const date = getPlotClickDate(event);
+    if (date) addChartMarker(date);
+  };
+
+  const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    const range = overlayLayout.xaxis?.range as Array<Date | string | number> | undefined;
+    const date = getContextMenuDate(event, range);
+    if (!date) return;
+    event.preventDefault();
+    deleteNearestChartMarker(date, getMarkerDeleteToleranceDays(range));
   };
 
   const toggleSignal = (signalKey: string) => {
@@ -672,7 +698,7 @@ export default function OverlayPlot() {
 
       </div>
 
-      <div className="w-full min-w-0">
+      <div className="w-full min-w-0" onContextMenu={handleContextMenu}>
         <Plot
           key={`overlay-plot-${plotMode}`}
           data={traces}
@@ -686,6 +712,7 @@ export default function OverlayPlot() {
           style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
           onRelayout={handleRelayout}
+          onClick={handleClick}
         />
       </div>
 

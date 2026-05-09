@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useRef } from 'react';
+import type { MouseEvent } from 'react';
 import Plot from 'react-plotly.js';
 import { useTimeStore } from '@/store/timeStore';
 import { extractPlotlyDateRange } from '@/lib/timeRange';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
+import { useStore } from '@/store/useStore';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
 
 interface LoopCenterAngularVelocityPlotProps {
   xpData: number[];
@@ -446,6 +449,10 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
   const plotHeight = usePlotDisplayHeight(500, 860);
   const velocity = useMemo(() => computeAngularVelocity(xpData, ypData, dates), [dates, xpData, ypData]);
   const chartTitle = useChartTitle('Angular Velocity of Loop-Center Evolution', dates);
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const addChartMarker = useStore((state) => state.addChartMarker);
+  const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
 
   const handleRelayout = (event: any) => {
     if (isInternalUpdate.current || !timeLockEnabled) return;
@@ -459,9 +466,14 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
   const layout = useMemo(() => {
     const axisRange = timeLockEnabled && timeRange
       ? [new Date(timeRange[0]), new Date(timeRange[1])]
+      : dates.length > 0
+        ? [new Date(dates[0]), new Date(dates[dates.length - 1])]
       : undefined;
 
+    const markerLayout = buildMarkerLayout(chartMarkers);
+
     return {
+      ...markerLayout,
       title: chartTitle as any,
       xaxis: {
         title: { text: 'Year', standoff: 20 },
@@ -494,7 +506,21 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
         ? `${axisRange[0].toISOString()}-${axisRange[1].toISOString()}`
         : 'loop-center-angular-velocity-free-zoom',
     };
-  }, [chartTitle, plotHeight, timeLockEnabled, timeRange, velocity.yRange]);
+  }, [chartMarkers, chartTitle, dates, plotHeight, timeLockEnabled, timeRange, velocity.yRange]);
+
+  const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
+    if (!markerPlacementEnabled) return;
+    const date = getPlotClickDate(event);
+    if (date) addChartMarker(date);
+  };
+
+  const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    const range = layout.xaxis?.range as Array<Date | string | number> | undefined;
+    const date = getContextMenuDate(event, range);
+    if (!date) return;
+    event.preventDefault();
+    deleteNearestChartMarker(date, getMarkerDeleteToleranceDays(range));
+  };
 
   if (velocity.traces.length === 0) {
     return (
@@ -505,11 +531,12 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
   }
 
   return (
-    <div className="h-full w-full min-w-0">
+    <div className="h-full w-full min-w-0" onContextMenu={handleContextMenu}>
       <Plot
         data={velocity.traces}
         layout={layout}
         onRelayout={handleRelayout}
+        onClick={handleClick}
         config={createCsvExportConfig('loop-center-angular-velocity.csv', { displayModeBar: true, responsive: true, scrollZoom: true, doubleClick: 'reset+autosize' })}
         style={{ width: '100%', height: `${plotHeight}px` }}
         useResizeHandler

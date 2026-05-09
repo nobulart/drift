@@ -6,9 +6,17 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.5.6`
+Current release: `v1.5.7`
 
 ## Release Notes
+
+### v1.5.7
+
+- Added sidebar-managed emoji chart markers with the penguin marker as the default.
+- Persisted markers across sessions until dashboard defaults are reset.
+- Synchronized marker dates across timeline plots and added right-click deletion near existing markers.
+- Added icon-only markers to the Phase Portrait, Residual Polar Motion (XY), and Polar Motion Trajectory path charts.
+- Added marker editing controls to fullscreen chart popups.
 
 ### v1.5.6
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useEffect, useRef, useState } from 'react';
+import ChartMarkerControls from '@/components/ChartMarkerControls';
+import { useStore } from '@/store/useStore';
 
 export const PanelFullscreenContext = createContext(false);
 
@@ -36,6 +38,7 @@ export default function Panel({
   fullscreenAspect = 'wide'
 }: PanelProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const data = useStore((state) => state.data);
   const panelRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [shouldRenderContent, setShouldRenderContent] = useState(false);
@@ -103,6 +106,8 @@ export default function Panel({
         height: 'min(90vw, 90vh)',
       }
     : {};
+  const minDate = data[0]?.t?.slice(0, 10);
+  const maxDate = data[data.length - 1]?.t?.slice(0, 10);
 
   useEffect(() => {
     if (!shouldRenderContent || effectiveCollapsed || typeof window === 'undefined') {
@@ -221,6 +226,17 @@ export default function Panel({
             <span className={`mr-2 font-semibold uppercase tracking-[0.18em] ${experimental ? 'text-[#38bdf8]' : 'text-[#60a5fa]'}`}>Guide</span>
             {guide}
           </div>
+        )}
+
+        {isModalOpen && minDate && maxDate && (
+          <details className="mb-4 rounded-lg border border-[#374151] bg-[#0b1220]/80 p-3 text-sm">
+            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-[#9ca3af]">
+              Markers
+            </summary>
+            <div className="mt-3">
+              <ChartMarkerControls minDate={minDate} maxDate={maxDate} compact />
+            </div>
+          </details>
         )}
         
         <div ref={contentRef} className={`flex-1 min-h-0 ${isModalOpen ? 'overflow-auto' : 'overflow-hidden'} ${effectiveCollapsed ? 'hidden' : ''}`}>

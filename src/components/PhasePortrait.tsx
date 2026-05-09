@@ -6,6 +6,8 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
+import { findNearestDateIndex, getPlotPointDate } from '@/lib/chartMarkers';
+import { useStore } from '@/store/useStore';
 
 interface PhasePortraitProps {
   dates: string[];
@@ -25,6 +27,9 @@ export default function PhasePortrait({
   const [containerWidth, setContainerWidth] = useState(0);
   const plotSize = Math.round(containerWidth > 0 ? Math.min(containerWidth, fallbackHeight) : fallbackHeight);
   const chartTitle = useChartTitle('Phase Portrait: theta vs omega', dates);
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const addChartMarker = useStore((state) => state.addChartMarker);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -137,8 +142,33 @@ export default function PhasePortrait({
       }
     }
 
+    const markerPoints = chartMarkers
+      .map((marker) => {
+        const index = findNearestDateIndex(dates, marker.date);
+        if (index < 0 || !Number.isFinite(theta[index]) || !Number.isFinite(displayOmega[index])) {
+          return null;
+        }
+
+        return { marker, index };
+      })
+      .filter((entry): entry is { marker: typeof chartMarkers[number]; index: number } => entry !== null);
+
+    if (markerPoints.length > 0) {
+      data.push({
+        x: markerPoints.map(({ index }) => theta[index]),
+        y: markerPoints.map(({ index }) => displayOmega[index]),
+        text: markerPoints.map(({ marker }) => marker.emoji),
+        customdata: markerPoints.map(({ marker, index }) => [marker.label || marker.date, dates[index]]),
+        mode: 'text',
+        type: 'scatter',
+        name: 'Markers',
+        textfont: { size: 22 },
+        hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>',
+      });
+    }
+
     return data;
-  }, [dates, omega, theta, turningPoints]);
+  }, [chartMarkers, dates, omega, theta, turningPoints]);
 
   const layout = {
     title: chartTitle as any,
@@ -176,6 +206,12 @@ export default function PhasePortrait({
     );
   }
 
+  const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
+    if (!markerPlacementEnabled) return;
+    const date = getPlotPointDate(event);
+    if (date) addChartMarker(date);
+  };
+
   return (
     <div ref={containerRef} className="h-full w-full min-w-0">
       <Plot
@@ -184,6 +220,7 @@ export default function PhasePortrait({
         config={createCsvExportConfig('phase-portrait.csv', { displayModeBar: true, responsive: true })}
         style={{ width: '100%', height: `${plotSize}px` }}
         useResizeHandler
+        onClick={handleClick}
       />
     </div>
   );

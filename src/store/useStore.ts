@@ -8,6 +8,13 @@ import { computeLagModel } from '@/lib/lagModel';
 import { DEFAULT_PANEL_ORDER } from '@/lib/panels';
 import { DEFAULT_EOP_DATASET_ID, EOPDatasetId, getEOPDataset } from '@/lib/eopDatasets';
 
+export interface ChartMarker {
+  id: string;
+  date: string;
+  emoji: string;
+  label?: string;
+}
+
 const DEFAULT_BASIS = {
   e1: [1, 0, 0] as [number, number, number],
   e2: [0, 1, 0] as [number, number, number],
@@ -94,6 +101,9 @@ interface AppState {
   panelOrder: string[];
   lastUpdated: string | null;
   eopDataset: EOPDatasetId;
+  chartMarkers: ChartMarker[];
+  selectedMarkerEmoji: string;
+  markerPlacementEnabled: boolean;
 
   setData: (data: TimeSample[]) => void;
   setFrame: (frame: 'earth' | 'principal') => void;
@@ -112,10 +122,19 @@ interface AppState {
   resetPanelPreferences: () => void;
   refetchData: () => Promise<void>;
   setEOPDataset: (dataset: EOPDatasetId) => Promise<void>;
+  addChartMarker: (date: string, emoji?: string) => void;
+  updateChartMarker: (id: string, updates: Partial<Pick<ChartMarker, 'date' | 'emoji' | 'label'>>) => void;
+  deleteChartMarker: (id: string) => void;
+  deleteNearestChartMarker: (date: string, maxDistanceDays?: number) => void;
+  clearChartMarkers: () => void;
+  setSelectedMarkerEmoji: (emoji: string) => void;
+  setMarkerPlacementEnabled: (enabled: boolean) => void;
 }
 
 const PANEL_PREFERENCES_STORAGE_KEY = 'drift-panel-preferences-v1';
 const EOP_DATASET_STORAGE_KEY = 'drift-eop-dataset-v1';
+const CHART_MARKERS_STORAGE_KEY = 'drift-chart-markers-v1';
+const DEFAULT_MARKER_EMOJI = '🐧';
 const DEFAULT_VISIBLE_PANELS = new Set<string>();
 const KNOWN_PANEL_IDS = new Set<string>(DEFAULT_PANEL_ORDER);
 
@@ -231,8 +250,99 @@ function writeStoredEOPDataset(dataset: EOPDatasetId) {
   }
 }
 
+function normalizeMarkerDate(date: string): string | null {
+  const parsed = new Date(date);
+  if (!Number.isFinite(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
+function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled'> {
+  if (typeof window === 'undefined') {
+    return {
+      chartMarkers: [],
+      selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
+      markerPlacementEnabled: false,
+    };
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(CHART_MARKERS_STORAGE_KEY);
+    if (!storedValue) {
+      return {
+        chartMarkers: [],
+        selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
+        markerPlacementEnabled: false,
+      };
+    }
+
+    const parsed = JSON.parse(storedValue) as {
+      chartMarkers?: unknown;
+      selectedMarkerEmoji?: unknown;
+      markerPlacementEnabled?: unknown;
+    };
+
+    const chartMarkers = Array.isArray(parsed.chartMarkers)
+      ? parsed.chartMarkers.flatMap((marker): ChartMarker[] => {
+          if (!marker || typeof marker !== 'object') {
+            return [];
+          }
+
+          const candidate = marker as Partial<ChartMarker>;
+          const date = typeof candidate.date === 'string' ? normalizeMarkerDate(candidate.date) : null;
+          if (!date || typeof candidate.id !== 'string') {
+            return [];
+          }
+
+          return [{
+            id: candidate.id,
+            date,
+            emoji: typeof candidate.emoji === 'string' && candidate.emoji.trim() ? candidate.emoji : DEFAULT_MARKER_EMOJI,
+            label: typeof candidate.label === 'string' ? candidate.label : undefined,
+          }];
+        })
+      : [];
+
+    return {
+      chartMarkers,
+      selectedMarkerEmoji: typeof parsed.selectedMarkerEmoji === 'string' && parsed.selectedMarkerEmoji.trim()
+        ? parsed.selectedMarkerEmoji
+        : DEFAULT_MARKER_EMOJI,
+      markerPlacementEnabled: parsed.markerPlacementEnabled === true,
+    };
+  } catch {
+    return {
+      chartMarkers: [],
+      selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
+      markerPlacementEnabled: false,
+    };
+  }
+}
+
+function writeStoredChartMarkers({
+  chartMarkers,
+  selectedMarkerEmoji,
+  markerPlacementEnabled,
+}: Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled'>) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      CHART_MARKERS_STORAGE_KEY,
+      JSON.stringify({ chartMarkers, selectedMarkerEmoji, markerPlacementEnabled })
+    );
+  } catch {
+    // Ignore storage failures; marker controls still work for the current session.
+  }
+}
+
 const initialPanelPreferences = readPanelPreferences();
 const initialEOPDataset = readStoredEOPDataset();
+const initialChartMarkerState = readStoredChartMarkers();
 let rollingStatsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let rollingStatsRequestId = 0;
 let rollingStatsAbortController: AbortController | null = null;
@@ -256,6 +366,9 @@ const useStore = create<AppState>((set, get) => ({
   panelOrder: initialPanelPreferences?.panelOrder ?? [...DEFAULT_PANEL_ORDER],
   lastUpdated: null,
   eopDataset: initialEOPDataset,
+  chartMarkers: initialChartMarkerState.chartMarkers,
+  selectedMarkerEmoji: initialChartMarkerState.selectedMarkerEmoji,
+  markerPlacementEnabled: initialChartMarkerState.markerPlacementEnabled,
   setData: (data) => {
     const transformedData = data.map(item => {
       const pos: [number, number, number] = [item.xp, item.yp, 0];
@@ -346,6 +459,86 @@ const useStore = create<AppState>((set, get) => ({
   setRollingStats: (stats) => set({ rollingStats: stats }),
   setTurnThreshold: (threshold) => set({ turnThreshold: threshold }),
   setCurrentAlignment: (alignment) => set({ alignment }),
+  addChartMarker: (date, emoji) => {
+    const normalizedDate = normalizeMarkerDate(date);
+    if (!normalizedDate) {
+      return;
+    }
+
+    const { chartMarkers, selectedMarkerEmoji } = get();
+    const existingMarker = chartMarkers.find((marker) => marker.date === normalizedDate);
+    const nextEmoji = emoji || selectedMarkerEmoji || DEFAULT_MARKER_EMOJI;
+    const nextMarkers = existingMarker
+      ? chartMarkers.map((marker) => marker.id === existingMarker.id ? { ...marker, emoji: nextEmoji } : marker)
+      : [
+          ...chartMarkers,
+          {
+            id: `${normalizedDate}-${Date.now().toString(36)}`,
+            date: normalizedDate,
+            emoji: nextEmoji,
+          },
+        ].sort((a, b) => a.date.localeCompare(b.date));
+
+    set({ chartMarkers: nextMarkers });
+    writeStoredChartMarkers(get());
+  },
+  updateChartMarker: (id, updates) => {
+    const { chartMarkers } = get();
+    const nextMarkers = chartMarkers
+      .map((marker) => {
+        if (marker.id !== id) {
+          return marker;
+        }
+
+        const normalizedDate = updates.date ? normalizeMarkerDate(updates.date) : marker.date;
+        return {
+          ...marker,
+          ...updates,
+          date: normalizedDate || marker.date,
+          emoji: updates.emoji?.trim() || marker.emoji,
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    set({ chartMarkers: nextMarkers });
+    writeStoredChartMarkers(get());
+  },
+  deleteChartMarker: (id) => {
+    set({ chartMarkers: get().chartMarkers.filter((marker) => marker.id !== id) });
+    writeStoredChartMarkers(get());
+  },
+  deleteNearestChartMarker: (date, maxDistanceDays = 14) => {
+    const targetTime = new Date(date).getTime();
+    if (!Number.isFinite(targetTime)) {
+      return;
+    }
+
+    const nearest = get().chartMarkers
+      .map((marker) => ({
+        marker,
+        distanceDays: Math.abs(new Date(`${marker.date}T00:00:00Z`).getTime() - targetTime) / 86400000,
+      }))
+      .sort((a, b) => a.distanceDays - b.distanceDays)[0];
+
+    if (!nearest || nearest.distanceDays > maxDistanceDays) {
+      return;
+    }
+
+    set({ chartMarkers: get().chartMarkers.filter((marker) => marker.id !== nearest.marker.id) });
+    writeStoredChartMarkers(get());
+  },
+  clearChartMarkers: () => {
+    set({ chartMarkers: [] });
+    writeStoredChartMarkers(get());
+  },
+  setSelectedMarkerEmoji: (emoji) => {
+    set({ selectedMarkerEmoji: emoji.trim() || DEFAULT_MARKER_EMOJI });
+    writeStoredChartMarkers(get());
+  },
+  setMarkerPlacementEnabled: (enabled) => {
+    set({ markerPlacementEnabled: enabled });
+    writeStoredChartMarkers(get());
+  },
 
   computeDrift: () => {
     const { data, windowSize, frame } = get();

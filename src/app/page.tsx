@@ -145,6 +145,7 @@ export default function Home() {
     panelOrder,
     movePanel,
     resetPanelPreferences,
+    clearChartMarkers,
   } = useStore();
   const data = useStore((state) => state.data as TimeSample[]);
   const [showDrift, setShowDrift] = useState(true);
@@ -499,7 +500,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                 Version v1.5.6
+                 Version v1.5.7
               </p>
             </div>
             <Link
@@ -539,6 +540,7 @@ export default function Home() {
                    <button
                      onClick={() => {
                        resetPanelPreferences();
+                       clearChartMarkers();
                        resetOverlayPreferences();
                      }}
                      className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"

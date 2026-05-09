@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { useTimeStore } from '@/store/timeStore';
 import { EOP_DATASETS, EOPDatasetId, getEOPDataset } from '@/lib/eopDatasets';
+import ChartMarkerControls from '@/components/ChartMarkerControls';
 
 interface ControlsProps {
   windowSize: number;
@@ -72,6 +73,7 @@ export default function Controls({
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [sectionOpen, setSectionOpen] = useState({
     currentState: true,
+    markers: true,
     dataSettings: true,
     dateRange: true,
   });
@@ -247,6 +249,10 @@ export default function Controls({
             <p className="mt-1 text-sm font-semibold text-white">{maxDate}</p>
           </div>
         </div>
+      </SidebarSection>
+
+      <SidebarSection title="Markers" open={sectionOpen.markers} onToggle={() => toggleSection('markers')}>
+        <ChartMarkerControls minDate={minDate} maxDate={maxDate} />
       </SidebarSection>
 
       <SidebarSection title="Data Settings" open={sectionOpen.dataSettings} onToggle={() => toggleSection('dataSettings')}>

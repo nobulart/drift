@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import Plot from 'react-plotly.js';
 import { useStore } from '@/store/useStore';
+import ChartMarkerControls from '@/components/ChartMarkerControls';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { useChartTitle } from '@/lib/chartTitles';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
 import {
   DEFAULT_PHASE_ESCAPE_MODELS,
   PhaseEscapeCompositeKey,
@@ -197,6 +200,13 @@ export default function PhaseEscapeModelPanel() {
   const windowSize = useStore(state => state.windowSize);
   const turnThreshold = useStore(state => state.turnThreshold);
   const eopDataset = useStore(state => state.eopDataset);
+  const data = useStore((state) => state.data);
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const addChartMarker = useStore((state) => state.addChartMarker);
+  const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
+  const minDate = data[0]?.t?.slice(0, 10);
+  const maxDate = data[data.length - 1]?.t?.slice(0, 10);
 
   useEffect(() => {
     let active = true;
@@ -661,60 +671,9 @@ export default function PhaseEscapeModelPanel() {
     autosize: true,
   }), [curveTitle, plotHeight]);
 
-  const timeSeriesLayout = useMemo(() => ({
-    title: timeSeriesTitle as any,
-    template: 'plotly_dark',
-    xaxis: {
-      title: { text: 'Date' },
-      gridcolor: '#374151',
-      domain: [0.07, 0.90],
-      range: recentFirstDate && recentLastDate ? [recentFirstDate, recentLastDate] : undefined,
-      autorange: false,
-      constrain: 'domain',
-    },
-    yaxis: { title: { text: 'R(t) / Escape probability' }, gridcolor: '#374151', side: 'left', range: [0, 1] },
-    yaxis2: {
-      title: { text: 'Phi (deg)', font: { color: '#c084fc', size: 11 }, standoff: 2 },
-      tickfont: { color: '#c084fc', size: 10 },
-      overlaying: 'y',
-      side: 'right',
-      anchor: 'free',
-      position: 0.91,
-      range: [-180, 180],
-      showgrid: false,
-      zeroline: false,
-    },
-    yaxis3: {
-      title: { text: 'Accel', font: { color: '#facc15', size: 11 }, standoff: 2 },
-      tickfont: { color: '#facc15', size: 10 },
-      overlaying: 'y',
-      side: 'left',
-      anchor: 'free',
-      position: 0,
-      showgrid: false,
-      zeroline: false,
-    },
-    yaxis4: {
-      title: { text: 'Energy', font: { color: '#2dd4bf', size: 11 }, standoff: 2 },
-      tickfont: { color: '#2dd4bf', size: 10 },
-      overlaying: 'y',
-      side: 'right',
-      anchor: 'free',
-      position: 0.955,
-      showgrid: false,
-      zeroline: false,
-    },
-    yaxis5: {
-      title: { text: 'Barrier', font: { color: '#f472b6', size: 11 }, standoff: 2 },
-      tickfont: { color: '#f472b6', size: 10 },
-      overlaying: 'y',
-      side: 'right',
-      anchor: 'free',
-      position: 1,
-      showgrid: false,
-      zeroline: false,
-    },
-    shapes: basinOverlayStartDate && basinOverlayEndDate ? [
+  const timeSeriesLayout = useMemo(() => {
+    const markerLayout = buildMarkerLayout(chartMarkers, {
+      shapes: basinOverlayStartDate && basinOverlayEndDate ? [
       {
         type: 'rect',
         xref: 'x',
@@ -727,8 +686,8 @@ export default function PhaseEscapeModelPanel() {
         line: { width: 0 },
         layer: 'below',
       },
-    ] : [],
-    annotations: basinOverlayStartDate && basinOverlayEndDate ? [
+      ] : [],
+      annotations: basinOverlayStartDate && basinOverlayEndDate ? [
       {
         x: basinOverlayStartDate,
         y: 1,
@@ -740,15 +699,86 @@ export default function PhaseEscapeModelPanel() {
         yanchor: 'bottom',
         font: { color: '#93c5fd', size: 10 },
       },
-    ] : [],
-    legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
-    margin: { l: 92, r: 112, t: 78, b: 70 },
-    plot_bgcolor: '#111827',
-    paper_bgcolor: '#111827',
-    font: { color: '#e5e7eb' },
-    height: plotHeight,
-    autosize: true,
-  }), [basinOverlayEndDate, basinOverlayStartDate, plotHeight, recentFirstDate, recentLastDate, timeSeriesTitle]);
+      ] : [],
+    });
+
+    return {
+      title: timeSeriesTitle as any,
+      template: 'plotly_dark',
+      xaxis: {
+        title: { text: 'Date' },
+        gridcolor: '#374151',
+        domain: [0.07, 0.90],
+        range: recentFirstDate && recentLastDate ? [recentFirstDate, recentLastDate] : undefined,
+        autorange: false,
+        constrain: 'domain',
+      },
+      yaxis: { title: { text: 'R(t) / Escape probability' }, gridcolor: '#374151', side: 'left', range: [0, 1] },
+      yaxis2: {
+        title: { text: 'Phi (deg)', font: { color: '#c084fc', size: 11 }, standoff: 2 },
+        tickfont: { color: '#c084fc', size: 10 },
+        overlaying: 'y',
+        side: 'right',
+        anchor: 'free',
+        position: 0.91,
+        range: [-180, 180],
+        showgrid: false,
+        zeroline: false,
+      },
+      yaxis3: {
+        title: { text: 'Accel', font: { color: '#facc15', size: 11 }, standoff: 2 },
+        tickfont: { color: '#facc15', size: 10 },
+        overlaying: 'y',
+        side: 'left',
+        anchor: 'free',
+        position: 0,
+        showgrid: false,
+        zeroline: false,
+      },
+      yaxis4: {
+        title: { text: 'Energy', font: { color: '#2dd4bf', size: 11 }, standoff: 2 },
+        tickfont: { color: '#2dd4bf', size: 10 },
+        overlaying: 'y',
+        side: 'right',
+        anchor: 'free',
+        position: 0.955,
+        showgrid: false,
+        zeroline: false,
+      },
+      yaxis5: {
+        title: { text: 'Barrier', font: { color: '#f472b6', size: 11 }, standoff: 2 },
+        tickfont: { color: '#f472b6', size: 10 },
+        overlaying: 'y',
+        side: 'right',
+        anchor: 'free',
+        position: 1,
+        showgrid: false,
+        zeroline: false,
+      },
+      ...markerLayout,
+      legend: { orientation: 'h', y: -0.24, x: 0.5, xanchor: 'center' },
+      margin: { l: 92, r: 112, t: 78, b: 70 },
+      plot_bgcolor: '#111827',
+      paper_bgcolor: '#111827',
+      font: { color: '#e5e7eb' },
+      height: plotHeight,
+      autosize: true,
+    };
+  }, [basinOverlayEndDate, basinOverlayStartDate, chartMarkers, plotHeight, recentFirstDate, recentLastDate, timeSeriesTitle]);
+
+  const handleTimeSeriesClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
+    if (!markerPlacementEnabled) return;
+    const date = getPlotClickDate(event);
+    if (date) addChartMarker(date);
+  };
+
+  const handleTimeSeriesContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    const range = timeSeriesLayout.xaxis?.range as Array<Date | string | number> | undefined;
+    const date = getContextMenuDate(event, range);
+    if (!date) return;
+    event.preventDefault();
+    deleteNearestChartMarker(date, getMarkerDeleteToleranceDays(range));
+  };
 
   if (loading && !dataset) {
     return (
@@ -865,7 +895,7 @@ export default function PhaseEscapeModelPanel() {
       </div>
 
       <div className="mb-4 grid gap-4 xl:grid-cols-2">
-        <div className="min-w-0 rounded-lg border border-[#243041] bg-[#111827] p-3">
+        <div className="min-w-0 rounded-lg border border-[#243041] bg-[#111827] p-3" onContextMenu={handleTimeSeriesContextMenu}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
             <label className="inline-flex items-center gap-2 text-xs text-[#9ca3af]">
               <input
@@ -926,6 +956,7 @@ export default function PhaseEscapeModelPanel() {
             config={createCsvExportConfig('phase-escape-timeseries.csv', { displayModeBar: true, responsive: true })}
             style={{ width: '100%', height: `${plotHeight}px` }}
             useResizeHandler
+            onClick={handleTimeSeriesClick}
           />
         </div>
       </div>
@@ -983,7 +1014,17 @@ export default function PhaseEscapeModelPanel() {
                 </svg>
               </button>
             </div>
-            <div className="min-h-0 flex-1">
+            {minDate && maxDate && (
+              <details className="mb-3 rounded-lg border border-[#374151] bg-[#0b1220]/80 p-3 text-sm">
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-[#9ca3af]">
+                  Markers
+                </summary>
+                <div className="mt-3">
+                  <ChartMarkerControls minDate={minDate} maxDate={maxDate} compact />
+                </div>
+              </details>
+            )}
+            <div className="min-h-0 flex-1" onContextMenu={expandedChart === 'timeSeries' ? handleTimeSeriesContextMenu : undefined}>
               <Plot
                 data={expandedChart === 'curve' ? curveData : timeSeriesData}
                 layout={{
@@ -1000,6 +1041,7 @@ export default function PhaseEscapeModelPanel() {
                 )}
                 style={{ width: '100%', height: EXPANDED_CHART_HEIGHT }}
                 useResizeHandler
+                onClick={expandedChart === 'timeSeries' ? handleTimeSeriesClick : undefined}
               />
             </div>
           </div>
