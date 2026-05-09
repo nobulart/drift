@@ -478,7 +478,7 @@ export default function Home() {
       {showWelcomeModal && <WelcomeModal onAcknowledge={acknowledgeWelcomeModal} />}
       <div className={`bg-[#111827] border-r border-[#374151] flex flex-col h-full transition-all duration-300 overflow-hidden ${sidebarOpen && sidebarVisible ? 'w-[19.8rem] opacity-100' : 'w-0 opacity-0 border-none'}`}>
         <div className="p-6 border-b border-[#374151] bg-[#0b1220]/50 flex-shrink-0">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-end justify-between gap-3">
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="text-xl font-bold text-[#3b82f6]">
@@ -504,7 +504,7 @@ export default function Home() {
             </div>
             <Link
               href="/docs"
-              className="rounded-lg border border-[#374151] bg-[#111827] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#cbd5e1] transition-colors hover:border-[#60a5fa] hover:text-white"
+              className="mr-3 rounded-lg border border-[#374151] bg-[#111827] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#cbd5e1] transition-colors hover:border-[#60a5fa] hover:text-white"
             >
               Docs
             </Link>
