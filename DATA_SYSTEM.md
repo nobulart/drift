@@ -16,7 +16,7 @@ This document describes the automated data retrieval and integration system for 
   - `finals.all (IAU1980)`: default dashboard EOP backfill
   - `finals.all (IAU2000)`: alternate rapid EOP backfill
   - `EOP 20u24 C04 (IAU2000A)`: alternate combined C04 backfill
-  - `JPL EOP2`: JPL PMx/PMy EOP2 long series plus short rapid tail, converted from milliarcseconds to arcseconds
+  - `JPL EOP2`: JPL PMx/PMy EOP2 long series plus short rapid tail, converted from milliarcseconds to arcseconds; `TAI-UT1` is converted to dashboard `UT1-UTC`, and an LOD-equivalent is derived from the daily `TAI-UT1` slope
 - **Time Range**: 1962-present or 1973-present depending on selected product
 - **Resolution**: Daily
 - **License**: IERS Data Policy / JPL EOP2 upstream terms
@@ -97,7 +97,7 @@ Timestamp-aware retrieval script that:
 | `eop_historic.json` | EOP polar motion data, finals.all (IAU1980) | 19,000+ | Daily |
 | `eop_finals2000a_historic.json` | EOP polar motion data, finals.all (IAU2000) | 19,000+ | Weekly / rebuilt by pipeline |
 | `eop_c04_historic.json` | EOP polar motion data, EOP 20u24 C04 (IAU2000A) | 23,000+ | Rebuilt by pipeline |
-| `eop_jpl_eop2_historic.json` | EOP polar motion data, JPL EOP2 PMx/PMy converted to arcseconds | 23,000+ | Rebuilt by pipeline |
+| `eop_jpl_eop2_historic.json` | EOP polar motion data, JPL EOP2 PMx/PMy converted to arcseconds, plus `UT1-UTC` and derived LOD | 23,000+ | Rebuilt by pipeline |
 | `eop_latest.json` | Recent EOP data (last 30 days) | 30 | Daily |
 | `grace_historic.json` | GRACE LWE time series | 245 | Monthly |
 | `grace_latest.json` | Latest GRACE data | 245 | Monthly |

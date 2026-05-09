@@ -29,7 +29,7 @@ export const EOP_DATASETS = [
     shortLabel: 'JPL EOP2',
     filename: 'eop_jpl_eop2_historic.json',
     sourceUrl: 'https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long',
-    description: 'JPL Earth Orientation Parameter 2 PMx/PMy series, 1962 onward, with short-tail updates.',
+    description: 'JPL EOP2 PMx/PMy series, 1962 onward, with TAI-UT1 converted to UT1-UTC and LOD derived from TAI-UT1.',
   },
 ] as const;
 

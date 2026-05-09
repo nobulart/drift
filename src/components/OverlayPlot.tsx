@@ -16,9 +16,12 @@ import { useTimeStore } from '@/store/timeStore';
 import { useStore } from '@/store/useStore';
 import { useChartTitle } from '@/lib/chartTitles';
 import {
+  DEFAULT_OVERLAY_PLOT_MODE,
   DEFAULT_OVERLAY_SIGNALS,
   OVERLAY_SIGNAL_RESET_EVENT,
+  readOverlayPlotMode,
   readOverlaySignals,
+  writeOverlayPlotMode,
   writeOverlaySignals,
 } from '@/lib/overlayPreferences';
 
@@ -26,7 +29,7 @@ interface CoreSignalConfig {
   label: string;
 }
 
-const LINE_CHART_MODE = 'line';
+const LINE_CHART_MODE = DEFAULT_OVERLAY_PLOT_MODE;
 
 const HEATMAP_PALETTES = [
   { value: 'Viridis', label: 'Viridis' },
@@ -298,7 +301,7 @@ function getEphemerisTraceSeries(
 
 export default function OverlayPlot() {
   const [selectedSignals, setSelectedSignals] = useState<string[]>(readOverlaySignals);
-  const [plotMode, setPlotMode] = useState<string>(LINE_CHART_MODE);
+  const [plotMode, setPlotMode] = useState<string>(readOverlayPlotMode);
   const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});
   const [ephemerisRecords, setEphemerisRecords] = useState<EphemerisRecord[]>([]);
   const isInternalUpdate = useRef(false);
@@ -417,8 +420,14 @@ export default function OverlayPlot() {
   }, [selectedSignals]);
 
   useEffect(() => {
+    writeOverlayPlotMode(plotMode);
+  }, [plotMode]);
+
+  useEffect(() => {
     const handleReset = () => {
+      setTraces([]);
       setSelectedSignals([...DEFAULT_OVERLAY_SIGNALS]);
+      setPlotMode(DEFAULT_OVERLAY_PLOT_MODE);
     };
 
     window.addEventListener(OVERLAY_SIGNAL_RESET_EVENT, handleReset);
@@ -661,81 +670,6 @@ export default function OverlayPlot() {
           </label>
         </div>
 
-        <div className="rounded-lg border border-[#1f2937] bg-[#111827] p-3">
-          <div className="mb-2 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-[#e5e7eb]">DE442 Geocentric Ephemerides</p>
-              <p className="text-xs text-[#9ca3af]">Overlay planetary distance, angular motion, longitude, radial speed, and torque proxy for each major body plus a combined Net row.</p>
-            </div>
-            <p className="text-xs text-[#6b7280]">Observer: Earth geocenter</p>
-          </div>
-          <div className="max-h-48 overflow-auto rounded-md border border-[#1f2937]">
-            <div
-              className="grid min-w-[680px] items-center gap-px bg-[#1f2937] text-xs"
-              style={{ gridTemplateColumns: `minmax(5.5rem, 0.9fr) repeat(${EPHEMERIS_METRIC_CONFIG.length}, minmax(5.5rem, 1fr))` }}
-            >
-              <div className="sticky left-0 top-0 z-20 bg-[#0b1220] px-2 py-2 font-semibold uppercase tracking-wide text-[#9ca3af]">
-                Body
-              </div>
-              {EPHEMERIS_METRIC_CONFIG.map(metric => (
-                <div key={metric.key} className="sticky top-0 z-10 bg-[#0b1220] px-2 py-2 text-center font-semibold uppercase tracking-wide text-[#60a5fa]">
-                  {metric.shortLabel}
-                </div>
-              ))}
-              {EPHEMERIS_BODY_CONFIG.filter(body => body.key !== 'net').map(body => (
-                <div key={body.key} className="contents">
-                  <div className="sticky left-0 z-10 bg-[#111827] px-2 py-1.5 font-medium text-[#d1d5db]">
-                    {body.label}
-                  </div>
-                  {EPHEMERIS_METRIC_CONFIG.map(metric => {
-                    const signalKey = `${body.key}:${metric.key}`;
-                    return (
-                      <label
-                        key={signalKey}
-                        className="flex cursor-pointer items-center justify-center bg-[#111827] px-2 py-1.5 transition-colors hover:bg-[#1f2937]"
-                        title={`${body.label} ${metric.label}`}
-                      >
-                        <input
-                          type="checkbox"
-                          aria-label={`${body.label} ${metric.shortLabel}`}
-                          checked={selectedSignals.includes(signalKey)}
-                          onChange={() => toggleSignal(signalKey)}
-                          className="h-4 w-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-              ))}
-              <div className="contents">
-                <div className="sticky left-0 z-10 bg-[#0b1220] px-2 py-1.5 font-bold text-[#fbbf24] border-t-2 border-[#fbbf24]">
-                  Net
-                </div>
-                {EPHEMERIS_METRIC_CONFIG.map(metric => {
-                  const signalKey = `net:${metric.key}`;
-                  return (
-                    <label
-                      key={signalKey}
-                      className="flex cursor-pointer items-center justify-center bg-[#0b1220] px-2 py-1.5 transition-colors hover:bg-[#1f2937]"
-                      title={`Net combined ${metric.label}`}
-                    >
-                      <input
-                        type="checkbox"
-                        aria-label={`Net ${metric.shortLabel}`}
-                        checked={selectedSignals.includes(signalKey)}
-                        onChange={() => toggleSignal(signalKey)}
-                        className="h-4 w-4 rounded border-gray-600 text-[#fbbf24] focus:ring-[#fbbf24]"
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          <p className="mt-3 text-xs text-[#9ca3af]">
-            Torque Proxy is a heuristic mass / r^3 * angular speed. The Net torque row sums each non-Sun/non-Moon body after temporal normalization by its body-specific cache-wide peak, emphasizing timing relationships over intensity.
-          </p>
-        </div>
       </div>
 
       <div className="w-full min-w-0">
@@ -753,6 +687,82 @@ export default function OverlayPlot() {
           useResizeHandler
           onRelayout={handleRelayout}
         />
+      </div>
+
+      <div className="mt-4 rounded-lg border border-[#1f2937] bg-[#111827] p-3">
+        <div className="mb-2 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-[#e5e7eb]">DE442 Geocentric Ephemerides</p>
+            <p className="text-xs text-[#9ca3af]">Overlay planetary distance, angular motion, longitude, radial speed, and torque proxy for each major body plus a combined Net row.</p>
+          </div>
+          <p className="text-xs text-[#6b7280]">Observer: Earth geocenter</p>
+        </div>
+        <div className="max-h-48 overflow-auto rounded-md border border-[#1f2937]">
+          <div
+            className="grid min-w-[680px] items-center gap-px bg-[#1f2937] text-xs"
+            style={{ gridTemplateColumns: `minmax(5.5rem, 0.9fr) repeat(${EPHEMERIS_METRIC_CONFIG.length}, minmax(5.5rem, 1fr))` }}
+          >
+            <div className="sticky left-0 top-0 z-20 bg-[#0b1220] px-2 py-2 font-semibold uppercase tracking-wide text-[#9ca3af]">
+              Body
+            </div>
+            {EPHEMERIS_METRIC_CONFIG.map(metric => (
+              <div key={metric.key} className="sticky top-0 z-10 bg-[#0b1220] px-2 py-2 text-center font-semibold uppercase tracking-wide text-[#60a5fa]">
+                {metric.shortLabel}
+              </div>
+            ))}
+            {EPHEMERIS_BODY_CONFIG.filter(body => body.key !== 'net').map(body => (
+              <div key={body.key} className="contents">
+                <div className="sticky left-0 z-10 bg-[#111827] px-2 py-1.5 font-medium text-[#d1d5db]">
+                  {body.label}
+                </div>
+                {EPHEMERIS_METRIC_CONFIG.map(metric => {
+                  const signalKey = `${body.key}:${metric.key}`;
+                  return (
+                    <label
+                      key={signalKey}
+                      className="flex cursor-pointer items-center justify-center bg-[#111827] px-2 py-1.5 transition-colors hover:bg-[#1f2937]"
+                      title={`${body.label} ${metric.label}`}
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={`${body.label} ${metric.shortLabel}`}
+                        checked={selectedSignals.includes(signalKey)}
+                        onChange={() => toggleSignal(signalKey)}
+                        className="h-4 w-4 rounded border-gray-600 text-[#3b82f6] focus:ring-[#3b82f6]"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
+            <div className="contents">
+              <div className="sticky left-0 z-10 bg-[#0b1220] px-2 py-1.5 font-bold text-[#fbbf24] border-t-2 border-[#fbbf24]">
+                Net
+              </div>
+              {EPHEMERIS_METRIC_CONFIG.map(metric => {
+                const signalKey = `net:${metric.key}`;
+                return (
+                  <label
+                    key={signalKey}
+                    className="flex cursor-pointer items-center justify-center bg-[#0b1220] px-2 py-1.5 transition-colors hover:bg-[#1f2937]"
+                    title={`Net combined ${metric.label}`}
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label={`Net ${metric.shortLabel}`}
+                      checked={selectedSignals.includes(signalKey)}
+                      onChange={() => toggleSignal(signalKey)}
+                      className="h-4 w-4 rounded border-gray-600 text-[#fbbf24] focus:ring-[#fbbf24]"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-[#9ca3af]">
+          Torque Proxy is a heuristic mass / r^3 * angular speed. The Net torque row sums each non-Sun/non-Moon body after temporal normalization by its body-specific cache-wide peak, emphasizing timing relationships over intensity.
+        </p>
       </div>
     </div>
   );

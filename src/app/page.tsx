@@ -8,7 +8,7 @@ import { loadEOPData, loadGeomagGFZData, loadGRACEData, loadInertiaData, mergeDa
 import { PANEL_GUIDES } from '@/lib/documentation';
 import { TimeSample } from '@/lib/types';
 import { PANEL_OPTIONS } from '@/lib/panels';
-import { resetOverlaySignals } from '@/lib/overlayPreferences';
+import { resetOverlayPreferences } from '@/lib/overlayPreferences';
 
 const Controls = dynamic(() => import('@/components/Controls'), { ssr: false });
 const PolarPlot = dynamic(() => import('@/components/PolarPlot'), { ssr: false });
@@ -539,7 +539,7 @@ export default function Home() {
                    <button
                      onClick={() => {
                        resetPanelPreferences();
-                       resetOverlaySignals();
+                       resetOverlayPreferences();
                      }}
                      className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
                    >

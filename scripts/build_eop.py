@@ -54,6 +54,55 @@ EOP_DATASETS = {
 
 MJD_EPOCH = datetime(1858, 11, 17)
 
+TAI_UTC_PRE_1972 = [
+    # effective MJD, base offset seconds, reference MJD, rate seconds/day
+    (37300.0, 1.4178180, 37300.0, 0.0012960),
+    (37365.0, 1.4228180, 37300.0, 0.0012960),
+    (37512.0, 1.3728180, 37300.0, 0.0012960),
+    (37665.0, 1.8458580, 37665.0, 0.0011232),
+    (38334.0, 1.9458580, 37665.0, 0.0011232),
+    (38395.0, 3.2401300, 38761.0, 0.0012960),
+    (38486.0, 3.3401300, 38761.0, 0.0012960),
+    (38639.0, 3.4401300, 38761.0, 0.0012960),
+    (38761.0, 3.5401300, 38761.0, 0.0012960),
+    (38820.0, 3.6401300, 38761.0, 0.0012960),
+    (38942.0, 3.7401300, 38761.0, 0.0012960),
+    (39004.0, 3.8401300, 38761.0, 0.0012960),
+    (39126.0, 4.3131700, 39126.0, 0.0025920),
+    (39887.0, 4.2131700, 39126.0, 0.0025920),
+]
+
+TAI_UTC_STEPS = [
+    (41317.0, 10.0),
+    (41499.0, 11.0),
+    (41683.0, 12.0),
+    (42048.0, 13.0),
+    (42413.0, 14.0),
+    (42778.0, 15.0),
+    (43144.0, 16.0),
+    (43509.0, 17.0),
+    (43874.0, 18.0),
+    (44239.0, 19.0),
+    (44786.0, 20.0),
+    (45151.0, 21.0),
+    (45516.0, 22.0),
+    (46247.0, 23.0),
+    (47161.0, 24.0),
+    (47892.0, 25.0),
+    (48257.0, 26.0),
+    (48804.0, 27.0),
+    (49169.0, 28.0),
+    (49534.0, 29.0),
+    (50083.0, 30.0),
+    (50630.0, 31.0),
+    (51179.0, 32.0),
+    (53736.0, 33.0),
+    (54832.0, 34.0),
+    (56109.0, 35.0),
+    (57204.0, 36.0),
+    (57754.0, 37.0),
+]
+
 
 def extract_finals(data_object):
     """Extract confirmed (BulletinA final) records from a finals JSON object.
@@ -191,6 +240,56 @@ def mjd_to_date_string(mjd):
     return (MJD_EPOCH + timedelta(days=round(float(mjd)))).strftime("%Y-%m-%d")
 
 
+def tai_minus_utc_seconds(mjd):
+    """Return the historical TAI-UTC offset in seconds for an MJD."""
+    mjd = float(mjd)
+    if mjd < TAI_UTC_STEPS[0][0]:
+        applicable = TAI_UTC_PRE_1972[0]
+        for entry in TAI_UTC_PRE_1972:
+            if mjd >= entry[0]:
+                applicable = entry
+            else:
+                break
+
+        _, base_offset, reference_mjd, rate = applicable
+        return base_offset + (mjd - reference_mjd) * rate
+
+    offset = TAI_UTC_STEPS[0][1]
+    for effective_mjd, step_offset in TAI_UTC_STEPS:
+        if mjd >= effective_mjd:
+            offset = step_offset
+        else:
+            break
+    return offset
+
+
+def add_lod_from_tai_ut1(records):
+    """Derive a JPL LOD equivalent in milliseconds from continuous TAI-UT1."""
+    records = sorted(records, key=lambda item: item["t"])
+
+    for index, record in enumerate(records):
+        if "tai_ut1_ms" not in record:
+            continue
+
+        previous_record = records[index - 1] if index > 0 else None
+        next_record = records[index + 1] if index < len(records) - 1 else None
+
+        if previous_record and next_record and "tai_ut1_ms" in previous_record and "tai_ut1_ms" in next_record:
+            dt_days = float(next_record["mjd"]) - float(previous_record["mjd"])
+            if dt_days:
+                record["lod"] = (float(next_record["tai_ut1_ms"]) - float(previous_record["tai_ut1_ms"])) / dt_days
+        elif next_record and "tai_ut1_ms" in next_record:
+            dt_days = float(next_record["mjd"]) - float(record["mjd"])
+            if dt_days:
+                record["lod"] = (float(next_record["tai_ut1_ms"]) - float(record["tai_ut1_ms"])) / dt_days
+        elif previous_record and "tai_ut1_ms" in previous_record:
+            dt_days = float(record["mjd"]) - float(previous_record["mjd"])
+            if dt_days:
+                record["lod"] = (float(record["tai_ut1_ms"]) - float(previous_record["tai_ut1_ms"])) / dt_days
+
+    return records
+
+
 def parse_c04_text(content):
     """Parse the IERS C04 20u24 format: YR, MM, DD, HH, MJD, x, y, UT1-UTC, ..."""
     records = []
@@ -231,8 +330,11 @@ def parse_c04_text(content):
 def parse_jpl_eop2_text(content):
     """Parse JPL EOP2 text records.
 
-    JPL EOP2 provides PMx/PMy in milliarcseconds. The dashboard EOP contract
-    uses arcseconds, so polar motion values are divided by 1000.
+    JPL EOP2 headers are MJD, PMx, PMy, and TAI-UT1. The dashboard EOP
+    contract uses xp/yp in arcseconds, UT1-UTC in seconds, and LOD in
+    milliseconds, so PMx/PMy are divided by 1000, TAI-UT1 is converted via
+    the historical TAI-UTC offset, and LOD is derived from the daily TAI-UT1
+    slope.
     """
     records = []
     last_observed_date = None
@@ -257,6 +359,7 @@ def parse_jpl_eop2_text(content):
             continue
 
         try:
+            mjd = float(parts[0])
             pmx_mas = float(parts[1])
             pmy_mas = float(parts[2])
             tai_minus_ut1_ms = float(parts[3])
@@ -270,13 +373,15 @@ def parse_jpl_eop2_text(content):
         records.append(
             {
                 "t": date_str,
+                "mjd": mjd,
                 "xp": pmx_mas / 1000.0,
                 "yp": pmy_mas / 1000.0,
                 "tai_ut1_ms": tai_minus_ut1_ms,
+                "ut1_utc": tai_minus_utc_seconds(mjd) - (tai_minus_ut1_ms / 1000.0),
             }
         )
 
-    return sorted(records, key=lambda item: item["t"])
+    return add_lod_from_tai_ut1(records)
 
 
 def fetch_alternate_eop_dataset(config):
@@ -547,6 +652,7 @@ def main():
                 before_count = len(records)
                 before_end = records[-1]["t"]
                 records = merge_eop_records(records, jpl_eop2_tail)
+                records = add_lod_from_tai_ut1(records)
                 print(
                     f"   Merged {before_count} long-series records through {before_end} "
                     f"with {len(jpl_eop2_tail)} short-tail records"
