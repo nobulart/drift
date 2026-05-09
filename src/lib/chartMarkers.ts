@@ -3,6 +3,11 @@ import type { MouseEvent } from 'react';
 
 export const MARKER_EMOJI_OPTIONS = ['🐧', '⭐', '🚩', '⚠️', '✅', '🔬', '🧭', '📍'];
 
+export function formatMarkerText(marker: Pick<ChartMarker, 'emoji' | 'label'>) {
+  const label = marker.label?.trim();
+  return label ? `${marker.emoji} ${label}` : marker.emoji;
+}
+
 export function findNearestDateIndex(dates: string[], targetDate: string) {
   const targetTime = new Date(`${targetDate}T00:00:00Z`).getTime();
   if (!Number.isFinite(targetTime)) {
@@ -54,9 +59,9 @@ export function buildMarkerLayout(markers: ChartMarker[], existingLayout: Partia
       yref: 'paper',
       x: marker.date,
       y: 1.01,
-      text: marker.emoji,
+      text: formatMarkerText(marker),
       showarrow: false,
-      font: { size: 20 },
+      font: { size: 16 },
       xanchor: 'center',
       yanchor: 'bottom',
       hovertext: marker.label || marker.date,

@@ -7,7 +7,7 @@ import { PanelFullscreenContext } from '@/components/LayoutPanel';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { getPlotPointDate } from '@/lib/chartMarkers';
+import { formatMarkerText, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface PolarMotionTrajectoryPlotProps {
@@ -193,12 +193,13 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       data.push({
         x: markerPoints.map(({ point }) => point.yPole),
         y: markerPoints.map(({ point }) => point.xPole),
-        text: markerPoints.map(({ marker }) => marker.emoji),
+        text: markerPoints.map(({ marker }) => formatMarkerText(marker)),
         customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.xPole, point.yPole]),
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 22 },
+        textfont: { size: 16 },
+        textposition: 'top center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
       });
     }

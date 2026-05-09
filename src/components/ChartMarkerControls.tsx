@@ -1,13 +1,104 @@
 "use client";
 
+import { memo, useEffect, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { MARKER_EMOJI_OPTIONS } from '@/lib/chartMarkers';
-import { useStore } from '@/store/useStore';
+import { ChartMarker, useStore } from '@/store/useStore';
 
 interface ChartMarkerControlsProps {
   minDate: string;
   maxDate: string;
   compact?: boolean;
 }
+
+interface ChartMarkerRowProps {
+  marker: ChartMarker;
+  minDate: string;
+  maxDate: string;
+  updateChartMarker: (id: string, updates: Partial<Pick<ChartMarker, 'date' | 'emoji' | 'label'>>) => void;
+  deleteChartMarker: (id: string) => void;
+}
+
+const ChartMarkerRow = memo(function ChartMarkerRow({
+  marker,
+  minDate,
+  maxDate,
+  updateChartMarker,
+  deleteChartMarker,
+}: ChartMarkerRowProps) {
+  const [draftDate, setDraftDate] = useState(marker.date);
+  const [draftLabel, setDraftLabel] = useState(marker.label || '');
+
+  useEffect(() => {
+    setDraftDate(marker.date);
+    setDraftLabel(marker.label || '');
+  }, [marker.date, marker.label]);
+
+  const commitDate = () => {
+    if (draftDate && draftDate !== marker.date) {
+      updateChartMarker(marker.id, { date: draftDate });
+    }
+  };
+
+  const commitLabel = () => {
+    const nextLabel = draftLabel.trim();
+    if (nextLabel !== (marker.label || '')) {
+      updateChartMarker(marker.id, { label: nextLabel || undefined });
+    }
+  };
+
+  const handleCommitKey = (event: KeyboardEvent<HTMLInputElement>, commit: () => void) => {
+    if (event.key === 'Enter') {
+      commit();
+      event.currentTarget.blur();
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-[#1f2937] bg-[#111827] p-2">
+      <div className="flex items-center gap-2">
+        <select
+          value={marker.emoji}
+          onChange={(event) => updateChartMarker(marker.id, { emoji: event.target.value })}
+          className="h-9 rounded-md border border-[#374151] bg-[#0b1220] px-2 text-base text-white"
+          aria-label="Marker emoji"
+        >
+          {MARKER_EMOJI_OPTIONS.map((emoji) => (
+            <option key={emoji} value={emoji}>{emoji}</option>
+          ))}
+        </select>
+        <input
+          type="date"
+          value={draftDate}
+          min={minDate}
+          max={maxDate}
+          onChange={(event) => setDraftDate(event.target.value)}
+          onBlur={commitDate}
+          onKeyDown={(event) => handleCommitKey(event, commitDate)}
+          className="min-w-0 flex-1 rounded-md border border-[#374151] bg-[#0b1220] px-2 py-2 text-xs text-white"
+        />
+        <button
+          type="button"
+          onClick={() => deleteChartMarker(marker.id)}
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-[#374151] text-[#fca5a5] transition-colors hover:border-[#ef4444] hover:bg-[#7f1d1d]/30 hover:text-white"
+          aria-label={`Delete marker on ${marker.date}`}
+          title="Delete marker"
+        >
+          ×
+        </button>
+      </div>
+      <input
+        type="text"
+        value={draftLabel}
+        onChange={(event) => setDraftLabel(event.target.value)}
+        onBlur={commitLabel}
+        onKeyDown={(event) => handleCommitKey(event, commitLabel)}
+        placeholder="Optional label"
+        className="mt-2 w-full rounded-md border border-[#374151] bg-[#0b1220] px-2 py-2 text-xs text-white placeholder:text-[#6b7280]"
+      />
+    </div>
+  );
+});
 
 export default function ChartMarkerControls({ minDate, maxDate, compact = false }: ChartMarkerControlsProps) {
   const chartMarkers = useStore((state) => state.chartMarkers);
@@ -72,44 +163,14 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
         ) : (
           <div className={`${compact ? 'max-h-56' : 'max-h-72'} space-y-2 overflow-y-auto pr-1`}>
             {chartMarkers.map((marker) => (
-              <div key={marker.id} className="rounded-lg border border-[#1f2937] bg-[#111827] p-2">
-                <div className="flex items-center gap-2">
-                  <select
-                    value={marker.emoji}
-                    onChange={(event) => updateChartMarker(marker.id, { emoji: event.target.value })}
-                    className="h-9 rounded-md border border-[#374151] bg-[#0b1220] px-2 text-base text-white"
-                    aria-label="Marker emoji"
-                  >
-                    {MARKER_EMOJI_OPTIONS.map((emoji) => (
-                      <option key={emoji} value={emoji}>{emoji}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="date"
-                    value={marker.date}
-                    min={minDate}
-                    max={maxDate}
-                    onChange={(event) => updateChartMarker(marker.id, { date: event.target.value })}
-                    className="min-w-0 flex-1 rounded-md border border-[#374151] bg-[#0b1220] px-2 py-2 text-xs text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => deleteChartMarker(marker.id)}
-                    className="flex h-9 w-9 items-center justify-center rounded-md border border-[#374151] text-[#fca5a5] transition-colors hover:border-[#ef4444] hover:bg-[#7f1d1d]/30 hover:text-white"
-                    aria-label={`Delete marker on ${marker.date}`}
-                    title="Delete marker"
-                  >
-                    ×
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={marker.label || ''}
-                  onChange={(event) => updateChartMarker(marker.id, { label: event.target.value })}
-                  placeholder="Optional label"
-                  className="mt-2 w-full rounded-md border border-[#374151] bg-[#0b1220] px-2 py-2 text-xs text-white placeholder:text-[#6b7280]"
-                />
-              </div>
+              <ChartMarkerRow
+                key={marker.id}
+                marker={marker}
+                minDate={minDate}
+                maxDate={maxDate}
+                updateChartMarker={updateChartMarker}
+                deleteChartMarker={deleteChartMarker}
+              />
             ))}
           </div>
         )}

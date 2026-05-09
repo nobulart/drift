@@ -484,6 +484,7 @@ const useStore = create<AppState>((set, get) => ({
   },
   updateChartMarker: (id, updates) => {
     const { chartMarkers } = get();
+    let changed = false;
     const nextMarkers = chartMarkers
       .map((marker) => {
         if (marker.id !== id) {
@@ -491,14 +492,26 @@ const useStore = create<AppState>((set, get) => ({
         }
 
         const normalizedDate = updates.date ? normalizeMarkerDate(updates.date) : marker.date;
-        return {
+        const nextMarker = {
           ...marker,
           ...updates,
           date: normalizedDate || marker.date,
           emoji: updates.emoji?.trim() || marker.emoji,
         };
+
+        changed = (
+          nextMarker.date !== marker.date ||
+          nextMarker.emoji !== marker.emoji ||
+          (nextMarker.label || '') !== (marker.label || '')
+        );
+
+        return changed ? nextMarker : marker;
       })
       .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (!changed) {
+      return;
+    }
 
     set({ chartMarkers: nextMarkers });
     writeStoredChartMarkers(get());
@@ -532,10 +545,17 @@ const useStore = create<AppState>((set, get) => ({
     writeStoredChartMarkers(get());
   },
   setSelectedMarkerEmoji: (emoji) => {
-    set({ selectedMarkerEmoji: emoji.trim() || DEFAULT_MARKER_EMOJI });
+    const nextEmoji = emoji.trim() || DEFAULT_MARKER_EMOJI;
+    if (get().selectedMarkerEmoji === nextEmoji) {
+      return;
+    }
+    set({ selectedMarkerEmoji: nextEmoji });
     writeStoredChartMarkers(get());
   },
   setMarkerPlacementEnabled: (enabled) => {
+    if (get().markerPlacementEnabled === enabled) {
+      return;
+    }
     set({ markerPlacementEnabled: enabled });
     writeStoredChartMarkers(get());
   },

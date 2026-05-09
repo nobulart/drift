@@ -6,7 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { getPlotPointDate } from '@/lib/chartMarkers';
+import { formatMarkerText, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface ResidualPolarMotionPlotProps {
@@ -366,12 +366,13 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
       data.push({
         x: markerPoints.map(({ point }) => point.y),
         y: markerPoints.map(({ point }) => point.x),
-        text: markerPoints.map(({ marker }) => marker.emoji),
+        text: markerPoints.map(({ marker }) => formatMarkerText(marker)),
         customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.x, point.y]),
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 22 },
+        textfont: { size: 16 },
+        textposition: 'top center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
       });
     }
