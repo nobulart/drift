@@ -8,6 +8,10 @@ export function formatMarkerText(marker: Pick<ChartMarker, 'emoji' | 'label'>) {
   return label ? `${marker.emoji} ${label}` : marker.emoji;
 }
 
+export function getMarkerLabel(marker: Pick<ChartMarker, 'label'>) {
+  return marker.label?.trim() || '';
+}
+
 export function findNearestDateIndex(dates: string[], targetDate: string) {
   const targetTime = new Date(`${targetDate}T00:00:00Z`).getTime();
   if (!Number.isFinite(targetTime)) {
@@ -59,14 +63,32 @@ export function buildMarkerLayout(markers: ChartMarker[], existingLayout: Partia
       yref: 'paper',
       x: marker.date,
       y: 1.01,
-      text: formatMarkerText(marker),
+      text: marker.emoji,
       showarrow: false,
-      font: { size: 16 },
+      font: { size: 18 },
       xanchor: 'center',
       yanchor: 'bottom',
       hovertext: marker.label || marker.date,
       captureevents: false,
     });
+
+    const label = getMarkerLabel(marker);
+    if (label) {
+      annotations.push({
+        xref: 'x',
+        yref: 'paper',
+        x: marker.date,
+        y: 1.01,
+        text: label,
+        showarrow: false,
+        font: { size: 12, color: '#fef3c7' },
+        xanchor: 'left',
+        yanchor: 'bottom',
+        xshift: 14,
+        hovertext: marker.date,
+        captureevents: false,
+      });
+    }
   });
 
   return { shapes, annotations };

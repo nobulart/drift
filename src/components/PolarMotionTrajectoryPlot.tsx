@@ -7,7 +7,7 @@ import { PanelFullscreenContext } from '@/components/LayoutPanel';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { formatMarkerText, getPlotPointDate } from '@/lib/chartMarkers';
+import { getMarkerLabel, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface PolarMotionTrajectoryPlotProps {
@@ -193,15 +193,31 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       data.push({
         x: markerPoints.map(({ point }) => point.yPole),
         y: markerPoints.map(({ point }) => point.xPole),
-        text: markerPoints.map(({ marker }) => formatMarkerText(marker)),
+        text: markerPoints.map(({ marker }) => marker.emoji),
         customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.xPole, point.yPole]),
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 16 },
-        textposition: 'top center',
+        textfont: { size: 18 },
+        textposition: 'middle center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
       });
+
+      const labeledMarkers = markerPoints.filter(({ marker }) => getMarkerLabel(marker));
+      if (labeledMarkers.length > 0) {
+        data.push({
+          x: labeledMarkers.map(({ point }) => point.yPole),
+          y: labeledMarkers.map(({ point }) => point.xPole),
+          text: labeledMarkers.map(({ marker }) => getMarkerLabel(marker)),
+          customdata: labeledMarkers.map(({ marker, point }) => [marker.date, point.date, point.xPole, point.yPole]),
+          mode: 'text',
+          type: 'scatter',
+          name: 'Marker labels',
+          textfont: { size: 12, color: '#fef3c7' },
+          textposition: 'middle right',
+          hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+        });
+      }
     }
 
     return data;

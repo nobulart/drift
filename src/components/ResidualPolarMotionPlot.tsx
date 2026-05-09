@@ -6,7 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { formatMarkerText, getPlotPointDate } from '@/lib/chartMarkers';
+import { getMarkerLabel, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface ResidualPolarMotionPlotProps {
@@ -366,15 +366,31 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
       data.push({
         x: markerPoints.map(({ point }) => point.y),
         y: markerPoints.map(({ point }) => point.x),
-        text: markerPoints.map(({ marker }) => formatMarkerText(marker)),
+        text: markerPoints.map(({ marker }) => marker.emoji),
         customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.x, point.y]),
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 16 },
-        textposition: 'top center',
+        textfont: { size: 18 },
+        textposition: 'middle center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
       });
+
+      const labeledMarkers = markerPoints.filter(({ marker }) => getMarkerLabel(marker));
+      if (labeledMarkers.length > 0) {
+        data.push({
+          x: labeledMarkers.map(({ point }) => point.y),
+          y: labeledMarkers.map(({ point }) => point.x),
+          text: labeledMarkers.map(({ marker }) => getMarkerLabel(marker)),
+          customdata: labeledMarkers.map(({ marker, point }) => [marker.date, point.date, point.x, point.y]),
+          mode: 'text',
+          type: 'scatter',
+          name: 'Marker labels',
+          textfont: { size: 12, color: '#fef3c7' },
+          textposition: 'middle right',
+          hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+        });
+      }
     }
 
     return data;

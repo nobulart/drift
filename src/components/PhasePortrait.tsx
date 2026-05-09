@@ -6,7 +6,7 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { findNearestDateIndex, formatMarkerText, getPlotPointDate } from '@/lib/chartMarkers';
+import { findNearestDateIndex, getMarkerLabel, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface PhasePortraitProps {
@@ -157,15 +157,31 @@ export default function PhasePortrait({
       data.push({
         x: markerPoints.map(({ index }) => theta[index]),
         y: markerPoints.map(({ index }) => displayOmega[index]),
-        text: markerPoints.map(({ marker }) => formatMarkerText(marker)),
+        text: markerPoints.map(({ marker }) => marker.emoji),
         customdata: markerPoints.map(({ marker, index }) => [marker.label || marker.date, dates[index]]),
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 16 },
-        textposition: 'top center',
+        textfont: { size: 18 },
+        textposition: 'middle center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>',
       });
+
+      const labeledMarkers = markerPoints.filter(({ marker }) => getMarkerLabel(marker));
+      if (labeledMarkers.length > 0) {
+        data.push({
+          x: labeledMarkers.map(({ index }) => theta[index]),
+          y: labeledMarkers.map(({ index }) => displayOmega[index]),
+          text: labeledMarkers.map(({ marker }) => getMarkerLabel(marker)),
+          customdata: labeledMarkers.map(({ marker, index }) => [marker.date, dates[index]]),
+          mode: 'text',
+          type: 'scatter',
+          name: 'Marker labels',
+          textfont: { size: 12, color: '#fef3c7' },
+          textposition: 'middle right',
+          hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<extra></extra>',
+        });
+      }
     }
 
     return data;
