@@ -6,7 +6,7 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { findNearestDateIndex, getMarkerLabel, getPlotPointDate } from '@/lib/chartMarkers';
+import { findNearestDateIndex, getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface PhasePortraitProps {
@@ -28,6 +28,7 @@ export default function PhasePortrait({
   const plotSize = Math.round(containerWidth > 0 ? Math.min(containerWidth, fallbackHeight) : fallbackHeight);
   const chartTitle = useChartTitle('Phase Portrait: theta vs omega', dates);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
 
@@ -162,7 +163,7 @@ export default function PhasePortrait({
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 18 },
+        textfont: { size: chartMarkerSize },
         textposition: 'middle center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>',
       });
@@ -177,7 +178,7 @@ export default function PhasePortrait({
           mode: 'text',
           type: 'scatter',
           name: 'Marker labels',
-          textfont: { size: 12, color: '#fef3c7' },
+          textfont: { size: getMarkerLabelSize(chartMarkerSize), color: '#fef3c7' },
           textposition: 'middle right',
           hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<extra></extra>',
         });
@@ -185,7 +186,7 @@ export default function PhasePortrait({
     }
 
     return data;
-  }, [chartMarkers, dates, omega, theta, turningPoints]);
+  }, [chartMarkerSize, chartMarkers, dates, omega, theta, turningPoints]);
 
   const layout = {
     title: chartTitle as any,

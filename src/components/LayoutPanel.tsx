@@ -2,7 +2,7 @@
 
 import { createContext, useEffect, useRef, useState } from 'react';
 import ChartMarkerControls from '@/components/ChartMarkerControls';
-import { useStore } from '@/store/useStore';
+import { PanelColumnSpan, useStore } from '@/store/useStore';
 
 export const PanelFullscreenContext = createContext(false);
 
@@ -39,6 +39,8 @@ export default function Panel({
 }: PanelProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const data = useStore((state) => state.data);
+  const panelColumnSpan = useStore((state) => state.panelColumnSpans[panelId]);
+  const setPanelColumnSpan = useStore((state) => state.setPanelColumnSpan);
   const panelRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [shouldRenderContent, setShouldRenderContent] = useState(false);
@@ -185,6 +187,28 @@ export default function Panel({
             )}
           </h3>
           <div className="flex items-center gap-1 flex-shrink-0">
+            {!isModalOpen && (
+              <div className="mr-1 flex items-center overflow-hidden rounded-md border border-[#374151]" title="Panel column span">
+                {([1, 2, 3] as PanelColumnSpan[]).map((span) => {
+                  const active = (panelColumnSpan ?? 0) === span;
+                  return (
+                    <button
+                      key={span}
+                      type="button"
+                      onClick={() => setPanelColumnSpan(panelId, span)}
+                      className={`h-7 w-7 text-[11px] font-bold transition-colors ${
+                        active
+                          ? 'bg-[#2563eb] text-white'
+                          : 'bg-[#0b1220] text-[#9ca3af] hover:bg-[#1f2937] hover:text-white'
+                      }`}
+                      aria-label={`Set ${title} to span ${span} column${span === 1 ? '' : 's'}`}
+                    >
+                      {span}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {onToggleCollapse && !isModalOpen && (
               <button
                 onClick={onToggleCollapse}

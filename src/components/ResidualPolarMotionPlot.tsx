@@ -6,7 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { getMarkerLabel, getPlotPointDate } from '@/lib/chartMarkers';
+import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface ResidualPolarMotionPlotProps {
@@ -220,6 +220,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
   const chartTitle = useChartTitle('Residual Polar Motion Phase Space (XY)', dates);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
 
@@ -371,7 +372,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 18 },
+        textfont: { size: chartMarkerSize },
         textposition: 'middle center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
       });
@@ -386,7 +387,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
           mode: 'text',
           type: 'scatter',
           name: 'Marker labels',
-          textfont: { size: 12, color: '#fef3c7' },
+          textfont: { size: getMarkerLabelSize(chartMarkerSize), color: '#fef3c7' },
           textposition: 'middle right',
           hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
         });
@@ -394,7 +395,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
     }
 
     return data;
-  }, [chartMarkers, residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
+  }, [chartMarkerSize, chartMarkers, residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
 
   const maxExtent = useMemo(() => {
     const extents = visiblePoints.flatMap((point) => [Math.abs(point.x), Math.abs(point.y)]);

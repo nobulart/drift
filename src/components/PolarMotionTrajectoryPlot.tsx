@@ -7,7 +7,7 @@ import { PanelFullscreenContext } from '@/components/LayoutPanel';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { getMarkerLabel, getPlotPointDate } from '@/lib/chartMarkers';
+import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface PolarMotionTrajectoryPlotProps {
@@ -68,6 +68,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
   const chartTitle = useChartTitle('Polar Motion Trajectory', dates);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
 
@@ -198,7 +199,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
-        textfont: { size: 18 },
+        textfont: { size: chartMarkerSize },
         textposition: 'middle center',
         hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
       });
@@ -213,7 +214,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
           mode: 'text',
           type: 'scatter',
           name: 'Marker labels',
-          textfont: { size: 12, color: '#fef3c7' },
+          textfont: { size: getMarkerLabelSize(chartMarkerSize), color: '#fef3c7' },
           textposition: 'middle right',
           hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
         });
@@ -221,7 +222,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
     }
 
     return data;
-  }, [chartMarkers, turningPointIndices, visiblePoints]);
+  }, [chartMarkerSize, chartMarkers, turningPointIndices, visiblePoints]);
 
   const axisRanges = useMemo(() => {
     if (visiblePoints.length === 0) {

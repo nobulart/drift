@@ -15,6 +15,8 @@ export interface ChartMarker {
   label?: string;
 }
 
+export type PanelColumnSpan = 1 | 2 | 3;
+
 const DEFAULT_BASIS = {
   e1: [1, 0, 0] as [number, number, number],
   e2: [0, 1, 0] as [number, number, number],
@@ -99,11 +101,13 @@ interface AppState {
   collapsedPanels: Set<string>;
   hiddenPanels: Set<string>;
   panelOrder: string[];
+  panelColumnSpans: Record<string, PanelColumnSpan>;
   lastUpdated: string | null;
   eopDataset: EOPDatasetId;
   chartMarkers: ChartMarker[];
   selectedMarkerEmoji: string;
   markerPlacementEnabled: boolean;
+  chartMarkerSize: number;
 
   setData: (data: TimeSample[]) => void;
   setFrame: (frame: 'earth' | 'principal') => void;
@@ -119,6 +123,7 @@ interface AppState {
   togglePanelVisibility: (panelId: string) => void;
   togglePanelCollapse: (panelId: string) => void;
   movePanel: (panelId: string, direction: 'up' | 'down') => void;
+  setPanelColumnSpan: (panelId: string, span: PanelColumnSpan) => void;
   resetPanelPreferences: () => void;
   refetchData: () => Promise<void>;
   setEOPDataset: (dataset: EOPDatasetId) => Promise<void>;
@@ -129,12 +134,14 @@ interface AppState {
   clearChartMarkers: () => void;
   setSelectedMarkerEmoji: (emoji: string) => void;
   setMarkerPlacementEnabled: (enabled: boolean) => void;
+  setChartMarkerSize: (size: number) => void;
 }
 
 const PANEL_PREFERENCES_STORAGE_KEY = 'drift-panel-preferences-v1';
 const EOP_DATASET_STORAGE_KEY = 'drift-eop-dataset-v1';
 const CHART_MARKERS_STORAGE_KEY = 'drift-chart-markers-v1';
 const DEFAULT_MARKER_EMOJI = '🐧';
+const DEFAULT_CHART_MARKER_SIZE = 18;
 const DEFAULT_VISIBLE_PANELS = new Set<string>();
 const KNOWN_PANEL_IDS = new Set<string>(DEFAULT_PANEL_ORDER);
 
@@ -142,6 +149,7 @@ interface StoredPanelPreferences {
   collapsedPanels?: unknown;
   hiddenPanels?: unknown;
   panelOrder?: unknown;
+  panelColumnSpans?: unknown;
 }
 
 function normalizePanelSet(value: unknown): Set<string> {
@@ -181,7 +189,22 @@ function normalizePanelOrder(value: unknown): string[] {
   ];
 }
 
-function readPanelPreferences(): Pick<AppState, 'collapsedPanels' | 'hiddenPanels' | 'panelOrder'> | null {
+function normalizePanelColumnSpans(value: unknown): Record<string, PanelColumnSpan> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<Record<string, PanelColumnSpan>>((acc, [panelId, span]) => {
+    if (!KNOWN_PANEL_IDS.has(panelId) || (span !== 1 && span !== 2 && span !== 3)) {
+      return acc;
+    }
+
+    acc[panelId] = span;
+    return acc;
+  }, {});
+}
+
+function readPanelPreferences(): Pick<AppState, 'collapsedPanels' | 'hiddenPanels' | 'panelOrder' | 'panelColumnSpans'> | null {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -197,6 +220,7 @@ function readPanelPreferences(): Pick<AppState, 'collapsedPanels' | 'hiddenPanel
       collapsedPanels: normalizePanelSet(parsed.collapsedPanels),
       hiddenPanels: normalizePanelSet(parsed.hiddenPanels),
       panelOrder: normalizePanelOrder(parsed.panelOrder),
+      panelColumnSpans: normalizePanelColumnSpans(parsed.panelColumnSpans),
     };
   } catch {
     return null;
@@ -207,7 +231,8 @@ function writePanelPreferences({
   collapsedPanels,
   hiddenPanels,
   panelOrder,
-}: Pick<AppState, 'collapsedPanels' | 'hiddenPanels' | 'panelOrder'>) {
+  panelColumnSpans,
+}: Pick<AppState, 'collapsedPanels' | 'hiddenPanels' | 'panelOrder' | 'panelColumnSpans'>) {
   if (typeof window === 'undefined') {
     return;
   }
@@ -219,6 +244,7 @@ function writePanelPreferences({
         collapsedPanels: [...collapsedPanels],
         hiddenPanels: [...hiddenPanels],
         panelOrder,
+        panelColumnSpans,
       })
     );
   } catch {
@@ -259,12 +285,22 @@ function normalizeMarkerDate(date: string): string | null {
   return parsed.toISOString().slice(0, 10);
 }
 
-function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled'> {
+function normalizeChartMarkerSize(value: unknown) {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numeric)) {
+    return DEFAULT_CHART_MARKER_SIZE;
+  }
+
+  return Math.max(12, Math.min(28, Math.round(numeric)));
+}
+
+function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled' | 'chartMarkerSize'> {
   if (typeof window === 'undefined') {
     return {
       chartMarkers: [],
       selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
       markerPlacementEnabled: false,
+      chartMarkerSize: DEFAULT_CHART_MARKER_SIZE,
     };
   }
 
@@ -275,6 +311,7 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
         chartMarkers: [],
         selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
         markerPlacementEnabled: false,
+        chartMarkerSize: DEFAULT_CHART_MARKER_SIZE,
       };
     }
 
@@ -282,6 +319,7 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
       chartMarkers?: unknown;
       selectedMarkerEmoji?: unknown;
       markerPlacementEnabled?: unknown;
+      chartMarkerSize?: unknown;
     };
 
     const chartMarkers = Array.isArray(parsed.chartMarkers)
@@ -311,12 +349,14 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
         ? parsed.selectedMarkerEmoji
         : DEFAULT_MARKER_EMOJI,
       markerPlacementEnabled: parsed.markerPlacementEnabled === true,
+      chartMarkerSize: normalizeChartMarkerSize(parsed.chartMarkerSize),
     };
   } catch {
     return {
       chartMarkers: [],
       selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
       markerPlacementEnabled: false,
+      chartMarkerSize: DEFAULT_CHART_MARKER_SIZE,
     };
   }
 }
@@ -325,7 +365,8 @@ function writeStoredChartMarkers({
   chartMarkers,
   selectedMarkerEmoji,
   markerPlacementEnabled,
-}: Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled'>) {
+  chartMarkerSize,
+}: Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled' | 'chartMarkerSize'>) {
   if (typeof window === 'undefined') {
     return;
   }
@@ -333,7 +374,7 @@ function writeStoredChartMarkers({
   try {
     window.localStorage.setItem(
       CHART_MARKERS_STORAGE_KEY,
-      JSON.stringify({ chartMarkers, selectedMarkerEmoji, markerPlacementEnabled })
+      JSON.stringify({ chartMarkers, selectedMarkerEmoji, markerPlacementEnabled, chartMarkerSize })
     );
   } catch {
     // Ignore storage failures; marker controls still work for the current session.
@@ -364,11 +405,13 @@ const useStore = create<AppState>((set, get) => ({
   collapsedPanels: initialPanelPreferences?.collapsedPanels ?? new Set(),
   hiddenPanels: initialPanelPreferences?.hiddenPanels ?? new Set(DEFAULT_VISIBLE_PANELS),
   panelOrder: initialPanelPreferences?.panelOrder ?? [...DEFAULT_PANEL_ORDER],
+  panelColumnSpans: initialPanelPreferences?.panelColumnSpans ?? {},
   lastUpdated: null,
   eopDataset: initialEOPDataset,
   chartMarkers: initialChartMarkerState.chartMarkers,
   selectedMarkerEmoji: initialChartMarkerState.selectedMarkerEmoji,
   markerPlacementEnabled: initialChartMarkerState.markerPlacementEnabled,
+  chartMarkerSize: initialChartMarkerState.chartMarkerSize,
   setData: (data) => {
     const transformedData = data.map(item => {
       const pos: [number, number, number] = [item.xp, item.yp, 0];
@@ -447,11 +490,19 @@ const useStore = create<AppState>((set, get) => ({
     set({ panelOrder });
     writePanelPreferences(get());
   },
+  setPanelColumnSpan: (panelId, span) => {
+    if (!KNOWN_PANEL_IDS.has(panelId)) return;
+    const { panelColumnSpans } = get();
+    if (panelColumnSpans[panelId] === span) return;
+    set({ panelColumnSpans: { ...panelColumnSpans, [panelId]: span } });
+    writePanelPreferences(get());
+  },
   resetPanelPreferences: () => {
     const nextPreferences = {
       hiddenPanels: new Set(DEFAULT_VISIBLE_PANELS),
       collapsedPanels: new Set<string>(),
       panelOrder: [...DEFAULT_PANEL_ORDER],
+      panelColumnSpans: {},
     };
     set(nextPreferences);
     writePanelPreferences(nextPreferences);
@@ -557,6 +608,14 @@ const useStore = create<AppState>((set, get) => ({
       return;
     }
     set({ markerPlacementEnabled: enabled });
+    writeStoredChartMarkers(get());
+  },
+  setChartMarkerSize: (size) => {
+    const nextSize = normalizeChartMarkerSize(size);
+    if (get().chartMarkerSize === nextSize) {
+      return;
+    }
+    set({ chartMarkerSize: nextSize });
     writeStoredChartMarkers(get());
   },
 

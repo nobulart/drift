@@ -450,6 +450,7 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
   const velocity = useMemo(() => computeAngularVelocity(xpData, ypData, dates), [dates, xpData, ypData]);
   const chartTitle = useChartTitle('Angular Velocity of Loop-Center Evolution', dates);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
   const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
@@ -470,7 +471,7 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
         ? [new Date(dates[0]), new Date(dates[dates.length - 1])]
       : undefined;
 
-    const markerLayout = buildMarkerLayout(chartMarkers);
+    const markerLayout = buildMarkerLayout(chartMarkers, {}, chartMarkerSize);
 
     return {
       ...markerLayout,
@@ -506,7 +507,7 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
         ? `${axisRange[0].toISOString()}-${axisRange[1].toISOString()}`
         : 'loop-center-angular-velocity-free-zoom',
     };
-  }, [chartMarkers, chartTitle, dates, plotHeight, timeLockEnabled, timeRange, velocity.yRange]);
+  }, [chartMarkerSize, chartMarkers, chartTitle, dates, plotHeight, timeLockEnabled, timeRange, velocity.yRange]);
 
   const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
     if (!markerPlacementEnabled) return;

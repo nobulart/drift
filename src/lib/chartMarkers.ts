@@ -37,9 +37,14 @@ export function findNearestDateIndex(dates: string[], targetDate: string) {
   return nearestIndex;
 }
 
-export function buildMarkerLayout(markers: ChartMarker[], existingLayout: Partial<Plotly.Layout> = {}) {
+export function getMarkerLabelSize(markerSize: number) {
+  return Math.max(10, Math.round(markerSize * 0.67));
+}
+
+export function buildMarkerLayout(markers: ChartMarker[], existingLayout: Partial<Plotly.Layout> = {}, markerSize = 18) {
   const shapes = [...((existingLayout.shapes as Array<Partial<Plotly.Shape>> | undefined) ?? [])];
   const annotations = [...((existingLayout.annotations as Array<Partial<Plotly.Annotations>> | undefined) ?? [])];
+  const labelSize = getMarkerLabelSize(markerSize);
 
   markers.forEach((marker) => {
     shapes.push({
@@ -65,7 +70,7 @@ export function buildMarkerLayout(markers: ChartMarker[], existingLayout: Partia
       y: 1.01,
       text: marker.emoji,
       showarrow: false,
-      font: { size: 18 },
+      font: { size: markerSize },
       xanchor: 'center',
       yanchor: 'bottom',
       hovertext: marker.label || marker.date,
@@ -81,7 +86,7 @@ export function buildMarkerLayout(markers: ChartMarker[], existingLayout: Partia
         y: 1.01,
         text: label,
         showarrow: false,
-        font: { size: 12, color: '#fef3c7' },
+        font: { size: labelSize, color: '#fef3c7' },
         xanchor: 'left',
         yanchor: 'bottom',
         xshift: 14,

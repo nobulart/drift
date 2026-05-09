@@ -314,6 +314,7 @@ export default function OverlayPlot() {
   const rollingStats = useStore(state => state.rollingStats);
   const data = useStore(state => state.data);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
   const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
@@ -579,7 +580,7 @@ export default function OverlayPlot() {
         font: { color: '#fbbf24', size: 11 },
       },
       ],
-    });
+    }, chartMarkerSize);
 
     return {
       title: chartTitle as any,
@@ -614,7 +615,7 @@ export default function OverlayPlot() {
       height: plotHeight,
       autosize: true,
     };
-  }, [chartMarkers, chartTitle, isHeatmapMode, nowIso, plotHeight, visibleXRange]);
+  }, [chartMarkerSize, chartMarkers, chartTitle, isHeatmapMode, nowIso, plotHeight, visibleXRange]);
 
   const overlayCsvConfig = useMemo(() => createCsvExportConfig(
     'overlay-plot.csv',

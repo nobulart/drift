@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, ReactNode, isValidElement, cloneElement } from 'react';
+import { useStore } from '@/store/useStore';
 
 interface PanelLayout {
   [key: string]: {
@@ -19,6 +20,7 @@ export default function ResponsiveGrid({
 }: ResponsiveGridProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isUHD, setIsUHD] = useState(false);
+  const panelColumnSpans = useStore((state) => state.panelColumnSpans);
 
   useEffect(() => {
     const handleResize = () => {
@@ -106,10 +108,16 @@ export default function ResponsiveGrid({
 
   const renderChildren = () => {
     const result: ReactNode[] = [];
+    const maxColumns = isMobile ? 1 : isUHD ? 3 : 2;
     (children as ReactNode[]).forEach((child, index) => {
       if (isValidElement(child)) {
         const panelId = child.props.panelId;
-        const additionalProps = panelLayout[panelId] || {};
+        const baseProps = panelLayout[panelId] || {};
+        const preferredSpan = panelColumnSpans[panelId] ?? baseProps.colSpan;
+        const additionalProps = {
+          ...baseProps,
+          colSpan: preferredSpan ? Math.min(preferredSpan, maxColumns) : undefined,
+        };
         
         result.push(cloneElement(child, {
           key: panelId || index,

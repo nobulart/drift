@@ -31,6 +31,7 @@ export default function ThetaOmegaPlots({
   const plotHeight = usePlotDisplayHeight(500, 860);
   const chartTitle = useChartTitle('Phase Diagnostics: theta(t) and omega(t)', dates);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
   const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
@@ -136,7 +137,7 @@ export default function ThetaOmegaPlots({
        : dates.length > 0
          ? [new Date(dates[0]), new Date(dates[dates.length - 1])]
        : undefined;
-     const markerLayout = buildMarkerLayout(chartMarkers, layout);
+     const markerLayout = buildMarkerLayout(chartMarkers, layout, chartMarkerSize);
 
      return {
        ...layout,
@@ -149,7 +150,7 @@ export default function ThetaOmegaPlots({
          range: axisRange
        }
      };
-   }, [chartMarkers, dates, layout, timeLockEnabled, timeRange]);
+   }, [chartMarkerSize, chartMarkers, dates, layout, timeLockEnabled, timeRange]);
 
    const handleClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
      if (!markerPlacementEnabled) return;

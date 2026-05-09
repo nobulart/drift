@@ -104,8 +104,10 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
   const chartMarkers = useStore((state) => state.chartMarkers);
   const selectedMarkerEmoji = useStore((state) => state.selectedMarkerEmoji);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const setSelectedMarkerEmoji = useStore((state) => state.setSelectedMarkerEmoji);
   const setMarkerPlacementEnabled = useStore((state) => state.setMarkerPlacementEnabled);
+  const setChartMarkerSize = useStore((state) => state.setChartMarkerSize);
   const updateChartMarker = useStore((state) => state.updateChartMarker);
   const deleteChartMarker = useStore((state) => state.deleteChartMarker);
   const clearChartMarkers = useStore((state) => state.clearChartMarkers);
@@ -123,7 +125,21 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
       </label>
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ca3af]">Marker emoji</p>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ca3af]">Marker emoji</p>
+          <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9ca3af]">
+            Size
+            <select
+              value={chartMarkerSize}
+              onChange={(event) => setChartMarkerSize(Number(event.target.value))}
+              className="h-7 rounded-md border border-[#374151] bg-[#111827] px-2 text-xs text-white"
+            >
+              {[14, 16, 18, 20, 24, 28].map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className={`grid gap-2 ${compact ? 'grid-cols-8 sm:grid-cols-4' : 'grid-cols-4'}`}>
           {MARKER_EMOJI_OPTIONS.map((emoji) => (
             <button

@@ -84,6 +84,7 @@ export default function OrthogonalDeviationPlot({
   const plotHeight = usePlotDisplayHeight(500, 860);
   const chartTitle = useChartTitle('R(t): Orthogonal Deviation Ratio', dates);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
   const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
@@ -209,7 +210,7 @@ export default function OrthogonalDeviationPlot({
     : dates.length > 0
       ? [new Date(dates[0]), new Date(dates[dates.length - 1])]
     : undefined;
-  const markerLayout = buildMarkerLayout(chartMarkers, layout);
+  const markerLayout = buildMarkerLayout(chartMarkers, layout, chartMarkerSize);
 
   const layoutWithRange = {
     ...layout,

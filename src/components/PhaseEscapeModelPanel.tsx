@@ -202,6 +202,7 @@ export default function PhaseEscapeModelPanel() {
   const eopDataset = useStore(state => state.eopDataset);
   const data = useStore((state) => state.data);
   const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);
   const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
@@ -700,7 +701,7 @@ export default function PhaseEscapeModelPanel() {
         font: { color: '#93c5fd', size: 10 },
       },
       ] : [],
-    });
+    }, chartMarkerSize);
 
     return {
       title: timeSeriesTitle as any,
@@ -764,7 +765,7 @@ export default function PhaseEscapeModelPanel() {
       height: plotHeight,
       autosize: true,
     };
-  }, [basinOverlayEndDate, basinOverlayStartDate, chartMarkers, plotHeight, recentFirstDate, recentLastDate, timeSeriesTitle]);
+  }, [basinOverlayEndDate, basinOverlayStartDate, chartMarkerSize, chartMarkers, plotHeight, recentFirstDate, recentLastDate, timeSeriesTitle]);
 
   const handleTimeSeriesClick = (event: Readonly<Plotly.PlotMouseEvent>) => {
     if (!markerPlacementEnabled) return;
