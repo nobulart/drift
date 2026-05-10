@@ -1,7 +1,13 @@
 {
   "schema": "drift-chart-markers-v1",
-  "exportedAt": "2026-05-09T21:02:13.813Z",
+  "exportedAt": "2026-05-09T23:09:31.409Z",
   "chartMarkers": [
+    {
+      "id": "1962-01-01-moyy2a2e",
+      "date": "1962-01-01",
+      "emoji": "⭐",
+      "label": "Loop 1962"
+    },
     {
       "id": "1962-03-05-moylihyv",
       "date": "1962-03-05",
@@ -27,6 +33,11 @@
     {
       "id": "1974-10-18-moyliohd",
       "date": "1974-10-18",
+      "emoji": "🧭"
+    },
+    {
+      "id": "1980-04-10-moyyegz3",
+      "date": "1980-04-10",
       "emoji": "🧭"
     },
     {
@@ -120,10 +131,20 @@
       "emoji": "🧭"
     },
     {
+      "id": "2019-05-22-moyydzz2",
+      "date": "2019-05-22",
+      "emoji": "🧭"
+    },
+    {
       "id": "2020-03-22-moyk51w3",
       "date": "2020-05-22",
       "emoji": "🐧",
       "label": "Cha-Cha II"
+    },
+    {
+      "id": "2025-05-02-moyydbr5",
+      "date": "2025-05-02",
+      "emoji": "🧭"
     },
     {
       "id": "2026-03-20-moyli7qq",
