@@ -11,3 +11,12 @@ __pycache__
 scripts/__pycache__
 plots
 DRIFTSPEC.pdf
+docs/src/outputs
+docs/**/*.aux
+docs/**/*.log
+docs/**/*.out
+public/data/.rolling-stats-cache
+public/data/.phase-escape-cache
+public/data/.phase-stability-cache
+public/data/ephemeris_historic.json
+public/data/finals.all.json

@@ -42,7 +42,8 @@ RUN python3 -m venv "${VIRTUAL_ENV}" \
 
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs \
-  && mkdir -p /app/public/data/.rolling-stats-cache /app/public/data/.phase-escape-cache /app/data /app/scripts
+  && mkdir -p /app/public/data/.rolling-stats-cache /app/public/data/.phase-escape-cache /app/public/data/.phase-stability-cache /app/data /app/scripts \
+  && chown -R nextjs:nodejs /app/public/data/.rolling-stats-cache /app/public/data/.phase-escape-cache /app/public/data/.phase-stability-cache /app/data /app/scripts
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -50,8 +51,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/data ./data
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/docker/start.sh ./docker/start.sh
-
-RUN chown -R nextjs:nodejs /app
 
 EXPOSE 3000
 EXPOSE 80
