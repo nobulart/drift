@@ -142,10 +142,16 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       return [];
     }
 
+    const origin = visiblePoints[0];
+    const displayPoints = visiblePoints.map((point) => ({
+      ...point,
+      displayXPole: point.xPole - origin.xPole,
+      displayYPole: point.yPole - origin.yPole,
+    }));
     const pathTrace: Plotly.Data = {
-      x: visiblePoints.map((point) => point.yPole),
-      y: visiblePoints.map((point) => point.xPole),
-      customdata: visiblePoints.map((point) => [point.date, point.xPole, point.yPole]),
+      x: displayPoints.map((point) => point.displayXPole),
+      y: displayPoints.map((point) => point.displayYPole),
+      customdata: displayPoints.map((point) => [point.date, point.displayXPole, point.displayYPole]),
       mode: 'lines+markers',
       type: 'scatter',
       name: 'Polar motion path',
@@ -162,17 +168,17 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
         },
         opacity: 0.78,
       },
-      hovertemplate: '%{customdata[0]}<br>x pole (Greenwich/up) %{customdata[1]:.1f} mas<br>y pole (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+      hovertemplate: '%{customdata[0]}<br>x_pole - start %{customdata[1]:.1f} mas<br>y_pole - start %{customdata[2]:.1f} mas<extra></extra>',
     };
-    const turningPoints = visiblePoints.filter((point) => turningPointIndices.has(point.index));
+    const turningPoints = displayPoints.filter((point) => turningPointIndices.has(point.index));
 
     const data: Plotly.Data[] = [pathTrace];
 
     if (turningPoints.length > 0) {
       data.push({
-        x: turningPoints.map((point) => point.yPole),
-        y: turningPoints.map((point) => point.xPole),
-        customdata: turningPoints.map((point) => [point.date, point.xPole, point.yPole]),
+        x: turningPoints.map((point) => point.displayXPole),
+        y: turningPoints.map((point) => point.displayYPole),
+        customdata: turningPoints.map((point) => [point.date, point.displayXPole, point.displayYPole]),
         mode: 'markers',
         type: 'scatter',
         name: 'Turning points',
@@ -182,7 +188,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
           opacity: 0.95,
           line: { color: '#fee2e2', width: 1 },
         },
-        hovertemplate: 'Turning point %{customdata[0]}<br>x pole (Greenwich/up) %{customdata[1]:.1f} mas<br>y pole (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+        hovertemplate: 'Turning point %{customdata[0]}<br>x_pole - start %{customdata[1]:.1f} mas<br>y_pole - start %{customdata[2]:.1f} mas<extra></extra>',
       });
     }
 
@@ -211,31 +217,31 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
 
     if (markerPoints.length > 0) {
       data.push({
-        x: markerPoints.map(({ point }) => point.yPole),
-        y: markerPoints.map(({ point }) => point.xPole),
+        x: markerPoints.map(({ point }) => point.xPole - origin.xPole),
+        y: markerPoints.map(({ point }) => point.yPole - origin.yPole),
         text: markerPoints.map(({ marker }) => marker.emoji),
-        customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.xPole, point.yPole]),
+        customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.xPole - origin.xPole, point.yPole - origin.yPole]),
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
         textfont: { size: chartMarkerSize },
         textposition: 'middle center',
-        hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+        hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_pole - start %{customdata[2]:.1f} mas<br>y_pole - start %{customdata[3]:.1f} mas<extra></extra>',
       });
 
       const labeledMarkers = markerPoints.filter(({ marker }) => getMarkerLabel(marker));
       if (labeledMarkers.length > 0) {
         data.push({
-          x: labeledMarkers.map(({ point }) => point.yPole),
-          y: labeledMarkers.map(({ point }) => point.xPole),
+          x: labeledMarkers.map(({ point }) => point.xPole - origin.xPole),
+          y: labeledMarkers.map(({ point }) => point.yPole - origin.yPole),
           text: labeledMarkers.map(({ marker }) => getMarkerLabel(marker)),
-          customdata: labeledMarkers.map(({ marker, point }) => [marker.date, point.date, point.xPole, point.yPole]),
+          customdata: labeledMarkers.map(({ marker, point }) => [marker.date, point.date, point.xPole - origin.xPole, point.yPole - origin.yPole]),
           mode: 'text',
           type: 'scatter',
           name: 'Marker labels',
           textfont: { size: getMarkerLabelSize(chartMarkerSize), color: '#fef3c7' },
           textposition: 'middle right',
-          hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x pole (Greenwich/up) %{customdata[2]:.1f} mas<br>y pole (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+          hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_pole - start %{customdata[2]:.1f} mas<br>y_pole - start %{customdata[3]:.1f} mas<extra></extra>',
         });
       }
     }
@@ -248,19 +254,16 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
       return { x: [-1, 1], y: [-1, 1] };
     }
 
-    const xValues = visiblePoints.map((point) => point.yPole);
-    const yValues = visiblePoints.map((point) => point.xPole);
-    const xMin = Math.min(...xValues);
-    const xMax = Math.max(...xValues);
-    const yMin = Math.min(...yValues);
-    const yMax = Math.max(...yValues);
-    const xMid = (xMin + xMax) / 2;
-    const yMid = (yMin + yMax) / 2;
-    const half = Math.max((xMax - xMin) / 2, (yMax - yMin) / 2, 1) * 1.08;
+    const origin = visiblePoints[0];
+    const extents = visiblePoints.flatMap((point) => [
+      Math.abs(point.xPole - origin.xPole),
+      Math.abs(point.yPole - origin.yPole),
+    ]);
+    const half = Math.max(...extents, 1) * 1.08;
 
     return {
-      x: [xMid + half, xMid - half],
-      y: [yMid - half, yMid + half],
+      x: [-half, half],
+      y: [-half, half],
     };
   }, [visiblePoints]);
 
@@ -301,7 +304,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
         layout={{
           title: chartTitle,
           xaxis: {
-            title: { text: 'y pole (mas, +90°W left)', standoff: 18 },
+            title: { text: 'x_pole - path start (mas)', standoff: 18 },
             range: axisRanges.x,
             scaleanchor: 'y',
             scaleratio: 1,
@@ -310,7 +313,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
             zerolinecolor: '#64748b',
           },
           yaxis: {
-            title: { text: 'x pole (mas, +Greenwich up)', standoff: 18 },
+            title: { text: 'y_pole - path start (mas)', standoff: 18 },
             range: axisRanges.y,
             constrain: 'domain',
             gridcolor: '#374151',

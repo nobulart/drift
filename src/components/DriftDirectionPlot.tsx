@@ -44,11 +44,9 @@ export default function DriftDirectionPlot({
   const addChartMarker = useStore((state) => state.addChartMarker);
   const deleteNearestChartMarker = useStore((state) => state.deleteNearestChartMarker);
 
-   useEffect(() => {
-      const angleOffset = 90;
-      
-      // Compute drift longitude in radians
-      let driftLonRad = driftAxisTimeSeries.map((drift) => {
+  useEffect(() => {
+      // Compute IERS XY angle in radians: +x is right, +y is up.
+      const driftLonRad = driftAxisTimeSeries.map((drift) => {
         return driftAxisLongitude(drift) * Math.PI / 180;
       });
      
@@ -69,19 +67,16 @@ export default function DriftDirectionPlot({
        }
      }
      
-     // Convert to degrees and add offset
-     let driftLon = driftLonRad.map(lon => (lon * 180 / Math.PI) + angleOffset);
+     // Convert to degrees in the same IERS XY frame.
+     const driftLon = driftLonRad.map(lon => lon * 180 / Math.PI);
      
      setDriftAngles(driftLon);
      
-     // Compute e1 and e2 longitudes with same unwrapping and +90° offset
+     // Compute e1 and e2 longitudes in the same IERS XY frame.
      const e1LonRadBase = Math.atan2(e1[1], e1[0]);
      const e2LonRadBase = Math.atan2(e2[1], e2[0]);
-     
-     // For constant e1/e2, apply unwrap relative to themselves is N/A (no time series)
-     // So just convert to degrees and add offset
-     const e1Lon = (e1LonRadBase * 180 / Math.PI) + angleOffset;
-     const e2Lon = (e2LonRadBase * 180 / Math.PI) + angleOffset;
+     const e1Lon = e1LonRadBase * 180 / Math.PI;
+     const e2Lon = e2LonRadBase * 180 / Math.PI;
      
      setE1Angles(new Array(dates.length).fill(e1Lon));
      setE2Angles(new Array(dates.length).fill(e2Lon));
@@ -141,7 +136,7 @@ export default function DriftDirectionPlot({
       zerolinecolor: '#4b5563'
     },
     yaxis: { 
-      title: { text: 'Longitude (degrees)', standoff: 20 },
+      title: { text: 'IERS XY angle atan2(y, x) (degrees)', standoff: 20 },
       gridcolor: '#374151',
       zerolinecolor: '#4b5563'
     },

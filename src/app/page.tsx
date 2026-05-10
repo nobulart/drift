@@ -489,6 +489,10 @@ export default function Home() {
       return isValidElement(panel) ? cloneElement(panel, { key: id }) : panel;
     })
     .filter(Boolean);
+  const panelOptionsById = new Map(PANEL_OPTIONS.map((option) => [option.id, option]));
+  const orderedPanelOptions = panelOrder
+    .map((id) => panelOptionsById.get(id))
+    .filter((option): option is (typeof PANEL_OPTIONS)[number] => Boolean(option));
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0b1220] text-[#e5e7eb]">
@@ -566,8 +570,7 @@ export default function Home() {
                    </button>
                  </div>
                  <div className="space-y-2 pr-2 pb-6">
-                   {PANEL_OPTIONS.map((option) => {
-                     const orderIndex = panelOrder.indexOf(option.id);
+                   {orderedPanelOptions.map((option, orderIndex) => {
                      return (
                        <div key={option.id} className="rounded-lg border border-[#1f2937] bg-[#0b1220]/60 px-3 py-2">
                          <div className="flex items-center gap-2">

@@ -135,7 +135,7 @@ function formatLongitudeHemisphere(lon: number) {
 }
 
 function eopDisplayLongitude(xPole: number, yPole: number) {
-  return Math.atan2(-yPole, xPole) * (180 / Math.PI);
+  return Math.atan2(yPole, xPole) * (180 / Math.PI);
 }
 
 function decimalYear(date: string): number {
@@ -294,15 +294,23 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
       return [];
     }
 
-    const centroidPoints = visiblePoints.filter((point) => point.cx !== null && point.cy !== null);
-    const turningPoints = visiblePoints.filter((point) => turningPointIndices.has(point.index));
+    const origin = visiblePoints[0];
+    const displayPoints = visiblePoints.map((point) => ({
+      ...point,
+      displayX: point.x - origin.x,
+      displayY: point.y - origin.y,
+      displayCx: point.cx === null ? null : point.cx - origin.x,
+      displayCy: point.cy === null ? null : point.cy - origin.y,
+    }));
+    const centroidPoints = displayPoints.filter((point) => point.displayCx !== null && point.displayCy !== null);
+    const turningPoints = displayPoints.filter((point) => turningPointIndices.has(point.index));
     const axisLongitude = eopDisplayLongitude(residual.axis[0], residual.axis[1]);
 
     const data: Plotly.Data[] = [
       {
-        x: visiblePoints.map((point) => point.y),
-        y: visiblePoints.map((point) => point.x),
-        customdata: visiblePoints.map((point) => [point.date, point.x, point.y]),
+        x: displayPoints.map((point) => point.displayX),
+        y: displayPoints.map((point) => point.displayY),
+        customdata: displayPoints.map((point) => [point.date, point.displayX, point.displayY]),
         mode: 'markers',
         type: 'scatter',
         name: 'Residual path',
@@ -318,34 +326,34 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
           },
           opacity: 0.72,
         },
-        hovertemplate: '%{customdata[0]}<br>x_res (Greenwich/up) %{customdata[1]:.1f} mas<br>y_res (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+        hovertemplate: '%{customdata[0]}<br>x_res - start %{customdata[1]:.1f} mas<br>y_res - start %{customdata[2]:.1f} mas<extra></extra>',
       },
       {
-        x: centroidPoints.map((point) => point.cy),
-        y: centroidPoints.map((point) => point.cx),
-        customdata: centroidPoints.map((point) => [point.date, point.cx, point.cy]),
+        x: centroidPoints.map((point) => point.displayCx),
+        y: centroidPoints.map((point) => point.displayCy),
+        customdata: centroidPoints.map((point) => [point.date, point.displayCx, point.displayCy]),
         mode: 'lines',
         type: 'scatter',
         name: 'Centroid',
         line: { color: '#f8fafc', width: 3 },
-        hovertemplate: 'Centroid<br>%{customdata[0]}<br>x_res (Greenwich/up) %{customdata[1]:.1f} mas<br>y_res (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+        hovertemplate: 'Centroid<br>%{customdata[0]}<br>x_res - start %{customdata[1]:.1f} mas<br>y_res - start %{customdata[2]:.1f} mas<extra></extra>',
       },
       {
-        x: [0, residual.axis[1] * residual.axisScale],
-        y: [0, residual.axis[0] * residual.axisScale],
+        x: [0, residual.axis[0] * residual.axisScale],
+        y: [0, residual.axis[1] * residual.axisScale],
         mode: 'lines',
         type: 'scatter',
         name: `Axis (${formatLongitudeHemisphere(axisLongitude)})`,
         line: { color: '#ef4444', width: 6 },
-        hovertemplate: 'PCA drift axis<br>x_res (Greenwich/up) %{y:.1f} mas<br>y_res (90°W/left) %{x:.1f} mas<extra></extra>',
+        hovertemplate: 'PCA drift axis<br>x_res direction %{x:.1f} mas<br>y_res direction %{y:.1f} mas<extra></extra>',
       },
     ];
 
     if (turningPoints.length > 0) {
       data.push({
-        x: turningPoints.map((point) => point.y),
-        y: turningPoints.map((point) => point.x),
-        customdata: turningPoints.map((point) => [point.date, point.x, point.y]),
+        x: turningPoints.map((point) => point.displayX),
+        y: turningPoints.map((point) => point.displayY),
+        customdata: turningPoints.map((point) => [point.date, point.displayX, point.displayY]),
         mode: 'markers',
         type: 'scatter',
         name: 'Turning points',
@@ -355,7 +363,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
           opacity: 0.95,
           line: { color: '#fee2e2', width: 1 },
         },
-        hovertemplate: 'Turning point %{customdata[0]}<br>x_res (Greenwich/up) %{customdata[1]:.1f} mas<br>y_res (90°W/left) %{customdata[2]:.1f} mas<extra></extra>',
+        hovertemplate: 'Turning point %{customdata[0]}<br>x_res - start %{customdata[1]:.1f} mas<br>y_res - start %{customdata[2]:.1f} mas<extra></extra>',
       });
     }
 
@@ -384,31 +392,31 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
 
     if (markerPoints.length > 0) {
       data.push({
-        x: markerPoints.map(({ point }) => point.y),
-        y: markerPoints.map(({ point }) => point.x),
+        x: markerPoints.map(({ point }) => point.x - origin.x),
+        y: markerPoints.map(({ point }) => point.y - origin.y),
         text: markerPoints.map(({ marker }) => marker.emoji),
-        customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.x, point.y]),
+        customdata: markerPoints.map(({ marker, point }) => [marker.label || marker.date, point.date, point.x - origin.x, point.y - origin.y]),
         mode: 'text',
         type: 'scatter',
         name: 'Markers',
         textfont: { size: chartMarkerSize },
         textposition: 'middle center',
-        hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+        hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res - start %{customdata[2]:.1f} mas<br>y_res - start %{customdata[3]:.1f} mas<extra></extra>',
       });
 
       const labeledMarkers = markerPoints.filter(({ marker }) => getMarkerLabel(marker));
       if (labeledMarkers.length > 0) {
         data.push({
-          x: labeledMarkers.map(({ point }) => point.y),
-          y: labeledMarkers.map(({ point }) => point.x),
+          x: labeledMarkers.map(({ point }) => point.x - origin.x),
+          y: labeledMarkers.map(({ point }) => point.y - origin.y),
           text: labeledMarkers.map(({ marker }) => getMarkerLabel(marker)),
-          customdata: labeledMarkers.map(({ marker, point }) => [marker.date, point.date, point.x, point.y]),
+          customdata: labeledMarkers.map(({ marker, point }) => [marker.date, point.date, point.x - origin.x, point.y - origin.y]),
           mode: 'text',
           type: 'scatter',
           name: 'Marker labels',
           textfont: { size: getMarkerLabelSize(chartMarkerSize), color: '#fef3c7' },
           textposition: 'middle right',
-          hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res (Greenwich/up) %{customdata[2]:.1f} mas<br>y_res (90°W/left) %{customdata[3]:.1f} mas<extra></extra>',
+          hovertemplate: '%{customdata[0]}<br>%{customdata[1]}<br>x_res - start %{customdata[2]:.1f} mas<br>y_res - start %{customdata[3]:.1f} mas<extra></extra>',
         });
       }
     }
@@ -417,7 +425,17 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
   }, [chartMarkerSize, chartMarkers, colorScale, residual.axis, residual.axisScale, turningPointIndices, visiblePoints]);
 
   const maxExtent = useMemo(() => {
-    const extents = visiblePoints.flatMap((point) => [Math.abs(point.x), Math.abs(point.y)]);
+    const origin = visiblePoints[0];
+    if (!origin) {
+      return Math.max(residual.axisScale * 1.15, 1);
+    }
+
+    const extents = visiblePoints.flatMap((point) => [
+      Math.abs(point.x - origin.x),
+      Math.abs(point.y - origin.y),
+      point.cx === null ? 0 : Math.abs(point.cx - origin.x),
+      point.cy === null ? 0 : Math.abs(point.cy - origin.y),
+    ]);
     return Math.max(...extents, residual.axisScale * 1.15, 1);
   }, [residual.axisScale, visiblePoints]);
 
@@ -458,8 +476,8 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
         layout={{
           title: chartTitle,
           xaxis: {
-            title: { text: 'y_res (mas, +90°W left)', standoff: 18 },
-            range: [maxExtent, -maxExtent],
+            title: { text: 'x_res - path start (mas)', standoff: 18 },
+            range: [-maxExtent, maxExtent],
             scaleanchor: 'y',
             scaleratio: 1,
             constrain: 'domain',
@@ -467,7 +485,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
             zerolinecolor: '#64748b',
           },
           yaxis: {
-            title: { text: 'x_res (mas, +Greenwich up)', standoff: 18 },
+            title: { text: 'y_res - path start (mas)', standoff: 18 },
             range: [-maxExtent, maxExtent],
             constrain: 'domain',
             gridcolor: '#374151',

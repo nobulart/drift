@@ -4,6 +4,8 @@ Constraint-first polar-motion diagnostics dashboard for geometry, phase structur
 
 Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Locked Planetary Torque Coupling in Polar Motion](https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion)
 
+Phase Stability paper: [Phase Stability Diagnostics for Polar Motion State-Space Analysis](https://www.academia.edu/166976568/Phase_Stability_Diagnostics_for_Polar_Motion_State_Space_Analysis)
+
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
 Current release: `v1.6.1`
@@ -12,7 +14,7 @@ Current release: `v1.6.1`
 
 ### v1.6.1
 
-- Added the PHASE STABILITY diagnostic layer for θ-ω manifold departure, phase-conditioned Zω, curvature, hysteresis, historical analogue similarity, and the Coupling Stability Index.
+- Added the PHASE STABILITY diagnostic layer and `/api/phase-stability` endpoint for θ-ω manifold departure, phase-conditioned Zω, curvature, hysteresis, historical analogue similarity, and the Coupling Stability Index, with the companion paper published at [Phase Stability Diagnostics for Polar Motion State-Space Analysis](https://www.academia.edu/166976568/Phase_Stability_Diagnostics_for_Polar_Motion_State_Space_Analysis).
 - Added θ-conditioned historical corridor controls to the Phase Portrait and new phase-stability overlay series.
 - Added Manifold Context to the Phase-Locked Escape Model so escape-energy diagnostics can be compared with off-manifold motion.
 - Removed hardcoded TLS domains from the Docker image and startup defaults. Set `DRIFT_TLS_DOMAINS` explicitly when automatic HTTPS should run.
@@ -107,7 +109,7 @@ Current release: `v1.6.1`
 ### v1.4.8
 
 - Added the Residual Polar Motion (XY) panel and Polar Motion Trajectory panel, both with square plot geometry and chronological path coloring.
-- Standardized the polar-motion displays against the IERS EOP convention: `x_pole` is shown north/up along the Greenwich meridian and `y_pole` is shown west/left toward 90°W.
+- Standardized the polar-motion displays against the IERS EOP plot convention: `x_pole` is negative left / positive right and `y_pole` is positive upward.
 - Aligned the 3D Vector View with the same frame, including unambiguous vector labels, drift longitude in E/W notation, and clearer label placement.
 - Enlarged and corrected square fullscreen modals so the residual, trajectory, and 3D views can use the available browser window efficiently.
 
@@ -516,7 +518,7 @@ drift/
 
 High-cost API routes are public by default for local development. Set `DRIFT_API_KEY` to require authentication on the protected routes, or set `DRIFT_API_KEYS` to a comma-separated list for key rotation. Requests may authenticate with either `Authorization: Bearer <key>` or `X-API-Key: <key>`.
 
-Protected routes: `/api/combined-full`, `/api/ephemeris`, `/api/rolling-stats`, `/api/phase-escape`, and `/api/update-data`.
+Protected routes: `/api/combined-full`, `/api/ephemeris`, `/api/rolling-stats`, `/api/phase-stability`, `/api/phase-escape`, and `/api/update-data`.
 
 #### `GET /api/eop`
 - Returns cached historical Earth Orientation Parameters from the selected EOP product.
@@ -570,6 +572,13 @@ Protected routes: `/api/combined-full`, `/api/ephemeris`, `/api/rolling-stats`, 
 - Supported query params:
   `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, `conditionalTargetState`.
 - Returns rolling geometry and state outputs such as `theta`, `omega`, `rRatio`, `turningPoints`, `lagModel`, and `conditionalLagModel`.
+
+#### `GET /api/phase-stability`
+- Computes or serves cached Phase Stability diagnostics from the rolling θ-ω state.
+- Supported query params:
+  `dataset`, `windowSize`, `turnThreshold`, `centerWindow`, `centerStep`, `danceWindow`, `conditionalTargetState`, `pathResolution`, `recentDays`, `binCount`, `historicalStartDate`, `historicalEndDate`, and `view=full|panel`.
+- Returns `source`, `samples`, `envelope`, and `summary` with phase-conditioned Zω, normalized curvature, manifold departure, hysteresis, historical analogue similarity, and Coupling Stability Index.
+- Treat these outputs as comparative diagnostics, not deterministic predictions.
 
 #### `GET /api/transition-forecast`
 - Converts the requested lag-conditioned state kernel into a forward transition probability curve.

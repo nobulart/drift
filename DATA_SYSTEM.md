@@ -106,6 +106,7 @@ Timestamp-aware retrieval script that:
 | `combined_historic.json` | Combined EOP+KP | 19,449 | Monthly |
 | `combined_latest.json` | Latest combined data | 19,449 | Daily |
 | `ephemeris_historic.json` | Daily DE442 Earth-geocentric overlay cache, 1962-2050 bundled range | 32,000+ | Static / extended on demand |
+| `.phase-stability-cache/*.json` | Cached Phase Stability API outputs | Window-dependent | On demand |
 | `.phase-escape-cache/*.json` | Cached Phase-Locked Escape Model API outputs | Window-dependent | On demand |
 
 ## API Routes
@@ -129,6 +130,9 @@ Returns the cached DE442-derived Earth-geocentric overlay dataset. Accepts optio
 
 ### `/api/rolling-stats`
 Computes or serves cached rolling DRIFT diagnostics, lag models, and transition-state inputs. Protected by API authentication when configured.
+
+### `/api/phase-stability`
+Returns Phase Stability diagnostics derived from the rolling theta-omega state: phase-conditioned Zomega, curvature, manifold departure, hysteresis, historical analogue similarity, and Coupling Stability Index. Protected by API authentication when configured.
 
 ### `/api/transition-forecast`
 Returns the experimental lag-conditioned transition probability summary.

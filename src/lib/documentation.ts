@@ -4,13 +4,13 @@ export const PANEL_GUIDES: Record<string, string> = {
   phaseEscape:
     'Experimental phase-conditioned metastable escape diagnostic built from internal DRIFT state and DE442 torque-proxy phases. Use it to inspect residual phase misalignment, phase drift, curvature, stability, barrier ratio, and the Kramers-like comparative index without reading the composite as a deterministic driver.',
   sphere:
-    'Compare the drift axis and IERS polar-motion frame in one Earth-fixed view. The display is north-up/west-left: x_pole points upward along the Greenwich meridian and y_pole points left toward 90°W.',
+    'Compare the drift axis and IERS polar-motion frame in one Earth-fixed view. The display follows the IERS XY convention: negative x_pole left, positive x_pole right, and positive y_pole upward.',
   polar:
     'Observed polar-motion trajectory in xp-yp space. Look for narrow-band confinement, turning points, loop structure, and changes in clustering or excursion shape.',
   residualPolar:
-    'Reproduces the paper residual polar-motion XY phase-space view from the live EOP series. The panel removes the secular xp/yp trend, integrates the detrended residual components, overlays a one-year rolling centroid, and fits the residual drift axis in a north-up/west-left IERS orientation: x_res upward along Greenwich and y_res left toward 90°W.',
+    'Reproduces the paper residual polar-motion XY phase-space view from the live EOP series. The panel removes the secular xp/yp trend, integrates the detrended residual components, overlays a one-year rolling centroid, and fits the residual drift axis in IERS plot orientation with x_res horizontal, y_res vertical, and the visible path start at the chart origin.',
   polarTrajectory:
-    'Reproduces the paper polar-motion trajectory view from the live EOP series in a north-up/west-left IERS orientation: x_pole upward along Greenwich and y_pole left toward 90°W. Chronological coloring follows the residual XY panel so the long-loop evolution can be read as a path rather than a static cloud.',
+    'Reproduces the paper polar-motion trajectory view from the live EOP series in IERS plot orientation with x_pole horizontal, y_pole vertical, and the visible path start at the chart origin. Chronological coloring follows the residual XY panel so the long-loop evolution can be read as a path rather than a static cloud.',
   loopAngularVelocity:
     'Reproduces the paper loop-center angular-velocity figure from the live EOP series. The solid curve uses completed Chandler-scale loop centers, unwraps their center angle, and plots finite-difference angular velocity smoothed with a quadratic Savitzky-Golay style filter. The shaded band is a robust ±2σ estimate from MAD residuals. When newer data extend beyond the last completed loop, the latest incomplete-loop estimate is shown separately as a dashed provisional endpoint so the live diagnostic does not distort the paper-equivalent smoothed curve. Its visible error bar combines the completed-loop robust band with a near-origin angular-sensitivity term; low-radius provisional centers are labeled low-confidence.',
   drift:
@@ -49,14 +49,14 @@ export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: 'Loop-Center Angular Velocity', guide: PANEL_GUIDES.loopAngularVelocity },
   { title: 'Drift Direction', guide: PANEL_GUIDES.drift },
   { title: 'Phase Portrait', guide: PANEL_GUIDES.phase },
-  { title: 'Phase Stability', guide: PANEL_GUIDES.phaseStability, experimental: true },
   { title: 'Phase Diagnostics', guide: PANEL_GUIDES.phaseDiag },
   { title: 'Orthogonal Deviation Ratio R(t)', guide: PANEL_GUIDES.ortho },
   { title: 'Lag Model', guide: PANEL_GUIDES.lagModel },
   { title: 'Overlay Plot', guide: PANEL_GUIDES.overlay },
   { title: 'Conditional Lag Response', guide: PANEL_GUIDES.conditionalLag },
-  { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape, experimental: true },
   { title: 'Transition Probability', guide: PANEL_GUIDES.forecast, experimental: true },
+  { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape, experimental: true },
+  { title: 'Phase Stability', guide: PANEL_GUIDES.phaseStability, experimental: true },
 ];
 
 export const DOCS_PRINCIPLES = [

@@ -142,12 +142,12 @@ function formatLongitudeHemisphere(lon: number) {
   return `${magnitude.toFixed(1)}°${hemisphere}`;
 }
 
-function eopVectorToNorthUpWestLeft(vector: Vec3): Vec3 {
-  return [-vector[1], vector[0], vector[2]];
+function eopVectorToIersDisplay(vector: Vec3): Vec3 {
+  return [vector[0], vector[1], vector[2]];
 }
 
 function eopDisplayLongitude(vector: Vec3) {
-  return Math.atan2(-vector[1], vector[0]) * (180 / Math.PI);
+  return Math.atan2(vector[1], vector[0]) * (180 / Math.PI);
 }
 
 function getVectorLabelPosition(vector: Vec3, label: string, hovered = false) {
@@ -217,7 +217,7 @@ function applyArrowTransform(
 function transformPathToDisplay(samples?: PathSample[]): PathSample[] {
   return samples?.map((sample) => ({
     ...sample,
-    vector: eopVectorToNorthUpWestLeft(sample.vector),
+    vector: eopVectorToIersDisplay(sample.vector),
   })) ?? [];
 }
 
@@ -634,8 +634,8 @@ const Scene = memo(function Scene({
         <sphereGeometry args={[0.5, 32, 32]} />
         <meshStandardMaterial color="#1a365d" roughness={0.3} metalness={0.1} wireframe />
       </mesh>
-      <VectorArrow vector={e1} color="#ff5555" label="x_pole (Greenwich)" visible={showE1} pathData={paths['e1']} isAnimating={isPlaying} />
-      <VectorArrow vector={e2} color="#55ff55" label="y_pole (90°W)" visible={showE2} pathData={paths['e2']} isAnimating={isPlaying} />
+      <VectorArrow vector={e1} color="#ff5555" label="x_pole (+right)" visible={showE1} pathData={paths['e1']} isAnimating={isPlaying} />
+      <VectorArrow vector={e2} color="#55ff55" label="y_pole (+up)" visible={showE2} pathData={paths['e2']} isAnimating={isPlaying} />
       <VectorArrow vector={e3} color="#5555ff" label="e3 (Rotation)" visible={showE3} pathData={paths['e3']} isAnimating={isPlaying} />
       {isPlaying ? (
         <AnimatedDriftArrow vector={driftDisplayAxis} color="#ffaa00" visible={showDrift} frames={playbackFrames} playbackIndexRef={playbackIndexRef} isPlaying={isPlaying} />
@@ -677,7 +677,7 @@ export default function SphereView({
       const vector = (driftAxisTimeSeries[index] || sample.driftAxis || driftAxis) as Vec3;
       return {
         t: sample.t,
-        vector: eopVectorToNorthUpWestLeft(vector),
+        vector: eopVectorToIersDisplay(vector),
         longitude: eopDisplayLongitude(vector),
       };
     });
@@ -819,13 +819,13 @@ export default function SphereView({
   // Use fixed basis as placeholder
   const physicalBasis = useMemo(() => {
     return {
-      e1: eopVectorToNorthUpWestLeft([1, 0, 0]),
-      e2: eopVectorToNorthUpWestLeft([0, 1, 0]),
+      e1: eopVectorToIersDisplay([1, 0, 0]),
+      e2: eopVectorToIersDisplay([0, 1, 0]),
       e3: [0, 0, 1] as [number, number, number],
     };
   }, []);
 
-  const driftDisplayAxis = activePlaybackFrame?.vector ?? eopVectorToNorthUpWestLeft(displayDriftAxis);
+  const driftDisplayAxis = activePlaybackFrame?.vector ?? eopVectorToIersDisplay(displayDriftAxis);
 
   const pathSeries = useMemo<PathMap | null>(() => {
     if (isMobileViewport) {
@@ -917,7 +917,7 @@ export default function SphereView({
           <span className="text-gray-400">Drift Lon.</span>
           <span>{formatLongitudeHemisphere(driftLongitude)}</span>
           <span className="text-gray-400">Frame</span>
-          <span>x_pole up, y_pole west-left</span>
+          <span>IERS XY: +x right, +y up</span>
         </div>
       </div>
       <div className={`absolute z-10 rounded-xl border border-gray-700 bg-gray-900/80 p-4 backdrop-blur-sm ${isMobileViewport ? 'bottom-4 left-4 right-4 flex flex-col gap-3' : 'bottom-6 left-1/2 flex w-3/4 -translate-x-1/2 items-center gap-6'}`}>
