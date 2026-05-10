@@ -5,6 +5,7 @@ import { signed_angle, projectToPlane, dot } from '@/lib/math';
 import { RollingStats } from '@/lib/rollingStats';
 import { loadEOPData, loadGeomagGFZData, loadGRACEData, loadInertiaData, mergeDataSources } from '@/lib/dataLoader';
 import { computeLagModel } from '@/lib/lagModel';
+import { computePhaseStabilityDiagnostics } from '@/lib/phaseStabilityDiagnostics';
 import { DEFAULT_PANEL_ORDER } from '@/lib/panels';
 import { DEFAULT_EOP_DATASET_ID, EOPDatasetId, getEOPDataset } from '@/lib/eopDatasets';
 import defaultMarkersData from '../../data/markers.json';
@@ -729,14 +730,6 @@ const useStore = create<AppState>((set, get) => ({
           }
         : null;
       
-      const enrichedStats = { 
-        ...stats, 
-        e1: stabilizedBasis.e1, 
-        e2: stabilizedBasis.e2, 
-        lagModel,
-        paths: precomputedPaths
-      };
-      
       const enrichedData = data.map((sample, index) => ({
         ...sample,
         e1:
@@ -754,6 +747,24 @@ const useStore = create<AppState>((set, get) => ({
           || (isPlausibleGeomagneticAxis(stats.geomagnetic_axis?.[index] as [number, number, number] | undefined) ? stats.geomagnetic_axis[index] as [number, number, number] : undefined)
           || sample.geomagnetic_axis,
       }));
+
+      const phaseStability = computePhaseStabilityDiagnostics(
+        (stats.theta || []).map((theta: number, index: number) => ({
+          date: enrichedData[index]?.t?.slice(0, 10) ?? String(stats.t?.[index] ?? index),
+          theta,
+          omega: stats.omega?.[index] ?? NaN,
+        })),
+        { recentDays: 180, binCount: 72 }
+      );
+
+      const enrichedStats = { 
+        ...stats, 
+        e1: stabilizedBasis.e1, 
+        e2: stabilizedBasis.e2, 
+        lagModel,
+        phaseStability,
+        paths: precomputedPaths
+      };
 
       set({ rollingStats: enrichedStats, data: enrichedData });
       

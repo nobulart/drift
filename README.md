@@ -6,9 +6,16 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.6.0`
+Current release: `v1.6.1`
 
 ## Release Notes
+
+### v1.6.1
+
+- Added the PHASE STABILITY diagnostic layer for θ-ω manifold departure, phase-conditioned Zω, curvature, hysteresis, historical analogue similarity, and the Coupling Stability Index.
+- Added θ-conditioned historical corridor controls to the Phase Portrait and new phase-stability overlay series.
+- Added Manifold Context to the Phase-Locked Escape Model so escape-energy diagnostics can be compared with off-manifold motion.
+- Removed hardcoded TLS domains from the Docker image and startup defaults. Set `DRIFT_TLS_DOMAINS` explicitly when automatic HTTPS should run.
 
 ### v1.6.0
 
@@ -222,6 +229,46 @@ docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
 docker logs --tail=100 drift-dashboard
 curl -I http://127.0.0.1:3000
 ```
+
+### Automatic HTTPS In Docker
+
+The production Docker image includes nginx and Certbot. At startup it:
+
+- starts the Next.js app on `PORT`, default `3000`
+- starts nginx on ports `80` and `443` when the container is running as root
+- checks the configured TLS domains against the instance public IP
+- requests or renews a Let's Encrypt certificate only for domains whose `A` or `AAAA` records point at the instance
+- keeps serving HTTP and the direct app port if DNS, networking, port mapping, or certificate issuance is not viable
+
+There are no default TLS domains. Set `DRIFT_TLS_DOMAINS` explicitly when this container should request or renew certificates.
+
+For automatic HTTPS on a VM, publish ports `80` and `443` as well as the direct app port:
+
+```bash
+docker run -d \
+  --name drift-dashboard \
+  --restart unless-stopped \
+  -p 80:80 \
+  -p 443:443 \
+  -p 3000:3000 \
+  -v drift-letsencrypt:/etc/letsencrypt \
+  -v drift-certbot:/var/lib/letsencrypt \
+  -e DRIFT_TLS_DOMAINS=example.com,www.example.com \
+  -e DRIFT_TLS_EMAIL=admin@example.com \
+  <registry>/<image>:<tag>
+```
+
+The named volumes preserve issued certificates and Certbot renewal state across container replacements.
+
+Configuration:
+
+```text
+DRIFT_TLS_DOMAINS   Optional comma- or semicolon-separated domain list. Empty by default; set it to enable certificate requests.
+DRIFT_TLS_EMAIL     Optional Let's Encrypt registration email. If unset, Certbot registers without email.
+DRIFT_TLS_STAGING   Set to 1 to use Let's Encrypt staging while testing DNS and port mappings.
+```
+
+For managed platforms that terminate TLS before the container, no special configuration is needed. The DNS viability check will skip certificate issuance unless the configured domains point directly at the running instance.
 
 ### Build And Publish A Registry Image
 

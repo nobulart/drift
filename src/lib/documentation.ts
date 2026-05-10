@@ -21,6 +21,8 @@ export const PANEL_GUIDES: Record<string, string> = {
     'Compares directional alignment measures with geomagnetic activity indices. Treat this as contextual comparison and timing evidence, not as proof that geomagnetic forcing is driving the observed geometry.',
   phase:
     'State-space view of phase versus angular velocity. Coherent loops support fast cyclic structure, while distortions, widening, or broken trajectories suggest departures from the recent dynamical pattern.',
+  phaseStability:
+    'Quantifies whether the recent θ-ω trajectory remains inside the historical phase-conditioned manifold. Elevated values indicate off-manifold motion, abnormal curvature, hysteresis, or poor similarity to prior loop families. Treat this as a comparative stability diagnostic, not a deterministic prediction.',
   phaseDiag:
     'Tracks phase and angular velocity through time. Use it to spot slowdowns, bursts, clustering, or irregular evolution in the fast component.',
   ortho:
@@ -47,6 +49,7 @@ export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: 'Loop-Center Angular Velocity', guide: PANEL_GUIDES.loopAngularVelocity },
   { title: 'Drift Direction', guide: PANEL_GUIDES.drift },
   { title: 'Phase Portrait', guide: PANEL_GUIDES.phase },
+  { title: 'Phase Stability', guide: PANEL_GUIDES.phaseStability, experimental: true },
   { title: 'Phase Diagnostics', guide: PANEL_GUIDES.phaseDiag },
   { title: 'Orthogonal Deviation Ratio R(t)', guide: PANEL_GUIDES.ortho },
   { title: 'Lag Model', guide: PANEL_GUIDES.lagModel },

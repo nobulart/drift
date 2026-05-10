@@ -1,4 +1,4 @@
-import { LagResult, ConditionalLagResult, PathSample, PathMap } from './types';
+import { LagResult, ConditionalLagResult, PathSample, PathMap, PhaseStabilityResult } from './types';
 
 export interface RollingStats {
   t: number[];
@@ -18,6 +18,7 @@ export interface RollingStats {
   alignment?: number[];
   lagModel?: LagResult;
   conditionalLagModel?: ConditionalLagResult;
+  phaseStability?: PhaseStabilityResult;
   paths?: {
     e1: PathSample[];
     e2: PathSample[];

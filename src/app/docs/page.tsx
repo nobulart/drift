@@ -136,7 +136,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.6.0
+                Version v1.6.1
               </span>
               <Link
                 href="/"
@@ -183,6 +183,12 @@ export default function DocsPage() {
           {/* Keep this inline release-card list to the latest six versions. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.1 Phase Stability</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added the PHASE STABILITY layer for manifold departure, phase-conditioned Zω, curvature, hysteresis, historical analogue similarity, and Coupling Stability Index. Docker TLS domains are now empty by default and must be configured explicitly.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.0 API Access Control</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 High-cost and mutating API routes can now be restricted to key holders, protecting the public instance from abusive requests while leaving local development open when no API key is configured.
@@ -210,12 +216,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.6 Overlay Heatmaps</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added a Plot selector to the Overlay Plot for Line Chart and scientific heatmap palette modes. Heatmaps compare selected core and DE442 ephemeris rows by date, use explicit palette color stops, and reset Plotly state cleanly when switching modes.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.5 Pipeline Performance</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added ephemeris year shards, route projections, in-flight compute deduping, parsed JSON reuse, compact derived artifacts, and prefix-sum rolling covariance. Cold rolling diagnostics and phase-escape computations are materially faster while panel payloads are much smaller.
               </p>
             </article>
           </div>

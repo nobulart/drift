@@ -429,6 +429,17 @@ export default function PhaseEscapeModelPanel() {
         : basinState === 'near escape boundary'
           ? 'red'
           : 'grey';
+  const phaseStabilityLatest = rollingStats?.phaseStability?.summary?.latest ?? null;
+  const phaseStabilityAnalogue = rollingStats?.phaseStability?.summary?.topAnalogues?.[0] ?? null;
+  const manifoldTone: StatTone = phaseStabilityLatest?.state === 'escape_candidate'
+    ? 'purple'
+    : phaseStabilityLatest?.state === 'excursion'
+      ? 'orange'
+      : phaseStabilityLatest?.state === 'watch'
+        ? 'orange'
+        : phaseStabilityLatest?.state === 'stable'
+          ? 'cyan'
+          : 'grey';
 
   const curveData = useMemo(() => {
     const x = Array.from({ length: 361 }, (_, index) => -180 + index);
@@ -884,6 +895,22 @@ export default function PhaseEscapeModelPanel() {
       <div className="mb-4">
         <DirectionIndicator direction={directionLabel} magnitude={Math.abs(dphiNow)} />
       </div>
+
+      {phaseStabilityLatest && (
+        <div className="mb-4 rounded-lg border border-[#243041] bg-[#111827] p-3">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#93c5fd]">Manifold Context</p>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Zω" value={formatNumber(phaseStabilityLatest.zOmega)} tone={manifoldTone} title="Phase-conditioned angular-velocity anomaly from the historical θ-ω corridor." />
+            <StatCard label="Manifold Departure" value={formatNumber(phaseStabilityLatest.manifoldDeparture)} tone={manifoldTone} title="Distance from the historical angular-velocity corridor at the same phase angle θ." />
+            <StatCard
+              label="Historical Analogue"
+              value={formatNumber(phaseStabilityLatest.analogueSimilarity)}
+              title={phaseStabilityAnalogue ? `${phaseStabilityAnalogue.startDate} to ${phaseStabilityAnalogue.endDate}` : 'No sufficient historical analogue window.'}
+            />
+            <StatCard label="Coupling Stability Index" value={formatNumber(phaseStabilityLatest.couplingStabilityIndex)} tone={manifoldTone} title="Comparative index for off-manifold motion, curvature, hysteresis, and historical novelty." />
+          </div>
+        </div>
+      )}
 
       <div className={`mb-4 rounded-lg border p-3 ${nearHighRiskRegime ? 'border-[#f97316] bg-[#431407]/50' : 'border-[#243041] bg-[#111827]'}`}>
         <div className="flex flex-wrap items-center gap-3">

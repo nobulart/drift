@@ -17,11 +17,21 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV DRIFT_TLS_EMAIL=""
+ENV DRIFT_TLS_STAGING="0"
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 python3-pip python3-venv \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    certbot \
+    curl \
+    dnsutils \
+    nginx \
+    python3 \
+    python3-pip \
+    python3-venv \
   && rm -rf /var/lib/apt/lists/*
 
 COPY docker/requirements.txt /tmp/requirements.txt
@@ -43,8 +53,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/docker/start.sh ./docker/start.sh
 
 RUN chown -R nextjs:nodejs /app
 
-USER nextjs
-
 EXPOSE 3000
+EXPOSE 80
+EXPOSE 443
 
 CMD ["sh", "docker/start.sh"]

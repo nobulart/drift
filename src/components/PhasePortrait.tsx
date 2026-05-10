@@ -25,8 +25,12 @@ export default function PhasePortrait({
   const containerRef = useRef<HTMLDivElement>(null);
   const fallbackHeight = usePlotDisplayHeight(500, 860);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [showEnvelope, setShowEnvelope] = useState(true);
+  const [envelopeLevel, setEnvelopeLevel] = useState(2);
+  const [recentColorBy, setRecentColorBy] = useState<'none' | 'zOmega' | 'curvature' | 'manifold' | 'coupling'>('none');
   const plotSize = Math.round(containerWidth > 0 ? Math.min(containerWidth, fallbackHeight) : fallbackHeight);
   const chartTitle = useChartTitle('Phase Portrait: theta vs omega', dates);
+  const phaseStability = useStore((state) => state.rollingStats?.phaseStability);
   const chartMarkers = useStore((state) => state.chartMarkers);
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
@@ -77,7 +81,37 @@ export default function PhasePortrait({
       hovertemplate: '%{customdata}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
     };
 
-    const data: Plotly.Data[] = [portraitTrace];
+    const data: Plotly.Data[] = [];
+
+    if (showEnvelope && phaseStability?.envelope?.length) {
+      const envelope = phaseStability.envelope.filter(bin => bin.muOmega !== null && bin.sigmaOmega !== null);
+      const thetaEnvelope = envelope.map(bin => bin.theta);
+      const upper = envelope.map(bin => (bin.muOmega ?? 0) + envelopeLevel * (bin.sigmaOmega ?? 0));
+      const lower = envelope.map(bin => (bin.muOmega ?? 0) - envelopeLevel * (bin.sigmaOmega ?? 0));
+
+      data.push({
+        x: [...thetaEnvelope, ...thetaEnvelope.slice().reverse()],
+        y: [...upper, ...lower.slice().reverse()],
+        type: 'scatter',
+        mode: 'lines',
+        name: `Historical ±${envelopeLevel}σ envelope`,
+        fill: 'toself',
+        fillcolor: 'rgba(56, 189, 248, 0.12)',
+        line: { color: 'rgba(56, 189, 248, 0.20)', width: 1 },
+        hoverinfo: 'skip',
+      });
+      data.push({
+        x: thetaEnvelope,
+        y: envelope.map(bin => bin.muOmega),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Historical median ω|θ',
+        line: { color: 'rgba(125, 211, 252, 0.85)', width: 1.3 },
+        hovertemplate: 'Historical corridor<br>θ %{x:.3f}<br>median ω %{y:.4f}<extra></extra>',
+      });
+    }
+
+    data.push(portraitTrace);
 
     const latestIndex = validIndices[validIndices.length - 1];
     const latestDate = dates[latestIndex] ? new Date(dates[latestIndex]) : null;
@@ -107,6 +141,44 @@ export default function PhasePortrait({
         line: { color: '#f59e0b', width: 3 },
         hovertemplate: 'Recent trail<br>%{customdata}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
       });
+
+      if (recentColorBy !== 'none' && phaseStability?.samples?.length) {
+        const values = recentIndices.map((index) => {
+          const sample = phaseStability.samples[index];
+          switch (recentColorBy) {
+            case 'zOmega':
+              return sample?.zOmega ?? NaN;
+            case 'curvature':
+              return sample?.curvatureNorm ?? NaN;
+            case 'manifold':
+              return sample?.manifoldDeparture ?? NaN;
+            case 'coupling':
+              return sample?.couplingStabilityIndex ?? NaN;
+            default:
+              return NaN;
+          }
+        });
+        data.push({
+          x: recentTheta,
+          y: recentOmega,
+          customdata: recentDates.map((date, index) => [date, values[index]]),
+          mode: 'markers',
+          type: 'scatter',
+          name: `Recent colored by ${recentColorBy}`,
+          marker: {
+            size: 6,
+            color: values,
+            colorscale: recentColorBy === 'zOmega'
+              ? [[0, '#22c55e'], [0.5, '#f59e0b'], [1, '#a855f7']]
+              : [[0, '#0f766e'], [0.5, '#f97316'], [1, '#a855f7']],
+            cmin: recentColorBy === 'zOmega' ? -3.5 : 0,
+            cmax: recentColorBy === 'zOmega' ? 3.5 : 1,
+            colorbar: { title: { text: recentColorBy } },
+            line: { color: 'rgba(15, 23, 42, 0.8)', width: 0.5 },
+          },
+          hovertemplate: '%{customdata[0]}<br>color %{customdata[1]:.3f}<br>θ %{x:.3f}<br>ω %{y:.4f}<extra></extra>'
+        });
+      }
     }
 
     data.push({
@@ -186,7 +258,7 @@ export default function PhasePortrait({
     }
 
     return data;
-  }, [chartMarkerSize, chartMarkers, dates, omega, theta, turningPoints]);
+  }, [chartMarkerSize, chartMarkers, dates, envelopeLevel, omega, phaseStability, recentColorBy, showEnvelope, theta, turningPoints]);
 
   const layout = {
     title: chartTitle as any,
@@ -232,6 +304,43 @@ export default function PhasePortrait({
 
   return (
     <div ref={containerRef} className="h-full w-full min-w-0">
+      <div className="mb-3 flex flex-wrap items-center gap-4 rounded-lg border border-[#1f2937] bg-[#111827] p-3 text-sm text-[#d1d5db]">
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showEnvelope}
+            onChange={(event) => setShowEnvelope(event.target.checked)}
+            className="h-4 w-4 rounded border-[#374151] bg-[#0b1220]"
+          />
+          Show historical envelope
+        </label>
+        <label className="inline-flex items-center gap-2">
+          <span className="text-[#9ca3af]">Envelope level</span>
+          <select
+            value={envelopeLevel}
+            onChange={(event) => setEnvelopeLevel(Number(event.target.value))}
+            className="h-8 rounded-md border border-[#374151] bg-[#0b1220] px-2 text-sm text-[#e5e7eb]"
+          >
+            <option value={1}>±1σ</option>
+            <option value={2}>±2σ</option>
+            <option value={3}>±3σ</option>
+          </select>
+        </label>
+        <label className="inline-flex items-center gap-2">
+          <span className="text-[#9ca3af]">Color recent path by</span>
+          <select
+            value={recentColorBy}
+            onChange={(event) => setRecentColorBy(event.target.value as typeof recentColorBy)}
+            className="h-8 rounded-md border border-[#374151] bg-[#0b1220] px-2 text-sm text-[#e5e7eb]"
+          >
+            <option value="none">none</option>
+            <option value="zOmega">Zω</option>
+            <option value="curvature">curvature</option>
+            <option value="manifold">manifold departure</option>
+            <option value="coupling">coupling stability</option>
+          </select>
+        </label>
+      </div>
       <Plot
         data={traces}
         layout={layout}

@@ -107,3 +107,58 @@ export interface TransitionForecast {
   base_prob: number;
   p_30d?: number;
 }
+
+export type PhaseStabilityState =
+  | 'stable'
+  | 'watch'
+  | 'excursion'
+  | 'escape_candidate'
+  | 'insufficient_data';
+
+export interface PhaseStabilitySample {
+  date: string;
+  theta: number;
+  omega: number;
+  thetaBin: number | null;
+  muOmega: number | null;
+  sigmaOmega: number | null;
+  zOmega: number | null;
+  absZNorm: number | null;
+  curvature: number | null;
+  curvatureNorm: number | null;
+  manifoldDeparture: number | null;
+  hysteresisIndex?: number | null;
+  analogueSimilarity?: number | null;
+  couplingStabilityIndex: number | null;
+  state: PhaseStabilityState;
+}
+
+export interface HistoricalAnalogue {
+  startDate: string;
+  endDate: string;
+  similarity: number;
+  distance: number;
+  label?: string;
+}
+
+export interface PhaseStabilityEnvelopeBin {
+  theta: number;
+  bin: number;
+  count: number;
+  muOmega: number | null;
+  sigmaOmega: number | null;
+}
+
+export interface PhaseStabilitySummary {
+  latestDate: string;
+  latest: PhaseStabilitySample;
+  topAnalogues: HistoricalAnalogue[];
+  hysteresisIndex: number | null;
+  state: string;
+}
+
+export interface PhaseStabilityResult {
+  samples: PhaseStabilitySample[];
+  envelope: PhaseStabilityEnvelopeBin[];
+  summary: PhaseStabilitySummary | null;
+}

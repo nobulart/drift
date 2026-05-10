@@ -45,6 +45,11 @@ const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
   R: { label: 'R(t)' },
   kp: { label: 'Kp' },
   ap: { label: 'ap' },
+  zOmega: { label: 'Zω' },
+  curvatureNorm: { label: 'Curvature κ̂' },
+  manifoldDeparture: { label: 'Manifold Departure' },
+  couplingStability: { label: 'Coupling Stability Index' },
+  hysteresisIndex: { label: 'Hysteresis Index' },
 };
 
 function normalize(series: number[]): number[] {
@@ -106,6 +111,16 @@ function getCoreSignalSeries(
       return data.map(d => d.kp ?? NaN);
     case 'ap':
       return data.map(d => d.ap ?? NaN);
+    case 'zOmega':
+      return rollingStats.phaseStability?.samples?.map((sample: any) => sample.zOmega ?? NaN);
+    case 'curvatureNorm':
+      return rollingStats.phaseStability?.samples?.map((sample: any) => sample.curvatureNorm ?? NaN);
+    case 'manifoldDeparture':
+      return rollingStats.phaseStability?.samples?.map((sample: any) => sample.manifoldDeparture ?? NaN);
+    case 'couplingStability':
+      return rollingStats.phaseStability?.samples?.map((sample: any) => sample.couplingStabilityIndex ?? NaN);
+    case 'hysteresisIndex':
+      return rollingStats.phaseStability?.samples?.map((sample: any) => sample.hysteresisIndex ?? NaN);
     default:
       return undefined;
   }

@@ -16,6 +16,7 @@ const PolarPlot = dynamic(() => import('@/components/PolarPlot'), { ssr: false }
 const DriftDirectionPlot = dynamic(() => import('@/components/DriftDirectionPlot'), { ssr: false });
 const SphereView = dynamic(() => import('@/components/SphereView'), { ssr: false });
 const PhasePortrait = dynamic(() => import('@/components/PhasePortrait'), { ssr: false });
+const PhaseStabilityPanel = dynamic(() => import('@/components/PhaseStabilityPanel'), { ssr: false });
 const ResidualPolarMotionPlot = dynamic(() => import('@/components/ResidualPolarMotionPlot'), { ssr: false });
 const PolarMotionTrajectoryPlot = dynamic(() => import('@/components/PolarMotionTrajectoryPlot'), { ssr: false });
 const LoopCenterAngularVelocityPlot = dynamic(() => import('@/components/LoopCenterAngularVelocityPlot'), { ssr: false });
@@ -401,6 +402,20 @@ export default function Home() {
         <PhasePortrait dates={datesStr} theta={rollingStats.theta || []} omega={rollingStats.omega || []} turningPoints={rollingStats.turningPoints} />
       </Panel>
     ) : null,
+    phaseStability: rollingStatsLoaded && rollingStats ? (
+      <Panel
+        panelId="phaseStability"
+        title="PHASE STABILITY"
+        guide={PANEL_GUIDES.phaseStability}
+        experimental
+        visible={!hiddenPanels.has('phaseStability')}
+        collapsed={collapsedPanels.has('phaseStability')}
+        onToggleVisibility={() => togglePanelVisibility('phaseStability')}
+        onToggleCollapse={() => togglePanelCollapse('phaseStability')}
+      >
+        <PhaseStabilityPanel />
+      </Panel>
+    ) : null,
     phaseDiag: rollingStatsLoaded && rollingStats ? (
       <Panel
         panelId="phaseDiag"
@@ -501,7 +516,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                 Version v1.6.0
+                 Version v1.6.1
               </p>
             </div>
             <Link

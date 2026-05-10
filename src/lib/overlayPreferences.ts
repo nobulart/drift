@@ -12,7 +12,23 @@ const OVERLAY_PLOT_MODE_KEYS = new Set([
   ...HEATMAP_PALETTES.map((palette) => palette.value),
 ]);
 
-const CORE_SIGNAL_KEYS = new Set(['xp', 'yp', 'ut1_utc', 'lod', 'drift', 'theta', 'omega', 'R', 'kp', 'ap']);
+const CORE_SIGNAL_KEYS = new Set([
+  'xp',
+  'yp',
+  'ut1_utc',
+  'lod',
+  'drift',
+  'theta',
+  'omega',
+  'R',
+  'kp',
+  'ap',
+  'zOmega',
+  'curvatureNorm',
+  'manifoldDeparture',
+  'couplingStability',
+  'hysteresisIndex',
+]);
 const EPHEMERIS_SIGNAL_KEYS = new Set(
   EPHEMERIS_BODY_CONFIG.flatMap(body =>
     EPHEMERIS_METRIC_CONFIG.map(metric => `${body.key}:${metric.key}`)
