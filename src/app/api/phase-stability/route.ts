@@ -17,6 +17,7 @@ const NO_STORE_HEADERS = {
   Pragma: 'no-cache',
   Expires: '0',
 };
+const PHASE_STABILITY_CACHE_VERSION = '2026-05-10-phase-stability-v1';
 
 const DateParamSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional();
 const ParamsSchema = z.object({
@@ -119,19 +120,17 @@ export async function GET(request: NextRequest) {
 
     const eopPath = await materializePipelineJson(dataset.filename);
     const rollingScriptPath = join(process.cwd(), 'scripts', 'compute_rolling_stats.py');
-    const diagnosticPath = join(process.cwd(), 'src', 'lib', 'phaseStabilityDiagnostics.ts');
-    const [eopStat, rollingScriptStat, diagnosticStat] = await Promise.all([
+    const [eopStat, rollingScriptStat] = await Promise.all([
       fs.stat(eopPath),
       fs.stat(rollingScriptPath),
-      fs.stat(diagnosticPath),
     ]);
 
     const cacheKey = crypto.createHash('md5')
       .update(JSON.stringify(params))
       .update(dataset.id)
+      .update(PHASE_STABILITY_CACHE_VERSION)
       .update(`${eopStat.mtimeMs}:${eopStat.size}`)
       .update(`${rollingScriptStat.mtimeMs}:${rollingScriptStat.size}`)
-      .update(`${diagnosticStat.mtimeMs}:${diagnosticStat.size}`)
       .digest('hex');
 
     const cacheDir = join(process.cwd(), 'public', 'data', '.phase-stability-cache', dataset.id, params.pathResolution);

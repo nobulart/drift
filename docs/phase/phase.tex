@@ -1,5 +1,7 @@
 \documentclass[11pt]{article}
 
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
 \usepackage[a4paper,margin=0.8in]{geometry}
 \usepackage{graphicx}
 \usepackage{amsmath,amssymb}
@@ -8,9 +10,13 @@
 \usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{caption}
+\usepackage{subcaption}
 \usepackage{float}
 \usepackage{enumitem}
 \usepackage{microtype}
+\usepackage{placeins}
+
+\graphicspath{{figures/}}
 
 \hypersetup{
     colorlinks=true,
@@ -21,14 +27,14 @@
 
 \title{\textbf{Phase Stability Diagnostics for Polar-Motion State-Space Analysis}\\\large A Methodological Guide to Manifold Departure, Curvature, Hysteresis, and Historical Analogue Scoring}
 \author{Craig Stone}
-\date{May 2026}
+\date{\today}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-This paper documents the methodology and interpretation of the Phase Stability diagnostic layer used in the DRIFT polar-motion dashboard. The diagnostic framework is designed to determine whether a recent phase trajectory remains within the historically occupied \(\theta\)--\(\omega\) manifold, or whether it exhibits off-manifold motion, abnormal curvature, hysteresis, weak historical precedent, or escape-like behavior. The method is deliberately comparative rather than causal. It does not identify a physical driver by itself, nor does it assert that a core--mantle decoupling event is occurring. Instead, it provides a disciplined state-space reading of the observed trajectory relative to the historical polar-motion record. The central diagnostics are the phase-conditioned angular-velocity anomaly \(Z_{\omega}\), the phase-space curvature \(\kappa\), the normalized manifold departure score \(M\), the hysteresis index \(H\), the historical analogue score \(A\), and the composite Coupling Stability Index \(C\). A documented dashboard example from 2026-05-09 is used to show how the diagnostics are read in practice.
+This paper documents the methodology and interpretation of the Phase Stability diagnostic layer used in the DRIFT polar-motion dashboard. The diagnostic framework is designed to determine whether a recent phase trajectory remains within the historically occupied \(\theta\)--\(\omega\) manifold, or whether it exhibits off-manifold motion, abnormal curvature, hysteresis, weak historical precedent, or escape-like behavior. The method is deliberately comparative rather than causal. It does not identify a physical driver by itself, nor does it assert that a core--mantle decoupling event is occurring. Instead, it provides a disciplined state-space reading of the observed trajectory relative to the historical polar-motion record. The central diagnostics are the phase-conditioned angular-velocity anomaly \(Z_{\omega}\), the phase-space curvature \(\kappa\), the normalized manifold-departure score \(M\), the hysteresis index \(H\), the historical analogue score \(A\), and the composite Coupling Stability Index \(C\). A documented 2026-05-10 example is used to show how the diagnostics are read in practice, and a four-product comparison demonstrates that the present escape-candidate classification is robust across JPL EOP2, C04/IAU2000A, finals.all/IAU2000, and finals.all/IAU1980 realizations.
 \end{abstract}
 
 \section{Purpose of the Phase Stability Layer}
@@ -117,7 +123,7 @@ Low curvature means the trajectory is proceeding along a smooth or familiar bran
 
 \section{Manifold Departure Score}
 
-The normalized manifold departure score \(M(t)\) converts \(|Z_{\omega}|\) into a bounded diagnostic. A simple and effective first implementation is
+The normalized manifold-departure score \(M(t)\) converts \(|Z_{\omega}|\) into a bounded diagnostic. A simple and effective first implementation is
 
 \begin{equation}
 M(t) = \min\left(\frac{|Z_{\omega}(t)|}{Z_{\mathrm{crit}}},1\right),
@@ -129,7 +135,7 @@ The resulting score lies between 0 and 1:
 
 \begin{table}[H]
 \centering
-\caption{Interpretation of the normalized manifold departure score.}
+\caption{Interpretation of the normalized manifold-departure score.}
 \begin{tabular}{>{\raggedleft\arraybackslash}p{0.22\linewidth} p{0.62\linewidth}}
 \toprule
 \(\boldsymbol{M}\) & Interpretation \\
@@ -171,7 +177,7 @@ If the recent trajectory has not yet produced enough return geometry, hysteresis
 
 The historical analogue score asks whether the recent trajectory resembles any prior historical window. It is intended to prevent overinterpretation of a visually striking but historically common structure.
 
-For a recent trajectory segment \(R\), candidate historical windows \(W_i\) are extracted with comparable duration or sample count. The paths are normalized and compared using either a dynamic time warping distance, a Fréchet-like path distance, or a resampled Euclidean trajectory distance. The distance \(d_i\) is then converted to a similarity score,
+For a recent trajectory segment \(R\), candidate historical windows \(W_i\) are extracted with comparable duration or sample count. The paths are normalized and compared using either a dynamic time-warping distance, a Fréchet-like path distance, or a resampled Euclidean trajectory distance. The distance \(d_i\) is then converted to a similarity score,
 
 \begin{equation}
 A_i = \exp\left(-\frac{d_i}{s}\right),
@@ -272,26 +278,100 @@ C > 0.75.
 
 The most important unfavorable pattern is not a single high value, but a coherent cluster: off-manifold motion, sharp curvature, weak historical precedent, and a return path that does not retrace the outbound path.
 
-\section{Documented Dashboard Example: 2026-05-09}
+\section{Updated 2026-05-10 Example and Cross-Product Robustness}
 
-Figure~\ref{fig:phase-stability-dashboard-example} shows the Phase Stability panel for the 2026-05-09 endpoint. The panel reports a recent \(\theta\)--\(\omega\) trajectory classified as an escape candidate. The latest displayed values are \(Z_{\omega}=3.235\), \(\kappa=1.250\), \(M=0.924\), \(A=0.521\), \(H=\mathrm{n/a}\), and \(C=0.865\).
+Figure~\ref{fig:phase-stability-four-products} shows the Phase Stability panel for the 2026-05-10 endpoint across four Earth orientation product realizations. The products differ in source and reference convention: JPL EOP2, EOP 20u24 C04 under IAU2000A, finals.all under IAU2000, and finals.all under IAU1980. The absolute values vary modestly, as expected, but the qualitative classification is invariant: all four runs classify the present state as an escape candidate.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.77\linewidth]{phase.png}
-\caption{Documented Phase Stability dashboard example for 2026-05-09. The panel shows elevated phase-conditioned angular-velocity anomaly, high manifold departure, elevated curvature, partial but not strong historical analogue support, unavailable hysteresis due to insufficient return geometry, and a composite Coupling Stability Index in the escape-candidate range. The example should be read as a comparative state-space diagnostic, not as a deterministic causal claim.}
-\label{fig:phase-stability-dashboard-example}
+\begin{subfigure}[t]{0.4\linewidth}
+\centering
+\includegraphics[width=\linewidth]{phase_stability_jpl_eop2.png}
+\caption{JPL EOP2.}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.4\linewidth}
+\centering
+\includegraphics[width=\linewidth]{phase_stability_c04_iau2000a.png}
+\caption{EOP 20u24 C04 / IAU2000A.}
+\end{subfigure}
+
+\vspace{0.6em}
+
+\begin{subfigure}[t]{0.4\linewidth}
+\centering
+\includegraphics[width=\linewidth]{phase_stability_finals_iau2000.png}
+\caption{finals.all / IAU2000.}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.4\linewidth}
+\centering
+\includegraphics[width=\linewidth]{phase_stability_finals_iau1980.png}
+\caption{finals.all / IAU1980.}
+\end{subfigure}
+\caption{Phase Stability diagnostics for the 2026-05-10 endpoint across four EOP realizations. All four products classify the recent \(\theta\)--\(\omega\) trajectory as an escape-candidate state. The numerical diagnostics vary modestly by product, but the state classification is invariant. This reduces the likelihood that the result is an artifact of a single EOP product, reference convention, or preprocessing path.}
+\label{fig:phase-stability-four-products}
 \end{figure}
 
-The strongest reading in the example is the manifold departure score. A value of \(M=0.924\) places the recent trajectory near the upper end of the off-manifold range. The \(Z_{\omega}\) score of 3.235 indicates that the current angular velocity is more than three robust phase-conditioned standard deviations from the historical expectation. The curvature value is also elevated, suggesting that the trajectory is not merely displaced but bending sharply through phase space.
+The cross-product values are summarized in Table~\ref{tab:cross-product-summary}. Relative to the 2026-05-09 snapshot, the 2026-05-10 update strengthens the result in the C04/IAU2000A and JPL EOP2 products. Both reach the upper bound of the normalized manifold-departure score, while all four products remain in the escape-candidate regime. The finals.all IAU2000 and IAU1980 realizations remain effectively identical at this scale.
 
-The historical analogue score of 0.521 is important because it moderates the interpretation. It says that the recent trajectory is not wholly without precedent. The dashboard identifies partial analogues in the late 1978--1979 and 2012 windows. This weakens any claim of uniqueness, while still allowing the present episode to be classified as abnormal.
+\begin{table}[H]
+\centering
+\caption{Cross-product Phase Stability summary for the 2026-05-10 endpoint.}
+\label{tab:cross-product-summary}
+\begin{tabular}{lccccccc}
+\toprule
+Product & \(\theta\) & \(\omega\) & \(Z_{\omega}\) & \(\kappa\) & \(M\) & \(A\) & \(C\) \\
+\midrule
+JPL EOP2 & 0.776 & -0.0057 & 3.709 & 1.299 & 1.000 & 0.583 & 0.901 \\
+EOP 20u24 C04 / IAU2000A & 0.691 & -0.0051 & 3.765 & 1.326 & 1.000 & 0.529 & 0.910 \\
+finals.all / IAU2000 & 0.929 & -0.0059 & 3.286 & 1.246 & 0.939 & 0.620 & 0.858 \\
+finals.all / IAU1980 & 0.929 & -0.0059 & 3.286 & 1.246 & 0.939 & 0.620 & 0.858 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The unavailable hysteresis reading is also important. It means the trajectory has not yet provided enough return-path information to determine whether the system is retracing its outbound route or returning along a displaced branch. If a later return path produces high hysteresis, the case for a branch-transition interpretation would become stronger. If hysteresis remains low and the path collapses back into the historical corridor, the episode would be better interpreted as a large but bounded excursion.
+The strongest reading in the updated example is the cross-product persistence of the manifold-departure signal. In the C04/IAU2000A and JPL EOP2 runs, \(M=1.000\), indicating that the recent trajectory has reached the upper bound of the normalized off-manifold score under the adopted thresholding. The finals.all realizations are slightly softer but still severe, with \(M=0.939\). The phase-conditioned anomaly remains large in all products, with \(Z_{\omega}\) ranging from 3.286 to 3.765. Curvature remains elevated, ranging from 1.246 to 1.326, which indicates that the current trajectory is not merely displaced from the historical band but is also bending sharply through phase space.
 
-\section{Reading the Example in Plain Terms}
+The historical analogue score moderates the interpretation. Across the four runs it ranges from 0.529 to 0.620. The episode is therefore not without precedent. It has historical cousins, including windows near 1965, 1978--1979, 1986, and 2011--2012, but it does not have a strong twin. This is the desired discipline of the method: the present episode is neither dissolved into ordinary noise nor declared unprecedented.
 
-The 2026-05-09 example is unfavorable in the diagnostic sense. It does not show a quiet, historically ordinary state. It shows a recent trajectory that has moved far from the historical phase-conditioned corridor, curved strongly, and only partially resembles previous historical windows. The correct conclusion is therefore:
+The unavailable hysteresis reading remains important. It means the trajectory has not yet provided enough return-path information to determine whether the system is retracing its outbound route or returning along a displaced branch. If a later return path produces high hysteresis, the case for a branch-transition interpretation would become stronger. If hysteresis remains low and the path collapses back into the historical corridor, the episode would be better interpreted as a large but bounded excursion.
+
+\section{Geometric Context of the 2026 Phase-Stability Episode}
+
+The Phase Stability diagnostic is not intended to stand alone. It should be read against the broader geometry of the polar-motion record. Figures~\ref{fig:phase-portrait-envelope}--\ref{fig:residual-phase-space} provide the companion views used by DRIFT: the \(\theta\)--\(\omega\) portrait, the orthogonal deviation ratio, the full polar-motion trajectory, and the residual phase-space structure.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{phase_portrait_envelope.png}
+\caption{Phase portrait of \(\theta\) versus \(\omega\), showing the historical phase-space manifold, the historical median and \(\pm 2\sigma\) corridor, the recent 180-day trajectory, the present state, turning points, and named loop structures. The recent trajectory leaves the main historical angular-velocity corridor and forms a large downward lobe before curving back toward the ordinary band. The diagnostic question is not whether the angular velocity is large in isolation, but whether it is unusual for the present phase angle.}
+\label{fig:phase-portrait-envelope}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{orthogonal_deviation_ratio.png}
+\caption{Orthogonal deviation ratio \(R(t)\), defined as the ratio of minor to major local variance components. Low values indicate broadening or weakening of local directional constraint; higher values indicate stronger elongation and local organization. Named loop episodes and turning-point markers show recurrent intervals of geometrical reorganization. This plot provides a time-domain companion to the phase portrait by showing when the local polar-motion geometry sharpens, relaxes, or reorganizes.}
+\label{fig:orthogonal-deviation-ratio}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\linewidth]{polar_motion_trajectory.png}
+\caption{Full polar-motion trajectory from 1962-01-01 to 2026-05-09 in path-start coordinates. The path does not fill a disk uniformly. It forms nested and migrating loop families, with labeled structures identifying recurrent episodes. The Phase Stability layer does not ask whether the pole is moving; it asks whether the current motion remains compatible with this established geometrical family.}
+\label{fig:polar-motion-trajectory}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\linewidth]{residual_polar_motion_phase_space.png}
+\caption{Residual polar-motion phase space after removal of the broader drift component. The residual path, centroid trace, preferred axis, and loop structures expose the organized residual component of the motion. This view is important because the present phase-stability episode is not occurring against a featureless background. It is occurring within a constrained residual geometry that has evolved coherently across the record.}
+\label{fig:residual-phase-space}
+\end{figure}
+
+\FloatBarrier
+
+\section{Reading the Updated Example in Plain Terms}
+
+The 2026-05-10 example is unfavorable in the diagnostic sense. It does not show a quiet, historically ordinary state. It shows a recent trajectory that has moved far from the historical phase-conditioned corridor, curved strongly, and only partially resembles previous historical windows. The correct conclusion is therefore:
 
 \begin{quote}
 The recent phase trajectory is quantitatively off-manifold and presently lies in an escape-candidate state-space regime. This is a high-interest diagnostic episode requiring continued monitoring, especially for return-path hysteresis and recapture into the historical corridor.
@@ -350,7 +430,7 @@ For these reasons, the diagnostic vocabulary should remain restrained. Terms suc
 
 The Phase Stability layer converts the DRIFT phase portrait from a visual diagnostic into a quantitative state-space instrument. It asks whether the current \(\theta\)--\(\omega\) trajectory remains inside the historical phase-conditioned manifold, whether it bends abnormally, whether it returns with hysteresis, and whether it resembles prior historical windows. The resulting diagnostics provide a disciplined way to identify high-interest episodes without prematurely assigning causation.
 
-The documented 2026-05-09 example is a strong off-manifold episode by this framework. Its \(Z_{\omega}\), curvature, manifold departure, and composite stability values are unfavorable, while its historical analogue score indicates partial but not strong precedent. The most important next observation is the return path. If the trajectory recaptures the historical corridor with low hysteresis, the episode may be interpreted as a large bounded excursion. If it returns along a displaced branch, the case for a genuine state-space transition becomes stronger.
+The documented 2026-05-10 example is a strong off-manifold episode by this framework. Its \(Z_{\omega}\), curvature, manifold-departure, and composite stability values are unfavorable, while its historical analogue score indicates partial but not strong precedent. The result is robust across four EOP realizations, which reduces the likelihood that the classification is an artifact of a single product or orientation convention. The most important next observation is the return path. If the trajectory recaptures the historical corridor with low hysteresis, the episode may be interpreted as a large bounded excursion. If it returns along a displaced branch, the case for a genuine state-space transition becomes stronger.
 
 \begin{thebibliography}{9}
 

@@ -110875,5 +110875,18 @@
     "ap_status": "pre",
     "cp_status": "pre",
     "c9_status": "pre"
+  },
+  {
+    "t": "2026-05-09",
+    "kp": 1.125,
+    "kp_count": 8,
+    "ap": 4.444444444444445,
+    "ap_count": 9,
+    "cp": 0.2,
+    "c9": 1.0,
+    "kp_status": "pre",
+    "ap_status": "pre",
+    "cp_status": "pre",
+    "c9_status": "pre"
   }
 ]
