@@ -10,6 +10,7 @@ timespan with the most-recent confirmed data from the daily feed.
 import json
 import re
 import sys
+import argparse
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -18,13 +19,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from data_paths import DATA_DIR, write_json
+from data_paths import DATA_DIR, read_json, write_json
 
 DAILY_JSON_URL = "https://datacenter.iers.org/data/json/finals.daily.json"
 DAILY_2000A_JSON_URL = "https://datacenter.iers.org/data/json/finals2000A.daily.json"
 ALL_JSON_URL = "https://datacenter.iers.org/data/json/finals.all.json"
 JPL_EOP2_LONG_URL = "https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long"
 JPL_EOP2_SHORT_URL = "https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.short"
+FULL_BACKFILL_REFRESH_WINDOW = timedelta(days=7)
 EOP_DATASETS = {
     "finals2000a": {
         "label": "finals.all (IAU2000)",
@@ -173,6 +175,53 @@ def parse_finals_all_json(filepath):
     with open(filepath, "r") as f:
         data = json.load(f)
     return extract_finals(data)
+
+
+def file_age(path, now):
+    if not path.exists():
+        return None
+    return now - datetime.fromtimestamp(path.stat().st_mtime)
+
+
+def should_refresh_full_backfill(output_filename, now, force=False):
+    if force:
+        return True
+
+    age = file_age(DATA_DIR / output_filename, now)
+    if age is None:
+        return True
+
+    return age >= FULL_BACKFILL_REFRESH_WINDOW
+
+
+def describe_age(path, now):
+    age = file_age(path, now)
+    if age is None:
+        return "missing"
+
+    seconds = max(0, int(age.total_seconds()))
+    if seconds < 60:
+        return f"age {seconds}s"
+    if seconds < 3600:
+        return f"age {seconds // 60}m"
+    if seconds < 86400:
+        return f"age {seconds // 3600}h"
+    return f"age {seconds // 86400}d"
+
+
+def load_cached_records(filename):
+    try:
+        records = read_json(filename)
+    except FileNotFoundError:
+        return []
+
+    if not isinstance(records, list):
+        return []
+
+    return sorted(
+        [record for record in records if isinstance(record, dict) and record.get("t")],
+        key=lambda item: item["t"],
+    )
 
 
 def fetch_from_daily_json():
@@ -563,14 +612,32 @@ def parseiers_c01_c04(filepath):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Build EOP datasets from cached backfills plus rapid daily tails.")
+    parser.add_argument(
+        "--force-full",
+        action="store_true",
+        help="Refresh full alternate EOP backfills even when cached outputs are still fresh.",
+    )
+    args = parser.parse_args()
+    now = datetime.now()
+
     print("=" * 60)
     print("build_eop.py - EOP Data Pipeline")
     print("Merging finals.daily.json + finals.all.json")
+    print(f"Full alternate backfill window: {FULL_BACKFILL_REFRESH_WINDOW.days}d")
+    if args.force_full:
+        print("Mode: force full alternate backfill refresh")
+    else:
+        print("Mode: daily-tail merge with cached alternate backfills")
     print("=" * 60)
 
     print()
     print("1. Fetch confirmed data from finals.daily.json ...")
     daily_data = fetch_from_daily_json()
+    if not daily_data:
+        daily_data = load_cached_records("eop_latest.json")
+        if daily_data:
+            print("   Using cached eop_latest.json daily tail")
     print(f"   Found {len(daily_data)} confirmed records")
     if daily_data:
         print(f"   Range: {daily_data[0]['t']} to {daily_data[-1]['t']}")
@@ -616,13 +683,25 @@ def main():
         print(f"Date range: {merged[0]['t']} to {merged[-1]['t']}")
 
     print()
-    print("4. Fetching alternate EOP backfill datasets ...")
+    print("4. Updating alternate EOP datasets ...")
     daily_2000a_data = None
     jpl_eop2_tail = None
     for dataset_id, config in EOP_DATASETS.items():
         print()
         print(f"   {config['label']}")
-        records = fetch_alternate_eop_dataset(config)
+        output_path = DATA_DIR / config["output"]
+        refresh_full = should_refresh_full_backfill(config["output"], now, args.force_full)
+
+        if refresh_full:
+            print(f"   Refreshing full backfill ({describe_age(output_path, now)}) ...")
+            records = fetch_alternate_eop_dataset(config)
+        else:
+            print(
+                "   Using cached full backfill "
+                f"({describe_age(output_path, now)}; refresh window {FULL_BACKFILL_REFRESH_WINDOW.days}d)"
+            )
+            records = load_cached_records(config["output"])
+
         if not records:
             print(f"   WARN: No records parsed for {dataset_id}; leaving any existing file unchanged.")
             continue

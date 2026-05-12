@@ -23,7 +23,7 @@ from data_paths import DATA_DIR, read_json, write_json
 
 FRESHNESS_WINDOWS = {
     "eop_daily": timedelta(hours=1),
-    "eop_full": timedelta(hours=12),
+    "eop_full": timedelta(days=7),
     "grace": timedelta(days=7),
     "gfz_kp": timedelta(hours=6),
 }
@@ -422,24 +422,7 @@ def main():
         if eop_data is not None:
             save_json(os.path.join(output_dir, "eop_latest.json"), eop_data)
 
-              # Rebuild eop_historic.json by merging daily + full all data
-              # build_eop.py uses the local cached finals.all.json when available.
-            print("  Rebuilding eop_historic.json from merged daily + all data ...")
-            try:
-                import subprocess
-                build_result = subprocess.run(
-                   [sys.executable, str(SCRIPT_DIR / "build_eop.py")],
-                  capture_output=True, text=True, timeout=120
-               )
-                if build_result.stdout:
-                    for line in build_result.stdout.strip().split("\n"):
-                        print(f"   {line}")
-                if build_result.returncode != 0:
-                    print(f"  WARN: build_eop.py failed: {build_result.stderr}")
-                else:
-                    print("  eop_historic.json rebuilt successfully.")
-            except Exception as e:
-                print(f"  ERROR: Failed to rebuild eop_historic.json: {e}")
+            print("  EOP source refresh complete; build_eop.py will merge daily tails once in the pipeline.")
     else:
         print(
             "  Skipping EOP fetch; local files are fresh "

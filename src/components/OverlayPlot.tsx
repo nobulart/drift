@@ -490,7 +490,7 @@ export default function OverlayPlot() {
       },
       showscale: isHeatmapMode,
       ...markerLayout,
-      margin: { l: isHeatmapMode ? 140 : 60, r: isHeatmapMode ? 70 : 20, t: 78, b: 60 },
+      margin: { l: isHeatmapMode ? 140 : 60, r: isHeatmapMode ? 70 : 20, t: 96, b: 60 },
       plot_bgcolor: '#111827',
       paper_bgcolor: '#0b1220',
       font: { color: '#e5e7eb' },

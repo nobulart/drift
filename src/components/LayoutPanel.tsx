@@ -125,6 +125,7 @@ export default function Panel({
 
     let animationFrame = 0;
     let secondAnimationFrame = 0;
+    let resizeTimeout = 0;
 
     const forceRelayout = () => {
       void node.offsetHeight;
@@ -136,7 +137,8 @@ export default function Panel({
     });
 
     const observer = new ResizeObserver(() => {
-      forceRelayout();
+      window.clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(forceRelayout, 1000);
     });
 
     observer.observe(contentNode);
@@ -144,6 +146,7 @@ export default function Panel({
     return () => {
       window.cancelAnimationFrame(animationFrame);
       window.cancelAnimationFrame(secondAnimationFrame);
+      window.clearTimeout(resizeTimeout);
       observer.disconnect();
     };
   }, [effectiveCollapsed, isModalOpen, shouldRenderContent]);
@@ -170,7 +173,7 @@ export default function Panel({
       )}
        <div
          ref={panelRef}
-         className={`${experimental ? 'bg-[#101923] border-[#38bdf8]/60 shadow-cyan-950/20' : 'bg-[#111827] border-[#374151]'} p-4 rounded-xl shadow-lg border flex flex-col transition-all duration-300 ${
+         className={`${experimental ? 'bg-[#101923] border-[#38bdf8]/60 shadow-cyan-950/20' : 'bg-[#111827] border-[#374151]'} p-4 rounded-xl shadow-lg border flex flex-col transition-colors duration-200 ${
            isModalOpen
              ? 'fixed left-1/2 top-1/2 z-[9999] max-h-[90vh] w-[min(85vw,1920px)] -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 duration-200'
              : 'h-full'

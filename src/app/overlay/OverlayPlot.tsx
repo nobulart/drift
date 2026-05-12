@@ -322,7 +322,7 @@ export default function OverlayPage() {
     plot_bgcolor: '#111827',
     paper_bgcolor: '#0b1220',
     font: { color: '#e5e7eb' },
-    margin: { l: 60, r: 20, t: 78, b: 60 },
+    margin: { l: 60, r: 20, t: 96, b: 60 },
   }), [overlayTitle, visibleXRange]);
 
   const lagLayout = useMemo(() => ({

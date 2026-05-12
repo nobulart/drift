@@ -27,6 +27,13 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+FORCE_EOP_FULL="${EOP_FULL_REFRESH:-}"
+for arg in "$@"; do
+    if [ "$arg" = "--force-eop-full" ]; then
+        FORCE_EOP_FULL="1"
+    fi
+done
+
 # Check Python availability
 if ! command -v python3 &> /dev/null; then
     log_error "python3 is required but not installed"
@@ -47,7 +54,11 @@ log_info "Downloaded: eop_latest.json, grace_latest.json, geomag_gfz_latest.json
 
 # Step 2: Process EOP data
 log_info "Step 2/7: Processing EOP data..."
-python3 scripts/build_eop.py
+if [ "$FORCE_EOP_FULL" = "1" ]; then
+    python3 scripts/build_eop.py --force-full
+else
+    python3 scripts/build_eop.py
+fi
 log_info "Created: eop_historic.json"
 
 # Step 3: Process GFZ-KP geomagnetic data

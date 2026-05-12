@@ -5,6 +5,7 @@
 ```bash
 # Build all data files from scratch
 python3 scripts/build_eop.py
+python3 scripts/build_eop.py --force-full
 python3 scripts/build_grace.py
 python3 scripts/build_geomag_gfz.py
 python3 scripts/combine_data.py
@@ -28,8 +29,9 @@ Parse IERS EOP data from the default `finals.all (IAU1980)` feed and build alter
 - Extracts polar motion (xp, yp)
 - Also extracts UT1-UTC, LOD
 - Uses full finals.all JSON dataset for the default product
-- Fetches `finals2000A.all.json` for the IAU2000 rapid product
-- Fetches and parses the IERS EOP 20u24 C04 text product
+- Merges rapid daily tails into local historic outputs
+- Reuses cached alternate full backfills while they are fresh
+- Refreshes `finals2000A.all.json`, IERS EOP 20u24 C04, and JPL EOP2 long backfills only when missing, older than the weekly refresh window, or when `--force-full` is used
 
 ### `scripts/build_grace.py`
 Extract GRACE MASCON data from Zarr manifest
@@ -75,6 +77,7 @@ Timestamp-aware data retrieval
 - Falls back to cached data if online sources unavailable
 - Updates all "latest" files
 - Use `--force` to bypass freshness windows
+- Uses a short freshness window for rapid daily EOP data and a weekly window for full EOP backfill files
 
 ## Usage
 
@@ -94,8 +97,13 @@ python3 combine_data.py
 # Run automated fetch
 python3 fetch_latest.py
 
-# Force all upstream retrievals
+# Force source retrievals in fetch_latest
 python3 fetch_latest.py --force
+
+# Force heavyweight alternate EOP backfills in the full pipeline
+EOP_FULL_REFRESH=1 scripts/run_pipeline.sh --compute-stats
+# or
+scripts/run_pipeline.sh --compute-stats --force-eop-full
 ```
 
 ### Scheduling Daily Updates
@@ -151,4 +159,4 @@ For GFZ-KP:
 
 3. **KP data**: Contains 3-hourly Kp values. Daily means are also available via ap_daily field.
 
-4. **Automation**: The `fetch_latest.py` script handles data source selection intelligently, skips fresh local caches, and falls back to cached data if online sources are unavailable.
+4. **Automation**: The `fetch_latest.py` script handles source refresh selection intelligently, skips fresh local caches, and falls back to cached data if online sources are unavailable. Manual pipeline updates now let `build_eop.py` merge rapid daily tails once, avoiding repeated full alternate EOP backfill downloads unless the weekly window has expired or a full refresh is forced.
