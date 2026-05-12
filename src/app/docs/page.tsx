@@ -203,9 +203,9 @@ export default function DocsPage() {
           {/* Keep this inline release-card list to the latest six versions. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#38bdf8]/50 bg-[#082f49]/30 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.2 Saga Analysis</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.2 EOP Refresh Controls</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added heliocentric angular-separation saga scripts and marker-window outputs, documented forced full EOP refreshes, and shifted rapid-tail EOP merging into the full pipeline while keeping heavyweight alternate backfills on a weekly refresh cadence.
+                Shifted rapid-tail EOP merging into the full pipeline, documented forced full EOP refreshes, kept heavyweight alternate backfills on a weekly refresh cadence, and increased Overlay Plot title spacing.
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
