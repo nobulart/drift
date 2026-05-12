@@ -8,9 +8,15 @@ Phase Stability paper: [Phase Stability Diagnostics for Polar Motion State-Space
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.6.1`
+Current release: `v1.6.2`
 
 ## Release Notes
+
+### v1.6.2
+
+- Added the saga heliocentric angular-separation analysis scripts and generated marker-window outputs for comparing DRIFT transition windows with planetary geometry.
+- Updated the data pipeline so rapid daily EOP tails are merged once during the full pipeline, while heavyweight alternate EOP backfills use a weekly refresh window unless `--force-full` or `--force-eop-full` is requested.
+- Added pipeline documentation for forced full EOP refreshes and increased Overlay Plot top margins to keep dense titles clear.
 
 ### v1.6.1
 

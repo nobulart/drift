@@ -146,7 +146,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.6.1
+                Version v1.6.2
               </span>
               <Link
                 href="/"
@@ -203,6 +203,12 @@ export default function DocsPage() {
           {/* Keep this inline release-card list to the latest six versions. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <article className="rounded-xl border border-[#38bdf8]/50 bg-[#082f49]/30 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.2 Saga Analysis</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added heliocentric angular-separation saga scripts and marker-window outputs, documented forced full EOP refreshes, and shifted rapid-tail EOP merging into the full pipeline while keeping heavyweight alternate backfills on a weekly refresh cadence.
+              </p>
+            </article>
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.1 Phase Stability<sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup></h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added the PHASE STABILITY layer for manifold departure, phase-conditioned Zω, curvature, hysteresis, historical analogue similarity, and Coupling Stability Index. Docker TLS domains are now empty by default and must be configured explicitly.
@@ -230,12 +236,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.7 Chart Markers</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added persistent emoji chart markers with sidebar and fullscreen controls. Timeline charts synchronize marker dates, and path charts show icon markers on phase portrait, residual polar motion, and polar motion trajectory paths.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.6 Overlay Heatmaps</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added a Plot selector to the Overlay Plot for Line Chart and scientific heatmap palette modes. Heatmaps compare selected core and DE442 ephemeris rows by date, use explicit palette color stops, and reset Plotly state cleanly when switching modes.
               </p>
             </article>
           </div>
