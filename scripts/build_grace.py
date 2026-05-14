@@ -18,7 +18,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from data_paths import DATA_DIR, write_json
+from data_paths import read_json, write_json
 
 
 def decode_time_chunks(manifest):
@@ -77,10 +77,7 @@ def main():
     print("=" * 50)
 
     # Load manifest
-    manifest_path = DATA_DIR / "2025 TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4_virtual_https.json"
-
-    with open(manifest_path, "r") as f:
-        manifest = json.load(f)
+    manifest = read_json("2025 TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06.3_V4_virtual_https.json")
 
     print("Manifest loaded.")
 

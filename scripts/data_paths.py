@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import gzip
 import os
 import shutil
 from pathlib import Path
@@ -47,13 +48,18 @@ def write_json(
 
 
 def read_json(filename: str) -> Any:
-    """Read a JSON payload from data/, falling back to public/data/ for compatibility."""
+    """Read a JSON payload from data/, falling back to public/data/ and .gz siblings."""
     ensure_data_dirs()
 
     for base_dir in (DATA_DIR, PUBLIC_DATA_DIR):
         candidate = base_dir / filename
         if candidate.exists():
             with candidate.open("r", encoding="utf-8") as handle:
+                return json.load(handle)
+
+        compressed_candidate = candidate.with_suffix(candidate.suffix + ".gz")
+        if compressed_candidate.exists():
+            with gzip.open(compressed_candidate, "rt", encoding="utf-8") as handle:
                 return json.load(handle)
 
     raise FileNotFoundError(f"Could not find {filename} in data directories")

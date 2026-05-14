@@ -172,8 +172,7 @@ def extract_finals(data_object):
 
 def parse_finals_all_json(filepath):
     """Parse local finals.all.json for historic EOP data."""
-    with open(filepath, "r") as f:
-        data = json.load(f)
+    data = read_json(Path(filepath).name)
     return extract_finals(data)
 
 
@@ -646,11 +645,12 @@ def main():
     print("2. Fetching / parsing historic data from finals.all.json ...")
 
     finals_path = DATA_DIR / "finals.all.json"
+    finals_gz_path = DATA_DIR / "finals.all.json.gz"
 
     # Try local file first, then IERS remote
     all_data = []
-    if finals_path.exists():
-        print(f"   Using local: {finals_path}")
+    if finals_path.exists() or finals_gz_path.exists():
+        print(f"   Using local: {finals_path if finals_path.exists() else finals_gz_path}")
         all_data = parse_finals_all_json(finals_path)
     else:
         print(f"   Local file not found, fetching from IERS ...")
