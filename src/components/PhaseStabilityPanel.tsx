@@ -85,6 +85,7 @@ export default function PhaseStabilityPanel() {
       name: 'Zω',
       line: { color: '#38bdf8', width: 1.8 },
       hovertemplate: '%{x}<br>Zω %{y:.3f}<extra></extra>',
+      yaxis: 'y2',
     },
     {
       x: visibleSamples.map(sample => sample.date),
@@ -220,20 +221,21 @@ export default function PhaseStabilityPanel() {
       <div className="mb-4 min-w-0 rounded-lg border border-[#243041] bg-[#111827] p-3">
         <Plot
           data={timeSeriesData}
-          layout={{
-            title: chartTitle as any,
-            template: 'plotly_dark',
-            xaxis: { title: { text: 'Date' }, gridcolor: '#374151' },
-            yaxis: { title: { text: 'Diagnostic value' }, gridcolor: '#374151' },
-            legend: { orientation: 'h', y: -0.22, x: 0.5, xanchor: 'center' },
-            margin: { l: 58, r: 24, t: 78, b: 70 },
-            plot_bgcolor: '#111827',
-            paper_bgcolor: '#111827',
-            font: { color: '#e5e7eb' },
-            height: plotHeight,
-            autosize: true,
-            uirevision: timeLockEnabled && timeRange ? `${timeRange[0]}-${timeRange[1]}` : 'phase-stability-free',
-          } as any}
+        layout={{
+          title: chartTitle as any,
+          template: 'plotly_dark',
+          xaxis: { title: { text: 'Date' }, gridcolor: '#374151' },
+          yaxis: { title: { text: 'Diagnostic value' }, gridcolor: '#374151' },
+          yaxis2: { title: { text: 'Zω' }, gridcolor: '#374151', overlaying: 'y', side: 'right' },
+          legend: { orientation: 'h', y: -0.25, x: 0.5, xanchor: 'center' },
+          margin: { l: 58, r: 24, t: 78, b: 80 },
+          plot_bgcolor: '#111827',
+          paper_bgcolor: '#111827',
+          font: { color: '#e5e7eb' },
+          height: plotHeight,
+          autosize: true,
+          uirevision: timeLockEnabled && timeRange ? `${timeRange[0]}-${timeRange[1]}` : 'phase-stability-free',
+        } as any}
           config={createCsvExportConfig('phase-stability-timeseries.csv', { displayModeBar: true, responsive: true, scrollZoom: true })}
           style={{ width: '100%', height: `${plotHeight}px` }}
           useResizeHandler
