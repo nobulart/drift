@@ -1,6 +1,5 @@
-import { noStoreJson, readPipelineJson } from '@/lib/serverData';
+import { noStoreJson, readPipelineJson, readPipelineJsonCandidate } from '@/lib/serverData';
 import { requireApiAuth } from '@/lib/apiAuth';
-import { promises as fs } from 'fs';
 import { spawn, spawnSync } from 'child_process';
 import { join } from 'path';
 
@@ -75,27 +74,8 @@ function yearsBetween(start: string, end: string) {
   return years;
 }
 
-async function readPipelineJsonCandidate(filename: string) {
-  const candidates = [
-    join(process.cwd(), 'data', filename),
-    join(process.cwd(), 'public', 'data', filename),
-  ];
-
-  for (const filePath of candidates) {
-    try {
-      return JSON.parse(await fs.readFile(filePath, 'utf8'));
-    } catch (error: any) {
-      if (error?.code !== 'ENOENT') {
-        throw error;
-      }
-    }
-  }
-
-  return null;
-}
-
 async function readPartitionedEphemeris(start: string, end: string) {
-  const manifest = await readPipelineJsonCandidate('ephemeris_historic.manifest.json');
+  const manifest = await readPipelineJsonCandidate<any>('ephemeris_historic.manifest.json');
   if (!manifest?.source || !Array.isArray(manifest.years)) {
     return null;
   }
@@ -116,7 +96,7 @@ async function readPartitionedEphemeris(start: string, end: string) {
   const records: any[] = [];
 
   for (const year of yearsBetween(start, end)) {
-    const payload = await readPipelineJsonCandidate(`${partitionDir}/${year}.json`);
+    const payload = await readPipelineJsonCandidate<any>(`${partitionDir}/${year}.json`);
     if (!Array.isArray(payload?.records)) {
       return null;
     }

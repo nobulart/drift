@@ -20,3 +20,7 @@ public/data/.phase-escape-cache
 public/data/.phase-stability-cache
 public/data/ephemeris_historic.json
 public/data/finals.all.json
+public/data/**/*.json
+data/**/*.json
+!data/markers.json
+!data/**/*.json.gz

@@ -1,24 +1,11 @@
-import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import { join } from 'path';
+import { noStoreJson, readPipelineJson } from '@/lib/serverData';
 
 export const dynamic = 'force-dynamic';
-const NO_STORE_HEADERS = {
-  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-  Pragma: 'no-cache',
-  Expires: '0',
-};
 
 export async function GET() {
   try {
-    const eopPath = join(process.cwd(), 'public', 'data', 'eop_historic.json');
-    const gracePath = join(process.cwd(), 'public', 'data', 'grace_historic.json');
-    
-    const eopStr = await fs.readFile(eopPath, 'utf8');
-    const eopData = JSON.parse(eopStr);
-    
-    const graceStr = await fs.readFile(gracePath, 'utf8');
-    const graceData = JSON.parse(graceStr);
+    const eopData = await readPipelineJson<any[]>('eop_historic.json');
+    const graceData = await readPipelineJson<any[]>('grace_historic.json');
     
     const eopMap: { [key: string]: { xp: number; yp: number } } = {};
     eopData.forEach((d: any) => {
@@ -45,9 +32,9 @@ export async function GET() {
       return point;
     });
     
-    return NextResponse.json(combinedData, { headers: NO_STORE_HEADERS });
+    return noStoreJson(combinedData);
   } catch (error) {
     console.error('Error fetching combined data:', error);
-    return NextResponse.json({ error: 'Failed to fetch combined data' }, { status: 500, headers: NO_STORE_HEADERS });
+    return noStoreJson({ error: 'Failed to fetch combined data' }, { status: 500 });
   }
 }

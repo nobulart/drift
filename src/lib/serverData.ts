@@ -20,6 +20,13 @@ interface ParsedJsonCacheEntry {
 
 const parsedJsonCache = new Map<string, ParsedJsonCacheEntry>();
 
+function pipelineJsonCandidates(filename: string) {
+  return [
+    join(process.cwd(), 'data', filename),
+    join(process.cwd(), 'public', 'data', filename),
+  ];
+}
+
 export function noStoreJson<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, {
     ...init,
@@ -31,10 +38,7 @@ export function noStoreJson<T>(data: T, init?: ResponseInit) {
 }
 
 export async function readPipelineJson<T>(filename: string): Promise<T> {
-  const candidates = [
-    join(process.cwd(), 'data', filename),
-    join(process.cwd(), 'public', 'data', filename),
-  ];
+  const candidates = pipelineJsonCandidates(filename);
 
   for (const filePath of candidates) {
     try {
@@ -65,13 +69,29 @@ export async function readPipelineJson<T>(filename: string): Promise<T> {
     }
   }
 
-  const compressedCandidates = candidates.map((candidate) => `${candidate}.gz`);
-
-  for (const filePath of compressedCandidates) {
+  for (const filePath of candidates.map((candidate) => `${candidate}.gz`)) {
     try {
+      const stat = await fs.stat(filePath);
+      const cached = parsedJsonCache.get(filePath);
+      if (
+        cached &&
+        cached.mtimeMs === stat.mtimeMs &&
+        cached.size === stat.size
+      ) {
+        return cached.value as T;
+      }
+
       const data = await fs.readFile(filePath);
       const dataStr = (await gunzipAsync(data)).toString('utf8');
-      return JSON.parse(dataStr) as T;
+      const value = JSON.parse(dataStr) as T;
+      if (stat.size <= MAX_PARSED_CACHE_BYTES) {
+        parsedJsonCache.set(filePath, {
+          mtimeMs: stat.mtimeMs,
+          size: stat.size,
+          value,
+        });
+      }
+      return value;
     } catch (error: any) {
       if (error?.code !== 'ENOENT') {
         throw error;
@@ -82,11 +102,19 @@ export async function readPipelineJson<T>(filename: string): Promise<T> {
   throw new Error(`Unable to locate ${filename}`);
 }
 
+export async function readPipelineJsonCandidate<T>(filename: string): Promise<T | null> {
+  try {
+    return await readPipelineJson<T>(filename);
+  } catch (error: any) {
+    if (error instanceof Error && error.message.includes(`Unable to locate ${filename}`)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function materializePipelineJson(filename: string): Promise<string> {
-  const candidates = [
-    join(process.cwd(), 'data', filename),
-    join(process.cwd(), 'public', 'data', filename),
-  ];
+  const candidates = pipelineJsonCandidates(filename);
 
   for (const filePath of candidates) {
     try {

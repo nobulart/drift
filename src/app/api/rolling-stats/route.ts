@@ -6,6 +6,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { getEOPDataset } from '@/lib/eopDatasets';
 import { requireApiAuth } from '@/lib/apiAuth';
+import { materializePipelineJson } from '@/lib/serverData';
 
 export const dynamic = 'force-dynamic';
 const NO_STORE_HEADERS = {
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
     const select = SelectSchema.parse(searchParams.get('select') || 'full');
 
     const dataset = getEOPDataset(searchParams.get('dataset'));
-    const dataPath = join(process.cwd(), 'public', 'data', dataset.filename);
+    const dataPath = await materializePipelineJson(dataset.filename);
     
     const scriptPath = join(process.cwd(), 'scripts', 'compute_rolling_stats.py');
 
