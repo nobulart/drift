@@ -1,6 +1,6 @@
 {
   "schema": "drift-chart-markers-v1",
-  "exportedAt": "2026-05-11T15:08:51.536Z",
+  "exportedAt": "2026-05-14T14:22:13.170Z",
   "chartMarkers": [
     {
       "id": "1962-01-01-moyy2a2e",
@@ -36,15 +36,28 @@
       "emoji": "🧭"
     },
     {
+      "id": "1974-10-30-mp5kgklf",
+      "date": "1974-10-25",
+      "emoji": "✅",
+      "label": "Conjunction 1974"
+    },
+    {
       "id": "1980-04-10-moyyegz3",
       "date": "1980-04-10",
-      "emoji": "🧭"
+      "emoji": "🧭",
+      "label": "Excursion 1980"
     },
     {
       "id": "1981-02-17-moylc9vz",
       "date": "1981-02-17",
       "emoji": "🐧",
       "label": "Waltz I"
+    },
+    {
+      "id": "1981-04-13-mp5khias",
+      "date": "1981-04-05",
+      "emoji": "✅",
+      "label": "Conjunction 1981"
     },
     {
       "id": "1985-03-13-mp1c3jwq",
@@ -80,6 +93,12 @@
       "id": "1987-08-09-moyleyuy",
       "date": "1987-08-09",
       "emoji": "⚠️"
+    },
+    {
+      "id": "1987-08-08-mp5khzp2",
+      "date": "1987-08-25",
+      "emoji": "✅",
+      "label": "Conjunction 1987"
     },
     {
       "id": "1987-09-19-moylfvzi",
@@ -133,10 +152,21 @@
       "emoji": "⚠️"
     },
     {
+      "id": "1990-07-11-mp36lgi4",
+      "date": "1990-07-11",
+      "emoji": "🐧"
+    },
+    {
       "id": "1992-12-02-moylsmns",
       "date": "1993-11-14",
       "emoji": "🐧",
       "label": "Cha-Cha I"
+    },
+    {
+      "id": "1994-01-17-mp5kichr",
+      "date": "1994-01-07",
+      "emoji": "✅",
+      "label": "Conjunction 1994"
     },
     {
       "id": "1999-12-06-moykrroc",
@@ -147,7 +177,14 @@
     {
       "id": "2000-05-10-moylit4j",
       "date": "2000-05-10",
-      "emoji": "🧭"
+      "emoji": "🧭",
+      "label": "Excursion 2000"
+    },
+    {
+      "id": "2000-06-21-mp5kivyo",
+      "date": "2000-06-23",
+      "emoji": "✅",
+      "label": "Conjunction 2000"
     },
     {
       "id": "2005-12-14-moyl26ur",
@@ -158,17 +195,38 @@
     {
       "id": "2006-05-24-moyliza7",
       "date": "2006-05-24",
-      "emoji": "🧭"
+      "emoji": "🧭",
+      "label": "Excursion 2006"
+    },
+    {
+      "id": "2006-10-13-mp5kjdc4",
+      "date": "2006-10-24",
+      "emoji": "✅",
+      "label": "Conjunction 2006"
     },
     {
       "id": "2012-07-04-moylj72m",
       "date": "2012-07-04",
-      "emoji": "🧭"
+      "emoji": "🧭",
+      "label": "Excursion 2012"
+    },
+    {
+      "id": "2013-04-08-mp5kjqvc",
+      "date": "2013-04-05",
+      "emoji": "✅",
+      "label": "Conjunction 2013"
     },
     {
       "id": "2019-05-22-moyydzz2",
       "date": "2019-05-22",
-      "emoji": "🧭"
+      "emoji": "🧭",
+      "label": "Excursion 2019"
+    },
+    {
+      "id": "2019-08-25-mp5kk64t",
+      "date": "2019-08-26",
+      "emoji": "✅",
+      "label": "Conjunction 2019"
     },
     {
       "id": "2020-03-22-moyk51w3",
@@ -179,12 +237,20 @@
     {
       "id": "2025-05-02-moyydbr5",
       "date": "2025-05-02",
-      "emoji": "🧭"
+      "emoji": "🧭",
+      "label": "Excursion 2025"
+    },
+    {
+      "id": "2026-01-21-mp5kkuxb",
+      "date": "2026-01-06",
+      "emoji": "✅",
+      "label": "Conjunction 2026"
     },
     {
       "id": "2026-03-20-moyli7qq",
       "date": "2026-03-21",
-      "emoji": "🧭"
+      "emoji": "🧭",
+      "label": "Excursion 2026"
     },
     {
       "id": "2026-03-29-moyk5cy8",
