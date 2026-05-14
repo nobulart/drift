@@ -1,11 +1,11 @@
 {
   "name": "drift",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "Geodetic-Geomagnetic Coupling Dashboard",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "node .next/standalone/server.js",
+    "build": "next build && node scripts/prepare_standalone_start.cjs",
+    "start": "node scripts/prepare_standalone_start.cjs && node .next/standalone/server.js",
     "lint": "next lint",
     "test": "tsc --ignoreConfig --target ES2020 --module commonjs --outDir /private/tmp/drift-phase-test --skipLibCheck src/lib/phaseEscapeModel.ts src/lib/phaseStabilityDiagnostics.ts src/lib/types.ts && node --test tests/phaseEscapeModel.test.cjs tests/phaseStabilityDiagnostics.test.cjs",
     "update-data": "./scripts/run_pipeline.sh --compute-stats"
@@ -27,8 +27,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@types/node": "^22.13.14",
-    "@types/react": "^18.3.18",
+    "@types/node": "22.19.19",
+    "@types/react": "18.3.28",
     "@types/react-dom": "^18.3.5",
     "@types/react-plotly.js": "^2.6.4",
     "@types/three": "^0.162.0",
@@ -37,6 +37,6 @@
     "eslint-config-next": "^14.2.35",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
-    "typescript": "^6.0.2"
+    "typescript": "6.0.3"
   }
 }

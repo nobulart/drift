@@ -6,7 +6,7 @@ import { useTimeStore } from '@/store/timeStore';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
+import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 import {
   DEFAULT_PATH_COLOR_SCALE,
   HEATMAP_COLOR_SCALES,
@@ -227,7 +227,7 @@ export default function ResidualPolarMotionPlot({ xpData, ypData, dates, rolling
     : fallbackHeight;
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
   const chartTitle = useChartTitle('Residual Polar Motion Phase Space (XY)', dates);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

@@ -7,12 +7,19 @@ TLS_STAGING="${DRIFT_TLS_STAGING:-0}"
 ACME_WEBROOT="/var/www/certbot"
 NGINX_CONF="/etc/nginx/conf.d/drift.conf"
 NODE_PID=""
+REFRESH_PID=""
+STARTUP_REFRESH_MODE="${DRIFT_STARTUP_REFRESH_MODE:-background}"
 
 log() {
   printf '%s\n' "$*" >&2
 }
 
 cleanup() {
+  if [ -n "${REFRESH_PID}" ] && kill -0 "${REFRESH_PID}" 2>/dev/null; then
+    kill "${REFRESH_PID}" 2>/dev/null || true
+    wait "${REFRESH_PID}" 2>/dev/null || true
+  fi
+
   if [ -n "${NODE_PID}" ] && kill -0 "${NODE_PID}" 2>/dev/null; then
     kill "${NODE_PID}" 2>/dev/null || true
     wait "${NODE_PID}" 2>/dev/null || true
@@ -206,7 +213,23 @@ reload_nginx() {
   nginx -t && nginx -s reload
 }
 
-run_as_nextjs "python3 scripts/ensure_startup_data.py"
+run_startup_refresh() {
+  run_as_nextjs "python3 scripts/ensure_startup_data.py" \
+    || log "Startup data refresh failed; continuing to serve bundled data."
+}
+
+case "${STARTUP_REFRESH_MODE}" in
+  strict)
+    run_as_nextjs "python3 scripts/ensure_startup_data.py"
+    ;;
+  skip|disabled|off)
+    log "Startup data refresh skipped."
+    ;;
+  background|*)
+    run_startup_refresh &
+    REFRESH_PID="$!"
+    ;;
+esac
 
 run_as_nextjs "node server.js" &
 NODE_PID="$!"

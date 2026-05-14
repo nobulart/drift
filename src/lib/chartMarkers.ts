@@ -1,7 +1,25 @@
-import { ChartMarker } from '@/store/useStore';
+import { useDeferredValue, useMemo } from 'react';
+import type { ChartMarker } from '@/store/useStore';
+import { useStore } from '@/store/useStore';
 import type { MouseEvent } from 'react';
 
 export const MARKER_EMOJI_OPTIONS = ['🐧', '⭐', '🚩', '⚠️', '✅', '🔬', '🧭', '📍'];
+
+export function isMarkerCategoryVisible(marker: Pick<ChartMarker, 'emoji'>, visibleMarkerEmojis: string[]) {
+  return !MARKER_EMOJI_OPTIONS.includes(marker.emoji) || visibleMarkerEmojis.includes(marker.emoji);
+}
+
+export function useVisibleChartMarkers() {
+  const chartMarkers = useStore((state) => state.chartMarkers);
+  const visibleMarkerEmojis = useStore((state) => state.visibleMarkerEmojis);
+  const deferredMarkers = useDeferredValue(chartMarkers);
+  const deferredVisibleMarkerEmojis = useDeferredValue(visibleMarkerEmojis);
+
+  return useMemo(
+    () => deferredMarkers.filter((marker) => isMarkerCategoryVisible(marker, deferredVisibleMarkerEmojis)),
+    [deferredMarkers, deferredVisibleMarkerEmojis]
+  );
+}
 
 export function formatMarkerText(marker: Pick<ChartMarker, 'emoji' | 'label'>) {
   const label = marker.label?.trim();

@@ -9,7 +9,7 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
 import { useStore } from '@/store/useStore';
-import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 
 interface LoopCenterAngularVelocityPlotProps {
   xpData: number[];
@@ -449,7 +449,7 @@ export default function LoopCenterAngularVelocityPlot({ xpData, ypData, dates }:
   const plotHeight = usePlotDisplayHeight(500, 860);
   const velocity = useMemo(() => computeAngularVelocity(xpData, ypData, dates), [dates, xpData, ypData]);
   const chartTitle = useChartTitle('Angular Velocity of Loop-Center Evolution', dates);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

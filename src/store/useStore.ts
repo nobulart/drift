@@ -110,6 +110,7 @@ interface AppState {
   selectedMarkerEmoji: string;
   markerPlacementEnabled: boolean;
   chartMarkerSize: number;
+  visibleMarkerEmojis: string[];
 
   setData: (data: TimeSample[]) => void;
   setFrame: (frame: 'earth' | 'principal') => void;
@@ -138,12 +139,15 @@ interface AppState {
   setSelectedMarkerEmoji: (emoji: string) => void;
   setMarkerPlacementEnabled: (enabled: boolean) => void;
   setChartMarkerSize: (size: number) => void;
+  toggleMarkerCategoryVisibility: (emoji: string) => void;
+  setVisibleMarkerEmojis: (emojis: string[]) => void;
 }
 
 const PANEL_PREFERENCES_STORAGE_KEY = 'drift-panel-preferences-v1';
 const EOP_DATASET_STORAGE_KEY = 'drift-eop-dataset-v1';
 const CHART_MARKERS_STORAGE_KEY = 'drift-chart-markers-v1';
 const DEFAULT_MARKER_EMOJI = '🐧';
+const MARKER_EMOJI_OPTIONS = ['🐧', '⭐', '🚩', '⚠️', '✅', '🔬', '🧭', '📍'];
 const DEFAULT_CHART_MARKER_SIZE = 18;
 const DEFAULT_VISIBLE_PANELS = new Set<string>();
 const KNOWN_PANEL_IDS = new Set<string>(DEFAULT_PANEL_ORDER);
@@ -297,6 +301,21 @@ function normalizeChartMarkerSize(value: unknown) {
   return Math.max(12, Math.min(28, Math.round(numeric)));
 }
 
+function normalizeVisibleMarkerEmojis(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [...MARKER_EMOJI_OPTIONS];
+  }
+
+  const visible = value.filter((emoji): emoji is string => (
+    typeof emoji === 'string' && MARKER_EMOJI_OPTIONS.includes(emoji)
+  ));
+  return Array.from(new Set(visible));
+}
+
+function isMarkerEmojiVisible(marker: ChartMarker, visibleMarkerEmojis: string[]) {
+  return !MARKER_EMOJI_OPTIONS.includes(marker.emoji) || visibleMarkerEmojis.includes(marker.emoji);
+}
+
 function normalizeChartMarkers(value: unknown): ChartMarker[] {
   if (!Array.isArray(value)) {
     return [];
@@ -339,13 +358,14 @@ function normalizeChartMarkers(value: unknown): ChartMarker[] {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled' | 'chartMarkerSize'> {
+function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled' | 'chartMarkerSize' | 'visibleMarkerEmojis'> {
   if (typeof window === 'undefined') {
     return {
       chartMarkers: [],
       selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
       markerPlacementEnabled: false,
       chartMarkerSize: DEFAULT_CHART_MARKER_SIZE,
+      visibleMarkerEmojis: [...MARKER_EMOJI_OPTIONS],
     };
   }
 
@@ -357,6 +377,7 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
         selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
         markerPlacementEnabled: false,
         chartMarkerSize: DEFAULT_CHART_MARKER_SIZE,
+        visibleMarkerEmojis: [...MARKER_EMOJI_OPTIONS],
       };
       writeStoredChartMarkers(firstVisitMarkerState);
       return firstVisitMarkerState;
@@ -367,6 +388,7 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
       selectedMarkerEmoji?: unknown;
       markerPlacementEnabled?: unknown;
       chartMarkerSize?: unknown;
+      visibleMarkerEmojis?: unknown;
     };
 
     const chartMarkers = normalizeChartMarkers(parsed.chartMarkers);
@@ -378,6 +400,7 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
         : DEFAULT_MARKER_EMOJI,
       markerPlacementEnabled: parsed.markerPlacementEnabled === true,
       chartMarkerSize: normalizeChartMarkerSize(parsed.chartMarkerSize),
+      visibleMarkerEmojis: normalizeVisibleMarkerEmojis(parsed.visibleMarkerEmojis),
     };
   } catch {
     return {
@@ -385,6 +408,7 @@ function readStoredChartMarkers(): Pick<AppState, 'chartMarkers' | 'selectedMark
       selectedMarkerEmoji: DEFAULT_MARKER_EMOJI,
       markerPlacementEnabled: false,
       chartMarkerSize: DEFAULT_CHART_MARKER_SIZE,
+      visibleMarkerEmojis: [...MARKER_EMOJI_OPTIONS],
     };
   }
 }
@@ -394,7 +418,8 @@ function writeStoredChartMarkers({
   selectedMarkerEmoji,
   markerPlacementEnabled,
   chartMarkerSize,
-}: Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled' | 'chartMarkerSize'>) {
+  visibleMarkerEmojis,
+}: Pick<AppState, 'chartMarkers' | 'selectedMarkerEmoji' | 'markerPlacementEnabled' | 'chartMarkerSize' | 'visibleMarkerEmojis'>) {
   if (typeof window === 'undefined') {
     return;
   }
@@ -402,7 +427,7 @@ function writeStoredChartMarkers({
   try {
     window.localStorage.setItem(
       CHART_MARKERS_STORAGE_KEY,
-      JSON.stringify({ chartMarkers, selectedMarkerEmoji, markerPlacementEnabled, chartMarkerSize })
+      JSON.stringify({ chartMarkers, selectedMarkerEmoji, markerPlacementEnabled, chartMarkerSize, visibleMarkerEmojis })
     );
   } catch {
     // Ignore storage failures; marker controls still work for the current session.
@@ -440,6 +465,7 @@ const useStore = create<AppState>((set, get) => ({
   selectedMarkerEmoji: initialChartMarkerState.selectedMarkerEmoji,
   markerPlacementEnabled: initialChartMarkerState.markerPlacementEnabled,
   chartMarkerSize: initialChartMarkerState.chartMarkerSize,
+  visibleMarkerEmojis: initialChartMarkerState.visibleMarkerEmojis,
   setData: (data) => {
     const transformedData = data.map(item => {
       const pos: [number, number, number] = [item.xp, item.yp, 0];
@@ -609,7 +635,9 @@ const useStore = create<AppState>((set, get) => ({
       return;
     }
 
-    const nearest = get().chartMarkers
+    const { chartMarkers, visibleMarkerEmojis } = get();
+    const nearest = chartMarkers
+      .filter((marker) => isMarkerEmojiVisible(marker, visibleMarkerEmojis))
       .map((marker) => ({
         marker,
         distanceDays: Math.abs(new Date(`${marker.date}T00:00:00Z`).getTime() - targetTime) / 86400000,
@@ -648,6 +676,29 @@ const useStore = create<AppState>((set, get) => ({
       return;
     }
     set({ chartMarkerSize: nextSize });
+    writeStoredChartMarkers(get());
+  },
+  toggleMarkerCategoryVisibility: (emoji) => {
+    if (!MARKER_EMOJI_OPTIONS.includes(emoji)) {
+      return;
+    }
+
+    const visibleMarkerEmojis = get().visibleMarkerEmojis;
+    const nextVisibleMarkerEmojis = visibleMarkerEmojis.includes(emoji)
+      ? visibleMarkerEmojis.filter((entry) => entry !== emoji)
+      : [...visibleMarkerEmojis, emoji].filter((entry, index, entries) => entries.indexOf(entry) === index);
+
+    set({ visibleMarkerEmojis: nextVisibleMarkerEmojis });
+    writeStoredChartMarkers(get());
+  },
+  setVisibleMarkerEmojis: (emojis) => {
+    const nextVisibleMarkerEmojis = normalizeVisibleMarkerEmojis(emojis);
+    const current = get().visibleMarkerEmojis;
+    if (current.length === nextVisibleMarkerEmojis.length && current.every((emoji) => nextVisibleMarkerEmojis.includes(emoji))) {
+      return;
+    }
+
+    set({ visibleMarkerEmojis: nextVisibleMarkerEmojis });
     writeStoredChartMarkers(get());
   },
 

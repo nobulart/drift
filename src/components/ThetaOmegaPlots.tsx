@@ -10,7 +10,7 @@ import { computeDisplayOmega } from '@/lib/phase';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
 import { useStore } from '@/store/useStore';
-import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 
 interface ThetaOmegaPlotsProps {
   dates: string[];
@@ -30,7 +30,7 @@ export default function ThetaOmegaPlots({
   const [traces, setTraces] = useState<Plotly.Data[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
   const chartTitle = useChartTitle('Phase Diagnostics: theta(t) and omega(t)', dates);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

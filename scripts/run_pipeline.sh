@@ -44,7 +44,7 @@ fi
 log_info "Checking Python dependencies..."
 python3 -c "import numpy, scipy, pandas, json, spiceypy" 2>/dev/null || {
     log_warn "Some Python packages may be missing. Installing..."
-    pip install numpy scipy pandas spiceypy -q
+    python3 -m pip install numpy scipy pandas spiceypy -q
 }
 
 # Step 1: Fetch latest data

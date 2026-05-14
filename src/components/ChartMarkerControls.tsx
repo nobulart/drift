@@ -141,9 +141,12 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
   const selectedMarkerEmoji = useStore((state) => state.selectedMarkerEmoji);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
+  const visibleMarkerEmojis = useStore((state) => state.visibleMarkerEmojis);
   const setSelectedMarkerEmoji = useStore((state) => state.setSelectedMarkerEmoji);
   const setMarkerPlacementEnabled = useStore((state) => state.setMarkerPlacementEnabled);
   const setChartMarkerSize = useStore((state) => state.setChartMarkerSize);
+  const toggleMarkerCategoryVisibility = useStore((state) => state.toggleMarkerCategoryVisibility);
+  const setVisibleMarkerEmojis = useStore((state) => state.setVisibleMarkerEmojis);
   const updateChartMarker = useStore((state) => state.updateChartMarker);
   const setChartMarkers = useStore((state) => state.setChartMarkers);
   const deleteChartMarker = useStore((state) => state.deleteChartMarker);
@@ -288,6 +291,50 @@ export default function ChartMarkerControls({ minDate, maxDate, compact = false 
               {emoji}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ca3af]">Visible categories</p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setVisibleMarkerEmojis([...MARKER_EMOJI_OPTIONS])}
+              className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleMarkerEmojis([])}
+              className="rounded-md border border-[#374151] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9ca3af] transition-colors hover:border-[#60a5fa] hover:text-white"
+            >
+              None
+            </button>
+          </div>
+        </div>
+        <div className={`grid gap-2 ${compact ? 'grid-cols-8 sm:grid-cols-4' : 'grid-cols-4'}`}>
+          {MARKER_EMOJI_OPTIONS.map((emoji) => {
+            const visible = visibleMarkerEmojis.includes(emoji);
+            return (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => toggleMarkerCategoryVisibility(emoji)}
+                className={`flex h-9 items-center justify-center rounded-lg border text-lg transition-colors ${
+                  visible
+                    ? 'border-[#38bdf8] bg-[#0ea5e9]/15 text-white'
+                    : 'border-[#1f2937] bg-[#111827] text-[#6b7280] hover:border-[#60a5fa] hover:text-white'
+                }`}
+                aria-pressed={visible}
+                aria-label={`${visible ? 'Hide' : 'Show'} ${emoji} markers`}
+                title={`${visible ? 'Hide' : 'Show'} ${emoji} markers`}
+              >
+                {emoji}
+              </button>
+            );
+          })}
         </div>
       </div>
 

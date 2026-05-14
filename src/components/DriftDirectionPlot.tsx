@@ -10,7 +10,7 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
 import { useStore } from '@/store/useStore';
-import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 
 interface DriftDirectionPlotProps {
   dates: string[];
@@ -38,7 +38,7 @@ export default function DriftDirectionPlot({
     ? driftAxisLongitude(driftAxisTimeSeries[driftAxisTimeSeries.length - 1])
     : 0;
   const chartTitle = useChartTitle(`Drift Direction (Current: ${driftLon.toFixed(2)}°)`, dates);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

@@ -6,7 +6,7 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { buildPhasePortraitSeries, computeDisplayOmega } from '@/lib/phase';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { findNearestDateIndex, getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
+import { findNearestDateIndex, getMarkerLabel, getMarkerLabelSize, getPlotPointDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 import { useStore } from '@/store/useStore';
 
 interface PhasePortraitProps {
@@ -31,7 +31,7 @@ export default function PhasePortrait({
   const plotSize = Math.round(containerWidth > 0 ? Math.min(containerWidth, fallbackHeight) : fallbackHeight);
   const chartTitle = useChartTitle('Phase Portrait: theta vs omega', dates);
   const phaseStability = useStore((state) => state.rollingStats?.phaseStability);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

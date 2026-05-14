@@ -8,7 +8,7 @@ import ChartMarkerControls from '@/components/ChartMarkerControls';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { useChartTitle } from '@/lib/chartTitles';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
-import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 import {
   DEFAULT_PHASE_ESCAPE_MODELS,
   PhaseEscapeCompositeKey,
@@ -201,7 +201,7 @@ export default function PhaseEscapeModelPanel() {
   const turnThreshold = useStore(state => state.turnThreshold);
   const eopDataset = useStore(state => state.eopDataset);
   const data = useStore((state) => state.data);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

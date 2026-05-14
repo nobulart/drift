@@ -25,7 +25,7 @@ import {
   writeOverlayPlotMode,
   writeOverlaySignals,
 } from '@/lib/overlayPreferences';
-import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 import { HEATMAP_COLOR_SCALES, HEATMAP_PALETTES } from '@/lib/colorScales';
 
 interface CoreSignalConfig {
@@ -195,7 +195,7 @@ export default function OverlayPlot() {
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
   const data = useStore(state => state.data);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

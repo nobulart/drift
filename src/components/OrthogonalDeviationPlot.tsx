@@ -9,7 +9,7 @@ import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
 import { useStore } from '@/store/useStore';
-import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate } from '@/lib/chartMarkers';
+import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 
 interface OrthogonalDeviationPlotProps {
   dates: string[];
@@ -83,7 +83,7 @@ export default function OrthogonalDeviationPlot({
   const [rollingMean, setRollingMean] = useState<number[]>([]);
   const plotHeight = usePlotDisplayHeight(500, 860);
   const chartTitle = useChartTitle('R(t): Orthogonal Deviation Ratio', dates);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

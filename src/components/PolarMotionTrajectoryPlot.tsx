@@ -7,7 +7,7 @@ import { PanelFullscreenContext } from '@/components/LayoutPanel';
 import { usePlotDisplayHeight } from '@/components/usePlotDisplayHeight';
 import { createCsvExportConfig } from '@/lib/plotlyCsvExport';
 import { useChartTitle } from '@/lib/chartTitles';
-import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate } from '@/lib/chartMarkers';
+import { getMarkerLabel, getMarkerLabelSize, getPlotPointDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 import {
   DEFAULT_PATH_COLOR_SCALE,
   HEATMAP_COLOR_SCALES,
@@ -75,7 +75,7 @@ export default function PolarMotionTrajectoryPlot({ xpData, ypData, dates, rolli
     : (containerSize.width || fallbackHeight);
   const plotSize = Math.round(Math.min(measuredLimit, fallbackHeight));
   const chartTitle = useChartTitle('Polar Motion Trajectory', dates);
-  const chartMarkers = useStore((state) => state.chartMarkers);
+  const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
   const addChartMarker = useStore((state) => state.addChartMarker);

@@ -146,7 +146,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.6.2
+                Version v1.6.3
               </span>
               <Link
                 href="/"
@@ -202,13 +202,19 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           {/* Keep this inline release-card list to the latest six versions. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-[#38bdf8]/50 bg-[#082f49]/30 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.3 Marker Filters</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added selective display for all eight marker categories, made marker edits more responsive by deferring heavier chart redraw work, and hardened standalone/Docker startup so production serves assets and bundled data immediately.
+              </p>
+            </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.2 EOP Refresh Controls</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Shifted rapid-tail EOP merging into the full pipeline, documented forced full EOP refreshes, kept heavyweight alternate backfills on a weekly refresh cadence, and increased Overlay Plot title spacing.
               </p>
             </article>
-            <article className="rounded-xl border border-[#38bdf8]/50 bg-[#082f49]/30 p-4">
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.1 Phase Stability<sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup></h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added the PHASE STABILITY layer for manifold departure, phase-conditioned Zω, curvature, hysteresis, historical analogue similarity, and Coupling Stability Index. Docker TLS domains are now empty by default and must be configured explicitly.
@@ -230,12 +236,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.8 Palette Persistence</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added a greyscale gradient to the heatmap palette set and shared the selector with residual polar-motion phase-space and polar-motion trajectory panels. Palette choices persist across sessions and reset cleanly with dashboard defaults.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.7 Chart Markers</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added persistent emoji chart markers with sidebar and fullscreen controls. Timeline charts synchronize marker dates, and path charts show icon markers on phase portrait, residual polar motion, and polar motion trajectory paths.
               </p>
             </article>
           </div>

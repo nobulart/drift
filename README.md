@@ -8,9 +8,15 @@ Phase Stability paper: [Phase Stability Diagnostics for Polar Motion State-Space
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.6.2`
+Current release: `v1.6.3`
 
 ## Release Notes
+
+### v1.6.3
+
+- Added selective marker-category display controls for all eight marker emoji categories, with visibility persisted alongside marker settings.
+- Deferred marker redraw work so marker edits return sidebar/UI control faster while heavier Plotly updates settle afterward.
+- Hardened standalone production startup so local `npm run build && npm run start` serves required static assets, and Docker startup serves bundled data immediately while any refresh runs in the background.
 
 ### v1.6.2
 
