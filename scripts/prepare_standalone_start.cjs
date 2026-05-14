@@ -9,6 +9,10 @@ const staticSource = join(root, '.next', 'static');
 const staticTarget = join(standaloneDir, '.next', 'static');
 const publicSource = join(root, 'public');
 const publicTarget = join(standaloneDir, 'public');
+const scriptsSource = join(root, 'scripts');
+const scriptsTarget = join(standaloneDir, 'scripts');
+const dataSource = join(root, 'data');
+const dataTarget = join(standaloneDir, 'data');
 
 if (!existsSync(standaloneDir)) {
   throw new Error('Missing .next/standalone. Run `npm run build` before `npm run start`.');
@@ -24,4 +28,13 @@ cpSync(staticSource, staticTarget, { recursive: true });
 
 if (existsSync(publicSource) && !existsSync(publicTarget)) {
   cpSync(publicSource, publicTarget, { recursive: true });
+}
+
+if (existsSync(scriptsSource)) {
+  rmSync(scriptsTarget, { recursive: true, force: true });
+  cpSync(scriptsSource, scriptsTarget, { recursive: true });
+}
+
+if (existsSync(dataSource) && !existsSync(dataTarget)) {
+  cpSync(dataSource, dataTarget, { recursive: true });
 }
