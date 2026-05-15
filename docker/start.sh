@@ -8,7 +8,13 @@ ACME_WEBROOT="/var/www/certbot"
 NGINX_CONF="/etc/nginx/conf.d/drift.conf"
 NODE_PID=""
 REFRESH_PID=""
+SCHEDULE_PID=""
 STARTUP_REFRESH_MODE="${DRIFT_STARTUP_REFRESH_MODE:-background}"
+DRIFT_SCHEDULED_UPDATE="${DRIFT_SCHEDULED_UPDATE:-1}"
+DRIFT_DAILY_UPDATE_UTC="${DRIFT_DAILY_UPDATE_UTC:-19:05}"
+DATA_REFRESH_LOCK="/tmp/drift-data-refresh.lock"
+
+export DRIFT_DAILY_UPDATE_UTC
 
 log() {
   printf '%s\n' "$*" >&2
@@ -18,6 +24,11 @@ cleanup() {
   if [ -n "${REFRESH_PID}" ] && kill -0 "${REFRESH_PID}" 2>/dev/null; then
     kill "${REFRESH_PID}" 2>/dev/null || true
     wait "${REFRESH_PID}" 2>/dev/null || true
+  fi
+
+  if [ -n "${SCHEDULE_PID}" ] && kill -0 "${SCHEDULE_PID}" 2>/dev/null; then
+    kill "${SCHEDULE_PID}" 2>/dev/null || true
+    wait "${SCHEDULE_PID}" 2>/dev/null || true
   fi
 
   if [ -n "${NODE_PID}" ] && kill -0 "${NODE_PID}" 2>/dev/null; then
@@ -214,8 +225,64 @@ reload_nginx() {
 }
 
 run_startup_refresh() {
+  if ! mkdir "${DATA_REFRESH_LOCK}" 2>/dev/null; then
+    log "Startup data refresh skipped; another data refresh is already running."
+    return 0
+  fi
+
+  trap 'rmdir "${DATA_REFRESH_LOCK}" 2>/dev/null || true' EXIT
   run_as_nextjs "python3 scripts/ensure_startup_data.py" \
     || log "Startup data refresh failed; continuing to serve bundled data."
+  rmdir "${DATA_REFRESH_LOCK}" 2>/dev/null || true
+  trap - EXIT
+}
+
+run_scheduled_update() {
+  if ! mkdir "${DATA_REFRESH_LOCK}" 2>/dev/null; then
+    log "Scheduled data update skipped; another data refresh is already running."
+    return 0
+  fi
+
+  log "Scheduled data update started at $(date -u '+%Y-%m-%dT%H:%M:%SZ')."
+  if run_as_nextjs "bash scripts/run_pipeline.sh --compute-stats"; then
+    log "Scheduled data update completed successfully."
+  else
+    log "Scheduled data update failed."
+  fi
+  rmdir "${DATA_REFRESH_LOCK}" 2>/dev/null || true
+}
+
+seconds_until_daily_update() {
+  python3 -c 'from datetime import datetime, timedelta, timezone
+import os
+hour, minute = [int(part) for part in os.environ["DRIFT_DAILY_UPDATE_UTC"].split(":", 1)]
+if not (0 <= hour <= 23 and 0 <= minute <= 59):
+    raise SystemExit(1)
+now = datetime.now(timezone.utc)
+target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+if target <= now:
+    target += timedelta(days=1)
+print(max(1, int((target - now).total_seconds())))'
+}
+
+scheduled_update_loop() {
+  case "${DRIFT_SCHEDULED_UPDATE}" in
+    0|false|disabled|off)
+      log "Scheduled data update disabled."
+      return 0
+      ;;
+  esac
+
+  while :; do
+    sleep_seconds="$(seconds_until_daily_update)" || {
+      log "Scheduled data update disabled; invalid DRIFT_DAILY_UPDATE_UTC=${DRIFT_DAILY_UPDATE_UTC}."
+      return 0
+    }
+
+    log "Scheduled data update armed for ${DRIFT_DAILY_UPDATE_UTC} UTC."
+    sleep "${sleep_seconds}" || return 0
+    run_scheduled_update
+  done
 }
 
 case "${STARTUP_REFRESH_MODE}" in
@@ -230,6 +297,9 @@ case "${STARTUP_REFRESH_MODE}" in
     REFRESH_PID="$!"
     ;;
 esac
+
+scheduled_update_loop &
+SCHEDULE_PID="$!"
 
 run_as_nextjs "node server.js" &
 NODE_PID="$!"

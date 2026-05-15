@@ -523,6 +523,10 @@ drift/
 - `scripts/build_ephemeris.py` - Extract slim DE442 overlay series into daily JSON cache
 - `scripts/compute_phase_escape.py` - Build phase-escape state inputs from internal EOP and DE442 caches
 
+### Scheduled Refresh
+
+The Docker entrypoint runs an internal daily scheduler by default. It starts `scripts/run_pipeline.sh --compute-stats` at `19:05` UTC each day so Railway deployments refresh data automatically without a separate cron service. Override the time with `DRIFT_DAILY_UPDATE_UTC=HH:MM`, or disable the scheduler with `DRIFT_SCHEDULED_UPDATE=0`.
+
 ### Live API (Next.js)
 
 #### API authentication
