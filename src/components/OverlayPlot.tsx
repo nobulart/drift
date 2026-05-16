@@ -27,6 +27,17 @@ import {
 } from '@/lib/overlayPreferences';
 import { buildMarkerLayout, getContextMenuDate, getMarkerDeleteToleranceDays, getPlotClickDate, useVisibleChartMarkers } from '@/lib/chartMarkers';
 import { HEATMAP_COLOR_SCALES, HEATMAP_PALETTES } from '@/lib/colorScales';
+import {
+  DEFAULT_PHASE_ESCAPE_MODELS,
+  PhaseEscapeCompositeKey,
+  computePhaseDrift,
+  energyBarrierRatio,
+  escapeEnergyBarrier,
+  phaseTotalEnergy,
+  radiansToDegrees,
+  smoothExp,
+} from '@/lib/phaseEscapeModel';
+import { computeQDriftProxy } from '@/lib/matsuyamaProxy';
 
 interface CoreSignalConfig {
   label: string;
@@ -50,7 +61,19 @@ const CORE_SIGNALS: Record<string, CoreSignalConfig> = {
   manifoldDeparture: { label: 'Manifold Departure' },
   couplingStability: { label: 'Coupling Stability Index' },
   hysteresisIndex: { label: 'Hysteresis Index' },
+  qDriftProxy: { label: 'DRIFT proxy Q' },
 };
+
+interface PhaseEscapeRecord {
+  t: string;
+  misalignment: Record<PhaseEscapeCompositeKey, number | null>;
+}
+
+interface PhaseEscapeDataset {
+  records: PhaseEscapeRecord[];
+}
+
+const MATSUYAMA_COMPOSITE: PhaseEscapeCompositeKey = 'Venus_Mars';
 
 function normalize(series: number[]): number[] {
   const valid = series.filter(v => Number.isFinite(v));
@@ -86,7 +109,8 @@ function scaleHeatmapRow(series: number[]): number[] {
 function getCoreSignalSeries(
   key: string,
   rollingStats: any,
-  data: Array<{ xp?: number | null; yp?: number | null; ut1_utc?: number | null; lod?: number | null; kp?: number | null; ap?: number | null }>
+  data: Array<{ t: string; xp?: number | null; yp?: number | null; ut1_utc?: number | null; lod?: number | null; kp?: number | null; ap?: number | null }>,
+  matsuyamaProxyByDate: Record<string, number | null>
 ): number[] | undefined {
   switch (key) {
     case 'xp':
@@ -121,9 +145,31 @@ function getCoreSignalSeries(
       return rollingStats.phaseStability?.samples?.map((sample: any) => sample.couplingStabilityIndex ?? NaN);
     case 'hysteresisIndex':
       return rollingStats.phaseStability?.samples?.map((sample: any) => sample.hysteresisIndex ?? NaN);
+    case 'qDriftProxy':
+      return data.map(d => matsuyamaProxyByDate[d.t.slice(0, 10)] ?? NaN);
     default:
       return undefined;
   }
+}
+
+function buildMatsuyamaProxyByDate(records: PhaseEscapeRecord[]): Record<string, number | null> {
+  const model = DEFAULT_PHASE_ESCAPE_MODELS[MATSUYAMA_COMPOSITE];
+  const phiSeriesDeg = records.map(record => {
+    const phi = record.misalignment?.[MATSUYAMA_COMPOSITE];
+    return typeof phi === 'number' && Number.isFinite(phi) ? radiansToDegrees(phi) : NaN;
+  });
+  const phiSmoothDeg = smoothExp(phiSeriesDeg, 0.25);
+  const timeSeriesMs = records.map(record => new Date(record.t).getTime());
+  const phaseDriftSeries = computePhaseDrift(phiSmoothDeg, timeSeriesMs);
+  const barrier = escapeEnergyBarrier(model.alpha);
+
+  return records.reduce<Record<string, number | null>>((acc, record, index) => {
+    const phiDeg = phiSeriesDeg[index];
+    const totalPhaseEnergy = phaseTotalEnergy(phiDeg, model.phi0Deg, phaseDriftSeries[index], model.alpha);
+    const barrierRatio = energyBarrierRatio(totalPhaseEnergy, barrier);
+    acc[record.t.slice(0, 10)] = computeQDriftProxy({ totalPhaseEnergy, barrier, barrierRatio }).qDriftProxy;
+    return acc;
+  }, {});
 }
 
 function getEphemerisSignalSeries(
@@ -188,6 +234,7 @@ export default function OverlayPlot() {
   const [plotMode, setPlotMode] = useState<string>(readOverlayPlotMode);
   const [ephemerisByDate, setEphemerisByDate] = useState<Record<string, EphemerisRecord['bodies']>>({});
   const [ephemerisRecords, setEphemerisRecords] = useState<EphemerisRecord[]>([]);
+  const [matsuyamaProxyByDate, setMatsuyamaProxyByDate] = useState<Record<string, number | null>>({});
   const isInternalUpdate = useRef(false);
   const plotHeight = usePlotDisplayHeight(550, 946);
   const isHeatmapMode = plotMode !== LINE_CHART_MODE;
@@ -195,6 +242,9 @@ export default function OverlayPlot() {
   const { timeRange, timeLockEnabled, setTimeRange } = useTimeStore();
   const rollingStats = useStore(state => state.rollingStats);
   const data = useStore(state => state.data);
+  const windowSize = useStore(state => state.windowSize);
+  const turnThreshold = useStore(state => state.turnThreshold);
+  const eopDataset = useStore(state => state.eopDataset);
   const chartMarkers = useVisibleChartMarkers();
   const chartMarkerSize = useStore((state) => state.chartMarkerSize);
   const markerPlacementEnabled = useStore((state) => state.markerPlacementEnabled);
@@ -224,6 +274,9 @@ export default function OverlayPlot() {
     }
     if (selectedSignals.some(signal => signal === 'kp' || signal === 'ap')) {
       sources.push('GFZ Kp');
+    }
+    if (selectedSignals.includes('qDriftProxy')) {
+      sources.push('DRIFT phase escape');
     }
     return sources;
   }, [selectedSignals]);
@@ -263,7 +316,7 @@ export default function OverlayPlot() {
       } else if (signalKey.includes(':')) {
         raw = getEphemerisSignalSeries(signalKey, timestamps, ephemerisByDate);
       } else {
-        raw = getCoreSignalSeries(signalKey, rollingStats, data);
+        raw = getCoreSignalSeries(signalKey, rollingStats, data, matsuyamaProxyByDate);
       }
 
       if (!raw) {
@@ -277,7 +330,50 @@ export default function OverlayPlot() {
         normalized: normalize(raw),
       };
     }).filter(Boolean) as Array<WideCsvSeries & { key: string }>;
-  }, [data, ephemerisByDate, rollingStats, selectedSignals]);
+  }, [data, ephemerisByDate, matsuyamaProxyByDate, rollingStats, selectedSignals]);
+
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      windowSize: String(windowSize),
+      turnThreshold: String(turnThreshold),
+      smoothDays: '31',
+      dataset: eopDataset,
+      view: 'panel',
+      composite: MATSUYAMA_COMPOSITE,
+    });
+
+    fetch(`/api/phase-escape?${params.toString()}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to load Matsuyama proxy overlay data');
+        }
+        return response.json();
+      })
+      .then((payload: PhaseEscapeDataset) => {
+        if (active) {
+          setMatsuyamaProxyByDate(buildMatsuyamaProxyByDate(payload.records ?? []));
+        }
+      })
+      .catch(error => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+        console.error('Failed to load Matsuyama proxy overlay data:', error);
+        if (active) {
+          setMatsuyamaProxyByDate({});
+        }
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [eopDataset, turnThreshold, windowSize]);
 
   useEffect(() => {
     let active = true;

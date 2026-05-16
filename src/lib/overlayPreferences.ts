@@ -28,6 +28,7 @@ const CORE_SIGNAL_KEYS = new Set([
   'manifoldDeparture',
   'couplingStability',
   'hysteresisIndex',
+  'qDriftProxy',
 ]);
 const EPHEMERIS_SIGNAL_KEYS = new Set(
   EPHEMERIS_BODY_CONFIG.flatMap(body =>
