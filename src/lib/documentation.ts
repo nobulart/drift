@@ -3,6 +3,8 @@ export const PANEL_GUIDES: Record<string, string> = {
     'Experimental transition-probability view derived from lag-conditioned historical structure. Rising probability or earlier peaks suggest the current state resembles past transition episodes, but this is a comparative similarity diagnostic rather than a deterministic prediction.',
   phaseEscape:
     'Experimental phase-conditioned metastable escape diagnostic built from internal DRIFT state and DE442 torque-proxy phases. Use it to inspect residual phase misalignment, phase drift, curvature, stability, barrier ratio, and the Kramers-like comparative index without reading the composite as a deterministic driver.',
+  matsuyamaProxy:
+    'Experimental Matsuyama-normalized DRIFT proxy coordinate. It compares phase energy with the estimated basin barrier as a threshold-style stability diagnostic, but it is not Matsuyama et al.’s physical normalized load Q.',
   sphere:
     'Compare the drift axis and IERS polar-motion frame in one Earth-fixed view. The display follows the IERS XY convention: negative x_pole left, positive x_pole right, and positive y_pole upward.',
   polar:
@@ -56,6 +58,7 @@ export const DOCS_PANEL_GUIDES: DocsPanelGuide[] = [
   { title: 'Conditional Lag Response', guide: PANEL_GUIDES.conditionalLag },
   { title: 'Transition Probability', guide: PANEL_GUIDES.forecast, experimental: true },
   { title: 'Phase-Locked Escape Model', guide: PANEL_GUIDES.phaseEscape, experimental: true },
+  { title: 'Matsuyama-Proxy Stability Coordinate', guide: PANEL_GUIDES.matsuyamaProxy, experimental: true },
   { title: 'Phase Stability', guide: PANEL_GUIDES.phaseStability, experimental: true },
 ];
 
@@ -108,6 +111,11 @@ export const DOCS_OUTPUTS = [
     body:
       'The Phase-Locked Escape Model reports phase-dependent escape probability, residual phase drift, curvature, stability, barrier ratio, and a Kramers-like index that uses R(t) as a noise proxy. Treat these as comparative diagnostics, not deterministic transition claims.',
   },
+  {
+    title: 'Experimental Matsuyama-normalized proxy coordinate',
+    body:
+      'The Matsuyama-Proxy Stability Coordinate reuses the phase escape energy and barrier ratio as DRIFT proxy Q, making the current state readable against threshold-style regimes without presenting it as Matsuyama et al.’s physical load/remnant-bulge Q.',
+  },
 ];
 
 export const DOCS_LIMITATIONS = [
@@ -115,6 +123,7 @@ export const DOCS_LIMITATIONS = [
   'The dashboard’s geomagnetic comparisons are contextual; they should not be read as standalone evidence of coupling or causation.',
   'Transition Probability outputs depend on rolling diagnostics and conditional lag structure, so they are exploratory indicators rather than validated predictive guarantees.',
   'Phase-Locked Escape Model outputs are phase-conditioned diagnostics; barrier ratio and Kramers-like index values are comparative indicators and should not be interpreted as physical joules, literal thermal escape rates, or deterministic timing.',
+  'Matsuyama-Proxy Stability Coordinate values are a DRIFT phase-energy / basin-barrier proxy, not Matsuyama et al.’s physical normalized load Q.',
   'All conclusions are tied to the observational window represented in the available data and may not generalize outside that interval.',
   'Source freshness is bounded by upstream publication cadence, service availability, local timestamp-based refresh windows, and the daily normalization used for some inputs.',
 ];

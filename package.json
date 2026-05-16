@@ -1,13 +1,13 @@
 {
   "name": "drift",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "description": "Geodetic-Geomagnetic Coupling Dashboard",
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/prepare_standalone_start.cjs",
     "start": "node scripts/prepare_standalone_start.cjs && node .next/standalone/server.js",
     "lint": "next lint",
-    "test": "tsc --ignoreConfig --target ES2020 --module commonjs --outDir /private/tmp/drift-phase-test --skipLibCheck src/lib/phaseEscapeModel.ts src/lib/phaseStabilityDiagnostics.ts src/lib/types.ts && node --test tests/phaseEscapeModel.test.cjs tests/phaseStabilityDiagnostics.test.cjs",
+    "test": "tsc --ignoreConfig --target ES2020 --module commonjs --outDir /private/tmp/drift-phase-test --skipLibCheck src/lib/phaseEscapeModel.ts src/lib/phaseStabilityDiagnostics.ts src/lib/matsuyamaProxy.ts src/lib/types.ts && node --test tests/phaseEscapeModel.test.cjs tests/phaseStabilityDiagnostics.test.cjs tests/matsuyamaProxy.test.cjs",
     "compress-data": "node scripts/compress_data_json.cjs",
     "update-data": "./scripts/run_pipeline.sh --compute-stats"
   },

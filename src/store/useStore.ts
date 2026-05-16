@@ -149,7 +149,11 @@ const CHART_MARKERS_STORAGE_KEY = 'drift-chart-markers-v1';
 const DEFAULT_MARKER_EMOJI = '🐧';
 const MARKER_EMOJI_OPTIONS = ['🐧', '⭐', '🚩', '⚠️', '✅', '🔬', '🧭', '📍'];
 const DEFAULT_CHART_MARKER_SIZE = 18;
-const DEFAULT_VISIBLE_PANELS = new Set<string>();
+const DEFAULT_HIDDEN_PANELS = new Set<string>(['sphere', 'conditionalLag', 'lagModel']);
+const DEFAULT_PANEL_COLUMN_SPANS: Record<string, PanelColumnSpan> = {
+  phaseStability: 2,
+  overlay: 3,
+};
 const KNOWN_PANEL_IDS = new Set<string>(DEFAULT_PANEL_ORDER);
 
 interface StoredPanelPreferences {
@@ -190,10 +194,7 @@ function normalizePanelOrder(value: unknown): string[] {
     mergedOrder.splice(insertionIndex, 0, panelId);
   });
 
-  return [
-    ...mergedOrder.filter((panelId) => panelId !== 'phaseEscape'),
-    'phaseEscape',
-  ];
+  return mergedOrder;
 }
 
 function normalizePanelColumnSpans(value: unknown): Record<string, PanelColumnSpan> {
@@ -456,9 +457,12 @@ const useStore = create<AppState>((set, get) => ({
   turnThreshold: 0.05,
   alignment: null,
   collapsedPanels: initialPanelPreferences?.collapsedPanels ?? new Set(),
-  hiddenPanels: initialPanelPreferences?.hiddenPanels ?? new Set(DEFAULT_VISIBLE_PANELS),
+  hiddenPanels: initialPanelPreferences?.hiddenPanels ?? new Set(DEFAULT_HIDDEN_PANELS),
   panelOrder: initialPanelPreferences?.panelOrder ?? [...DEFAULT_PANEL_ORDER],
-  panelColumnSpans: initialPanelPreferences?.panelColumnSpans ?? {},
+  panelColumnSpans: {
+    ...DEFAULT_PANEL_COLUMN_SPANS,
+    ...(initialPanelPreferences?.panelColumnSpans ?? {}),
+  },
   lastUpdated: null,
   eopDataset: initialEOPDataset,
   chartMarkers: initialChartMarkerState.chartMarkers,
@@ -553,10 +557,10 @@ const useStore = create<AppState>((set, get) => ({
   },
   resetPanelPreferences: () => {
     const nextPreferences = {
-      hiddenPanels: new Set(DEFAULT_VISIBLE_PANELS),
+      hiddenPanels: new Set(DEFAULT_HIDDEN_PANELS),
       collapsedPanels: new Set<string>(),
       panelOrder: [...DEFAULT_PANEL_ORDER],
-      panelColumnSpans: {},
+      panelColumnSpans: { ...DEFAULT_PANEL_COLUMN_SPANS },
     };
     set(nextPreferences);
     writePanelPreferences(nextPreferences);

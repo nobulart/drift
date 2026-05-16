@@ -146,7 +146,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.6.3
+                Version v1.6.4
               </span>
               <Link
                 href="/"
@@ -202,6 +202,12 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           {/* Keep this inline release-card list to the latest six versions; only highlight experimental item cards. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-[#38bdf8]/50 bg-[#082f49]/30 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.4 Matsuyama-Proxy Coordinate<sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup></h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added the Matsuyama-Proxy Stability Coordinate, a DRIFT proxy Q panel comparing phase energy with the estimated basin barrier. It includes threshold regimes, a gauge, recent proxy trace, and explicit labeling that this is not Matsuyama et al.&apos;s physical normalized load Q.
+              </p>
+            </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.3 Marker Filters</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
@@ -230,12 +236,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.9 Default Markers</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 First-time visitors now start with the curated default marker set from data/markers.json. Marker file loads use the same merge, replace, or cancel confirmation as the default-marker control, while later visits keep each user&apos;s saved marker preferences.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.8 Palette Persistence</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                Added a greyscale gradient to the heatmap palette set and shared the selector with residual polar-motion phase-space and polar-motion trajectory panels. Palette choices persist across sessions and reset cleanly with dashboard defaults.
               </p>
             </article>
           </div>

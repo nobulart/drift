@@ -27,6 +27,7 @@ const LagModelPlot = dynamic(() => import('@/components/LagModelPlot'), { ssr: f
 const ConditionalLagPlot = dynamic(() => import('@/components/ConditionalLagPlot'), { ssr: false });
 const TransitionForecastPanel = dynamic(() => import('@/components/TransitionForecastPanel'), { ssr: false });
 const PhaseEscapeModelPanel = dynamic(() => import('@/components/PhaseEscapeModelPanel'), { ssr: false });
+const MatsuyamaProxyPanel = dynamic(() => import('@/components/MatsuyamaProxyPanel'), { ssr: false });
 const ResponsiveGrid = dynamic(() => import('@/components/ResponsiveGrid'), { ssr: false });
 const Panel = dynamic(() => import('@/components/LayoutPanel'), { ssr: false });
 
@@ -291,6 +292,20 @@ export default function Home() {
         <PhaseEscapeModelPanel />
       </Panel>
     ) : null,
+    matsuyamaProxy: rollingStatsLoaded && rollingStats ? (
+      <Panel
+        panelId="matsuyamaProxy"
+        title="Matsuyama-Proxy Stability Coordinate"
+        guide={PANEL_GUIDES.matsuyamaProxy}
+        experimental
+        visible={!hiddenPanels.has('matsuyamaProxy')}
+        collapsed={collapsedPanels.has('matsuyamaProxy')}
+        onToggleVisibility={() => togglePanelVisibility('matsuyamaProxy')}
+        onToggleCollapse={() => togglePanelCollapse('matsuyamaProxy')}
+      >
+        <MatsuyamaProxyPanel />
+      </Panel>
+    ) : null,
     sphere: (
       <Panel
         panelId="sphere"
@@ -520,7 +535,7 @@ export default function Home() {
                 Polar Motion Geometry and Context
               </p>
               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                 Version v1.6.3
+                 Version v1.6.4
               </p>
             </div>
             <Link

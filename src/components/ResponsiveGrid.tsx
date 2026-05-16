@@ -50,6 +50,7 @@ export default function ResponsiveGrid({
       return {
         phaseEscape: { colSpan: 1 },
         forecast: { colSpan: 1 },
+        matsuyamaProxy: { colSpan: 1 },
         sphere: { colSpan: 1 },
         residualPolar: { colSpan: 1 },
         polarTrajectory: { colSpan: 1 },
@@ -59,6 +60,7 @@ export default function ResponsiveGrid({
         angle: { colSpan: 1 },
         coupling: { colSpan: 1 },
         phase: { colSpan: 1 },
+        phaseStability: { colSpan: 1 },
         phaseDiag: { colSpan: 1 },
         ortho: { colSpan: 1 },
         overlay: { colSpan: 1 },
@@ -70,6 +72,7 @@ export default function ResponsiveGrid({
       return {
         phaseEscape: { colSpan: 3 },
         forecast: { colSpan: 1 },
+        matsuyamaProxy: { colSpan: 1 },
         sphere: { colSpan: 2 },
         residualPolar: { colSpan: 1 },
         polarTrajectory: { colSpan: 1 },
@@ -79,9 +82,10 @@ export default function ResponsiveGrid({
         angle: { colSpan: 1 },
         coupling: { colSpan: 1 },
         phase: { colSpan: 1 },
+        phaseStability: { colSpan: 2 },
         phaseDiag: { colSpan: 1 },
         ortho: { colSpan: 1 },
-        overlay: { colSpan: 2 },
+        overlay: { colSpan: 3 },
         lagModel: { colSpan: 1 },
         conditionalLag: { colSpan: 1 },
       } as PanelLayout;
@@ -89,6 +93,7 @@ export default function ResponsiveGrid({
     return {
       phaseEscape: { colSpan: 2 },
       forecast: { colSpan: 2 },
+      matsuyamaProxy: { colSpan: 1 },
       sphere: { colSpan: 2 },
       residualPolar: { colSpan: 1 },
       polarTrajectory: { colSpan: 1 },
@@ -98,6 +103,7 @@ export default function ResponsiveGrid({
       angle: { colSpan: 1 },
       coupling: { colSpan: 1 },
       phase: { colSpan: 1 },
+      phaseStability: { colSpan: 2 },
       phaseDiag: { colSpan: 1 },
       ortho: { colSpan: 1 },
       overlay: { colSpan: 2 },

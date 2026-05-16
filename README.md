@@ -8,9 +8,15 @@ Phase Stability paper: [Phase Stability Diagnostics for Polar Motion State-Space
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.6.3`
+Current release: `v1.6.4`
 
 ## Release Notes
+
+### v1.6.4
+
+- Reordered the default experimental panel flow so Phase Stability opens first, Transition Probability second, and Matsuyama-Proxy Stability Coordinate third.
+- Set Phase Stability to span two columns by default and Overlay Plot to use the full three-column UHD span by default.
+- Disabled 3D Vector View, Lag Model, and Conditional Lag Response in the default panel set while keeping them available from the sidebar.
 
 ### v1.6.3
 

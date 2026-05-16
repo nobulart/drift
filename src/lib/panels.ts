@@ -4,9 +4,10 @@ export interface PanelOption {
 }
 
 export const DEFAULT_PANEL_ORDER = [
-  'sphere',
   'phaseStability',
   'forecast',
+  'matsuyamaProxy',
+  'sphere',
   'residualPolar',
   'polarTrajectory',
   'loopAngularVelocity',
@@ -22,9 +23,10 @@ export const DEFAULT_PANEL_ORDER = [
 ] as const;
 
 export const PANEL_OPTIONS: PanelOption[] = [
-  { id: 'sphere', label: '3D Vector View' },
   { id: 'phaseStability', label: 'Phase Stability' },
   { id: 'forecast', label: 'Transition Probability' },
+  { id: 'matsuyamaProxy', label: 'Matsuyama-Proxy Stability Coordinate' },
+  { id: 'sphere', label: '3D Vector View' },
   { id: 'residualPolar', label: 'Residual Polar Motion (XY)' },
   { id: 'polarTrajectory', label: 'Polar Motion Trajectory' },
   { id: 'loopAngularVelocity', label: 'Loop-Center Angular Velocity' },
