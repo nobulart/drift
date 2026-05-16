@@ -48,6 +48,7 @@ const sourcePaperHref =
   'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion';
 const phaseStabilityPaperHref =
   'https://www.academia.edu/166976568/Phase_Stability_Diagnostics_for_Polar_Motion_State_Space_Analysis';
+const matsuyamaDoiHref = 'https://doi.org/10.1146/annurev-earth-060313-054724';
 
 const pipelineSteps = [
   'Fetch upstream geodetic and geomagnetic source files only when local caches may be stale.',
@@ -206,6 +207,15 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.4 Matsuyama-Proxy Coordinate<sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup></h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 Added the Matsuyama-Proxy Stability Coordinate, a DRIFT proxy Q panel comparing phase energy with the estimated basin barrier. It includes threshold regimes, a gauge, recent proxy trace, and explicit labeling that this is not Matsuyama et al.&apos;s physical normalized load Q.
+                {' '}
+                <a
+                  href={matsuyamaDoiHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/50 underline-offset-2 transition-colors hover:text-white"
+                >
+                  DOI: 10.1146/annurev-earth-060313-054724
+                </a>
               </p>
             </article>
             <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
@@ -395,8 +405,18 @@ export default function DocsPage() {
                     {panel.experimental && (
                       <sup className="ml-auto text-[10px] lowercase text-[#38bdf8]">experimental</sup>
                     )}
-                 </h3>
+                </h3>
                 <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">{panel.guide}</p>
+                {panel.title === 'Matsuyama-Proxy Stability Coordinate' && (
+                  <a
+                    href={matsuyamaDoiHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex text-sm font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/50 underline-offset-2 transition-colors hover:text-white"
+                  >
+                    DOI: 10.1146/annurev-earth-060313-054724
+                  </a>
+                )}
               </article>
             ))}
           </div>

@@ -1,0 +1,350 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black,pdftitle={DRIFT Whitepaper},pdfauthor={Craig Stone}}
+\setlist[itemize]{leftmargin=1.4em,itemsep=0.25em,topsep=0.25em}
+\setlist[enumerate]{leftmargin=1.6em,itemsep=0.25em,topsep=0.25em}
+\renewcommand{\arraystretch}{1.18}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{DRIFT Whitepaper}
+\rhead{v1.6.4}
+\cfoot{\thepage\ of \pageref{LastPage}}
+
+\titleformat{\section}{\Large\bfseries}{\thesection}{0.75em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.75em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{0.75em}{}
+
+\newcommand{\DRIFT}{\textsc{DRIFT}}
+\newcommand{\Rratio}{R(t)}
+\newcommand{\Qdrift}{Q_{\mathrm{DRIFT}}}
+\newcommand{\Zomega}{Z_{\omega}}
+
+\title{\vspace{-1.5em}\textbf{\DRIFT: A Constraint-First Polar-Motion Diagnostic System}\\\large Whitepaper for version 1.6.4}
+\author{Craig Stone\\\small Project repository: \url{https://github.com/nobulart/drift}\\\small Public dashboard: \url{https://drift.nobulart.com}}
+\date{16 May 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\DRIFT\ is an interactive diagnostic system for Earth polar motion, Earth-orientation data, and associated contextual signals. Its purpose is not merely to plot polar-motion coordinates, nor to produce a deterministic prediction of future reorientation. It is designed as a constraint-first instrument: it asks what geometric structure is required by the observed Earth-orientation record before assigning a mechanism. The present release, v1.6.4, integrates multiple EOP backends, residual polar-motion phase-space views, drift-axis diagnostics, orthogonal-deviation measures, lag-conditioned transition structure, DE442-derived planetary overlays, a Phase-Locked Escape Model, a Phase Stability diagnostic layer, and a Matsuyama-normalized proxy coordinate. The result is best described as a rotational state-space observatory: a system for monitoring whether polar motion remains inside its historical manifold, how its fast Chandler-scale loop structure evolves inside slower drift, and whether present conditions resemble prior transition-like episodes. The whitepaper describes the scientific motivation, data pipeline, computational architecture, panel suite, mathematical basis, interpretive hierarchy, limitations, and near-term research program.
+\end{abstract}
+
+\section{Executive Summary}
+\DRIFT\ is a geometry-first dashboard for polar-motion diagnostics. It uses daily Earth Orientation Parameters (EOP), derived rolling geometry, phase-space reconstruction, contextual geophysical records, and ephemeris-derived comparison signals to read Earth rotation as a structured dynamical record rather than as an isolated time series. Its central methodological choice is constraint before explanation. The dashboard first asks whether the observed polar-motion path is confined, elongated, looped, bistable, off-manifold, phase-conditioned, or transition-like. Only after that does it place these observations beside possible contextual drivers or analogues.
+
+The present system has evolved beyond ordinary visual inspection. It now includes an explicit hierarchy of diagnostics: primary geometric panels, residual and trajectory panels, phase-space panels, rolling anisotropy and lag panels, experimental transition-probability panels, phase-conditioned escape-energy diagnostics, Phase Stability diagnostics, and a Matsuyama-style threshold proxy. The strongest claims supported by the present framework are geometric: low-dimensional organization, recurrent loop structure, state-dependent lag behavior, and measurable departure from historical phase-conditioned corridors. The weaker claims are causal: geomagnetic, hydrological, atmospheric, oceanic, and planetary comparisons remain contextual unless independently supported by lag, mechanism, and robustness tests.
+
+Version 1.6.4 is significant because it places the most interpretive experimental panels in a more disciplined order: Phase Stability first, Transition Probability second, and the Matsuyama-Proxy Stability Coordinate third. This order is important. The user is first shown whether the present \((\theta,\omega)\) trajectory remains inside the historical manifold, then whether it resembles prior transition-like episodes, and only then where the phase-energy state lies relative to a threshold-style barrier proxy. In other words, the dashboard now reads like an observatory rather than a collection of plots.
+
+\section{Purpose and Scope}
+\DRIFT\ addresses a gap between operational geodesy and exploratory dynamical interpretation. Institutional EOP products provide precise measurements and forecasts of polar motion, UT1--UTC, length-of-day, and reference-frame quantities. They are indispensable. Yet the public operational literature usually emphasizes estimation accuracy, excitation functions, reference frames, and prediction performance. \DRIFT\ instead asks a complementary question: what does the evolving geometry of the observed polar-motion path imply about the state-space organization of the rotational system?
+
+The project should therefore be understood as an interpretive layer over accepted geodetic products. It does not replace IERS, JPL, GFZ, GRACE/GRACE-FO, or DE ephemerides. It consumes, normalizes, compares, and visualizes them in a common framework. The dashboard's distinctive contribution is the synthesis: residual path geometry, phase portraits, orthogonal deviation, turning points, lag kernels, phase-conditioned stability envelopes, phase-escape energetics, and threshold-style stability coordinates are brought into one synchronized instrument.
+
+The scope of the current release is intentionally observational. The system is designed to monitor the observed EOP interval and its live extension. It does not claim to resolve all deep-Earth physics, identify a unique forcing mechanism, or forecast a deterministic transition date. Its role is to expose structure, quantify departures, and make the evidence legible.
+
+\section{Scientific Premise}
+The underlying premise is that polar motion can be read as a dynamical trace of a rotating Earth system with memory, forcing, dissipation, and possible state-dependent response. The classical view of polar motion already contains several relevant components: Chandler wobble, annual excitation, mass redistribution, atmospheric and oceanic angular momentum exchange, hydrological loading, mantle and lithospheric response, and core--mantle coupling. \DRIFT\ adds a geometric and phase-space question: do these processes combine into a low-dimensional, historically conditioned trajectory rather than a featureless stochastic wandering?
+
+The source paper associated with the repository frames the strongest result as geometric organization of the observed polar-motion record: near-planar confinement, two-state or bistable projection structure, and coupled fast--slow behavior. The dashboard operationalizes those ideas by continuously recomputing the same family of diagnostics from live or cached data products. Its interpretive rule is conservative: a claim supported by primary geometry is stronger than a claim supported only by contextual coincidence.
+
+\section{System Architecture}
+\subsection{Application Stack}
+\DRIFT\ is implemented as a Next.js 14 App Router application with TypeScript strict mode, Plotly.js for charts, Three.js/react-three-fiber for 3D views, Zustand for state management, and Tailwind for styling. The release package also includes Python scripts for source ingestion and derived-data computation. The repository package metadata identifies the project as version 1.6.4 and includes tests for the Phase Escape Model, Phase Stability Diagnostics, Matsuyama proxy utility, and shared types.
+
+\subsection{Data and Compute Layers}
+The architecture separates source acquisition, preprocessing, derived diagnostics, API serving, and browser rendering. The offline/precomputed layer is dominated by Python scripts:
+\begin{itemize}
+\item \texttt{scripts/fetch\_latest.py}: refreshes upstream source caches.
+\item \texttt{scripts/combine\_data.py}: merges observed source products into dashboard-ready JSON.
+\item \texttt{scripts/compute\_rolling\_stats.py}: computes rolling diagnostics, lag models, and transition-probability inputs.
+\item \texttt{scripts/build\_ephemeris.py}: extracts slim daily DE442 overlay series.
+\item \texttt{scripts/compute\_phase\_escape.py}: builds phase-escape state inputs from internal EOP and DE442 caches.
+\end{itemize}
+
+The production container can run a daily scheduled pipeline, by default at 19:05 UTC, through \texttt{scripts/run\_pipeline.sh --compute-stats}. This gives the public dashboard a persistent refresh mechanism without requiring a separate external cron service.
+
+\subsection{API Layer}
+The live API exposes EOP, geomagnetic, GRACE, combined, ephemeris, rolling-stat, phase-stability, transition-forecast, phase-escape, and update-data routes. High-cost or mutating routes can be protected by \texttt{DRIFT\_API\_KEY} or \texttt{DRIFT\_API\_KEYS}, with authentication via \texttt{Authorization: Bearer <key>} or \texttt{X-API-Key}. This separation preserves open local development behavior while protecting the public instance from abusive access patterns.
+
+\section{Primary Data Sources}
+\begin{longtable}{p{0.20\linewidth}p{0.22\linewidth}p{0.42\linewidth}}
+\toprule
+\textbf{Source} & \textbf{Cadence / role} & \textbf{Use in \DRIFT}\\
+\midrule
+IERS EOP & Daily / rapid updates & Primary polar-motion and Earth-orientation baseline. The app supports multiple IERS-derived EOP products, including \texttt{finals.all} variants and C04.\\
+JPL EOP2 & Daily / rapid updates & Selectable EOP backend; PMx/PMy are converted from milliarcseconds to the dashboard's arcsecond contract.\\
+GFZ Kp & Sub-daily upstream, normalized daily & Geomagnetic activity context through Kp, ap, cp, and c9 records.\\
+GRACE / GRACE-FO & Monthly & Optional mass-distribution context when current real products are available.\\
+JPL DE442 & Static ephemeris kernel, daily cache & Earth-geocentric planetary distance, angular velocity, radial velocity, ecliptic longitude, and temporal-normalized torque-proxy overlays.\\
+\bottomrule
+\end{longtable}
+
+The system deliberately avoids synthetic fallback data in the current architecture. Earlier synthetic GRACE, inertia, and fallback geomagnetic-axis layers were removed so that the dashboard serves real inputs only where available. This matters because the dashboard's interpretive value depends on distinguishing observation from placeholder or illustrative signals.
+
+\section{EOP Backends and Coordinate Convention}
+The dashboard supports several EOP products through \texttt{/api/eop}: \texttt{finals} for \texttt{finals.all} IAU1980, \texttt{finals2000a} for \texttt{finals.all} IAU2000, \texttt{c04} for EOP 20u24 C04 IAU2000A, and \texttt{jpl} for JPL EOP2. The response header \texttt{X-DRIFT-EOP-Dataset} reports the resolved dataset id.
+
+The plotting convention is intentionally standardized. Residual and trajectory panels follow the IERS XY plot convention: \(x_{\mathrm{pole}}\) is negative to the left and positive to the right, while \(y_{\mathrm{pole}}\) is positive upward. This matters because inferred drift axes, trajectory orientations, and visual path geometry become ambiguous if the display frame changes across panels.
+
+\section{Core Derived Quantities}
+\subsection{Polar-Motion Coordinates}
+Let \(x_p(t)\) and \(y_p(t)\) denote the daily polar-motion coordinates in arcseconds. Many \DRIFT\ diagnostics begin from the two-dimensional path
+\[
+\mathbf{p}(t)=\begin{bmatrix}x_p(t)\\y_p(t)\end{bmatrix}.
+\]
+The simplest visual diagnostic is the path itself. The more important derived diagnostics ask how local point clouds are elongated, how the dominant local direction evolves, and how the path behaves after secular trend removal.
+
+\subsection{Drift Axis}
+The drift axis is inferred by principal-component analysis over a sliding window of polar-motion samples. If \(\Sigma_W(t)\) is the covariance matrix of \(\mathbf{p}\) in a window \(W\), the dominant eigenvector \(\mathbf{v}_1(t)\) defines the local drift direction. The reported drift longitude is the planar angle of this dominant direction in the active frame.
+
+\subsection{Orthogonal Deviation Ratio}
+The orthogonal deviation ratio, \(\Rratio\), measures the degree to which the local geometry is elongated rather than isotropic. A useful generic form is
+\[
+R(t)=\frac{\sigma_{\perp}(t)}{\sigma_{\parallel}(t)},
+\]
+where \(\sigma_{\parallel}\) and \(\sigma_{\perp}\) are the local dispersions parallel and perpendicular to the dominant direction. Lower values indicate stronger local confinement; rising values indicate broadening, reduced anisotropy, or departure from the recent structural corridor.
+
+\subsection{Phase Variables}
+The phase-space diagnostics use a phase coordinate \(\theta(t)\) and angular-velocity-like coordinate \(\omega(t)\). In dashboard language, these expose the fast cyclic component and its slow modulation. The Phase Portrait plots \((\theta,\omega)\), while Phase Diagnostics track phase, angular velocity, and intermittent bursts through time.
+
+\section{Dashboard Components}
+\subsection{Primary Geometry Panels}
+The primary geometry panels are the first level of interpretation. They include Polar Motion, Residual Polar Motion (XY), Polar Motion Trajectory, 3D Vector View, Drift Direction, and Orthogonal Deviation Ratio. These panels answer the most defensible questions: where is the path, how is it shaped, how confined is it, how is the dominant local axis migrating, and whether the displayed geometry is consistent across coordinate views.
+
+\subsection{Residual Polar Motion and Polar Motion Trajectory}
+The Residual Polar Motion panel removes the secular trend from the EOP series, integrates or displays detrended residual components, overlays a one-year rolling centroid, and fits the residual drift axis. The Polar Motion Trajectory panel reproduces the live EOP path in IERS plot orientation. Chronological coloring is used so the path can be read as a temporal evolution rather than a static cloud.
+
+\subsection{Loop-Center Angular Velocity}
+The Loop-Center Angular Velocity panel reproduces a paper diagnostic from live EOP data. It identifies Chandler-scale loop centers, unwraps their center angle, and plots finite-difference angular velocity smoothed with a quadratic Savitzky--Golay-style filter. When recent data extend beyond the last completed loop, the newest incomplete-loop estimate is shown as a provisional endpoint with low-confidence labeling and visible error treatment. This separation of completed-loop estimates from live provisional endpoints is methodologically important because it avoids allowing the latest partial loop to distort the paper-equivalent curve.
+
+\subsection{Phase Portrait and Phase Diagnostics}
+The Phase Portrait is the most compact view of fast--slow organization. Coherent loops support the presence of a persistent fast component embedded in slower drift. Distortions, widening, broken loops, abnormal angular velocity, or loop migration indicate departures from the recent dynamical pattern. Phase Diagnostics then provide the corresponding time-domain view, making it easier to identify slowdowns, bursts, clustering, or irregular evolution in the fast component.
+
+\subsection{Lag Model and Conditional Lag Response}
+The Lag Model examines average delayed response after turning points relative to baseline behavior. The Conditional Lag Response extends this idea by stratifying the lag response by phase or state. Localized hotspots suggest phase-dependent response. These panels should be read as descriptive evidence for structured persistence, not as a mechanistic impulse-response law.
+
+\subsection{Overlay Plot}
+The Overlay Plot provides normalized comparison of selected signals on a common time axis. It is useful for checking whether features align, lead, lag, or appear only in one subsystem. The overlay is deliberately a comparison instrument rather than a causal proof engine. It can include EOP-derived series, geomagnetic context, and DE442-derived ephemeris observables.
+
+\section{Experimental Diagnostic Layer}
+\subsection{Transition Probability}
+The Transition Probability panel converts lag-conditioned historical structure into a forward probability curve. It reports lags, probability over lag, expected time, peak time, cumulative probability, and probability-summary metadata. It is best interpreted as a similarity measure: rising probability or earlier peaks suggest that the present state resembles earlier transition-like episodes. It is not a deterministic forecast.
+
+\subsection{Phase-Locked Escape Model}
+The Phase-Locked Escape Model is an experimental phase-conditioned metastable escape diagnostic built from internal \DRIFT\ state plus DE442-derived phase composites. Its core outputs include residual phase misalignment, phase drift, local time-to-alignment, phase acceleration, curvature signal, phase stability, metastable phase-well state, phase-dependent escape probability, barrier ratio, and a Kramers-like comparative index.
+
+The production model uses registered planetary composites rather than exploratory CSV exports. The currently registered composites include Venus--Mars, Venus--Mars--Jupiter, Mercury--Venus--Mars, and an all non-solar major-body composite. The model coefficients include \(\beta_0\), \(\beta_{\cos}\), \(\beta_{\sin}\), modulation amplitude \(\alpha\), preferred phase \(\phi_0\), max/min probability ratio, and likelihood-ratio significance metadata.
+
+The phase-dependent escape probability has the generic form
+\[
+P_{\mathrm{esc}}(\phi)=\sigma\left(\beta_0+\beta_{\cos}\cos\phi+\beta_{\sin}\sin\phi\right),
+\]
+where \(\sigma\) is the logistic sigmoid. The residual phase is compared with composite planetary phase, and the misalignment is wrapped into \((-\pi,\pi]\).
+
+The escape-energy diagnostic treats residual phase motion as movement in a modulated phase potential. Kinetic, potential, and total phase energy are estimated as
+\[
+E_K=\frac{1}{2}\dot{\phi}^2,
+\]
+\[
+E_P=\alpha\left(1-\cos(\phi-\phi_0)\right),
+\]
+\[
+E_T=E_K+E_P.
+\]
+The empirical barrier is
+\[
+B=2\alpha,
+\]
+and the barrier ratio is
+\[
+\rho_B=\frac{E_T}{B}.
+\]
+This value is dimensionless and comparative. It should not be interpreted as physical joules, literal thermodynamic escape, or deterministic transition timing.
+
+\subsection{Phase Stability}
+The Phase Stability layer is one of the most important additions to the dashboard because it directly asks whether the recent \((\theta,\omega)\) trajectory remains inside the historical manifold. It computes a phase-conditioned envelope by binning historical \(\theta\), estimating robust median and scale for \(\omega\) within each bin, and then scoring current values against that envelope.
+
+For a sample in phase bin \(b\), the diagnostic anomaly is
+\[
+\Zomega(t)=\frac{\omega(t)-\mu_{\omega,b}}{\sigma_{\omega,b}},
+\]
+where \(\mu_{\omega,b}\) is a robust historical center and \(\sigma_{\omega,b}\) is a robust scale, generally MAD-based with standard-deviation fallback. The diagnostic also computes normalized curvature, manifold departure, hysteresis, historical analogue similarity, and a weighted Coupling Stability Index.
+
+The Coupling Stability Index combines normalized absolute \(Z\)-departure, curvature, manifold departure, hysteresis, and inverse analogue similarity. In the implementation, the weights are 0.30 for \(|Z|\), 0.20 for curvature, 0.25 for manifold departure, 0.10 for hysteresis, and 0.15 for poor analogue similarity. State labels progress through stable, watch, excursion, and escape-candidate classes, with explicit insufficient-data handling.
+
+This is a crucial interpretive distinction. Phase Stability does not ask whether an external cause is active. It asks whether the internal trajectory is behaving like prior members of the historical loop family. That makes it one of the cleanest geometry-first diagnostics in the system.
+
+\subsection{Matsuyama-Proxy Stability Coordinate}
+The Matsuyama-Proxy Stability Coordinate was added as an experimental threshold-style diagnostic. Matsuyama et al. use a normalized load parameter to compare load forcing against remnant-bulge stabilization in true polar wander mechanics. \DRIFT\ does not directly measure that physical quantity. Instead, it defines a proxy coordinate from phase-energy excitation and the estimated basin barrier:
+\[
+\Qdrift=\frac{E_T}{B}.
+\]
+If the Phase-Locked Escape Model already supplies a barrier ratio, that value is used directly; otherwise it is computed from total phase energy and barrier with defensive checks for null, non-finite, zero, or negative values.
+
+The regime labels are deliberately conservative:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Range} & \textbf{Regime}\\
+\midrule
+\(\Qdrift<0.25\) & deeply sub-barrier\\
+\(0.25\leq\Qdrift<0.50\) & sub-barrier\\
+\(0.50\leq\Qdrift<0.80\) & elevated\\
+\(0.80\leq\Qdrift<1.00\) & near-threshold\\
+\(\Qdrift\geq1.00\) & super-barrier proxy\\
+\bottomrule
+\end{tabular}
+\end{center}
+The panel explicitly states that this is not Matsuyama's physical normalized load \(Q\). It is a \DRIFT\ phase-energy / basin-barrier proxy intended to compare present rotational phase excitation with a threshold-style reorientation framework.
+
+\section{Interpretive Hierarchy}
+The dashboard should be read through a hierarchy of evidential strength.
+
+\subsection{Strongest Layer: Geometry}
+The strongest layer consists of direct properties of the observed EOP path: confinement, elongation, residual loop structure, drift-axis migration, low-dimensional organization, and phase-conditioned manifold departure. These are closest to the data and require the fewest assumptions.
+
+\subsection{Middle Layer: Dynamical Pattern}
+The middle layer includes fast--slow organization, hysteresis, historical analogue similarity, turning-point behavior, lag kernels, and state-dependent response. These diagnostics require more processing, but they still remain within the internal EOP-derived state.
+
+\subsection{Experimental Layer: Transition and Escape Analogues}
+The experimental layer includes Transition Probability, Phase-Locked Escape, and Matsuyama-Proxy Stability. These are useful because they convert geometric observations into interpretable state-space language: barrier, basin, phase, transition, analogue, threshold. They are also the easiest to overstate. Their role is comparative and exploratory.
+
+\subsection{Contextual Layer: External Signals}
+Geomagnetic indices, GRACE/GRACE-FO mass context, and DE442 planetary overlays are contextual comparison layers. They are valuable for timing, lag, and hypothesis generation. They are not standalone evidence of causation. Any strong claim from these layers should be supported by independent geometry, phase-state behavior, lag robustness, and mechanism.
+
+\section{What Makes \DRIFT\ Distinct}
+Most public geodetic systems deliver high-quality data products, forecasts, or excitation decompositions. \DRIFT\ occupies a different niche. It asks whether the rotational record itself reveals a structured state space. This is why its components are not merely plotted side by side. The panels are arranged to answer a sequence of questions:
+\begin{enumerate}
+\item What is the observed polar-motion geometry?
+\item Does the residual path carry coherent loop structure?
+\item Is the local geometry narrow, broad, stable, or reorganizing?
+\item Does the current \((\theta,\omega)\) state remain inside historical phase-conditioned corridors?
+\item Does the current state resemble prior transition-like episodes?
+\item Is the phase-energy state deeply inside, approaching, or above an empirical basin barrier?
+\item Do external context signals lead, lag, or merely coincide with internal features?
+\end{enumerate}
+This sequence is the essential architecture of the system.
+
+\section{Current Release: v1.6.4}
+The current release is v1.6.4. The headline changes are: the default experimental panel flow now opens Phase Stability first, Transition Probability second, and Matsuyama-Proxy Stability Coordinate third; Phase Stability spans two columns by default; the Overlay Plot uses the full three-column UHD span by default; and 3D Vector View, Lag Model, and Conditional Lag Response are disabled in the default panel set while remaining available from the sidebar.
+
+This release order reflects a maturing interpretation. Phase Stability is now the first experimental question because it is closest to the geometry. Transition Probability follows because it compares the present state with prior transition-like historical structure. The Matsuyama proxy follows last because it maps phase energy against a threshold-style barrier. This is the correct order of inference: manifold first, analogue second, threshold proxy third.
+
+\section{Limitations}
+\begin{itemize}
+\item \DRIFT\ supports low-dimensional geometry and bistable structure more strongly than it supports any fixed Earth-aligned direction or external driver.
+\item Geomagnetic comparisons are contextual and should not be read as standalone evidence of coupling or causation.
+\item Transition Probability depends on rolling diagnostics and conditional lag structure; it is an exploratory indicator, not a validated predictive guarantee.
+\item Phase-Locked Escape outputs are phase-conditioned diagnostics; barrier ratios and Kramers-like indices are comparative indicators, not physical-joule energies, literal thermal escape rates, or deterministic timing.
+\item The Matsuyama-Proxy Stability Coordinate is a \DRIFT\ phase-energy / basin-barrier proxy, not Matsuyama et al.'s physical normalized load \(Q\).
+\item All conclusions are tied to the observational window represented in the available data and may not generalize outside that interval.
+\item Source freshness is bounded by upstream publication cadence, service availability, local timestamp-based refresh windows, and daily normalization choices.
+\end{itemize}
+
+\section{Recommended Reading Workflow}
+A disciplined reading sequence is:
+\begin{enumerate}
+\item Start with Polar Motion, Residual Polar Motion, Polar Motion Trajectory, and Drift Direction to establish the geometry.
+\item Inspect \Rratio\ to determine whether the local structure is narrow, broadening, or losing directional organization.
+\item Use Phase Portrait and Phase Diagnostics to read loop structure, angular velocity, and intermittent departures.
+\item Use Loop-Center Angular Velocity to compare completed-loop structure with any provisional recent endpoint.
+\item Use Phase Stability to test whether the recent \((\theta,\omega)\) trajectory remains inside the historical phase-conditioned manifold.
+\item Use Transition Probability to ask whether present conditions resemble earlier transition-like episodes.
+\item Use Phase-Locked Escape and Matsuyama Proxy to read the phase-energy and threshold-style diagnostics.
+\item Use overlays and external context last, and treat them as timing comparisons unless supported by the preceding layers.
+\end{enumerate}
+
+\section{Near-Term Research Program}
+The next logical step is not to add more scalar alarms, but to characterize trajectories through the stability landscape. Several immediate extensions follow naturally:
+\begin{itemize}
+\item Historical envelopes for \(\Qdrift\), including median, 90th percentile, 95th percentile, and historical maxima.
+\item First derivative and persistence metrics for \(\Qdrift\), since approach rate may be more informative than absolute level.
+\item Hysteresis loops between \(\Qdrift\), Coupling Stability Index, \Rratio, and \(\Zomega\).
+\item Event-window overlays for known turning points, Chandler amplitude reorganizations, geomagnetic jerks, major hydrological shifts, and large climate/ocean circulation events.
+\item Cross-backend robustness across IAU1980, IAU2000, C04 IAU2000A, and JPL EOP2.
+\item Surrogate testing for phase-conditioned stability and threshold-proxy excursions.
+\item Public benchmark notebooks that reproduce panel-level diagnostics from frozen data snapshots.
+\end{itemize}
+
+\section{Conclusion}
+\DRIFT\ is best understood as a constraint-first rotational state-space observatory. Its value lies in the disciplined integration of geometric, phase, lag, stability, escape, and contextual diagnostics into one live framework. The system does not require a premature causal assertion in order to be useful. Its core contribution is to make the structure of the observed polar-motion record visible, testable, and comparable across independent diagnostic layers.
+
+The most important conceptual shift is from asking whether Earth rotation is simply stable or unstable toward asking which Earth-fixed or phase-conditioned states exist, how strongly the present trajectory remains inside its historical manifold, and what signatures accompany movement toward or away from transition-like regimes. That is the level at which \DRIFT\ now operates.
+
+\appendix
+\section{API Summary}
+\begin{longtable}{p{0.22\linewidth}p{0.60\linewidth}}
+\toprule
+\textbf{Route} & \textbf{Purpose}\\
+\midrule
+\texttt{/api/eop} & Historical EOP cache with selectable dataset id. Primary fields: \texttt{t}, \texttt{xp}, \texttt{yp}.\\
+\texttt{/api/inertia} & Cached inertia-frame eigenvector time series when real inputs are available.\\
+\texttt{/api/grace} & GRACE / GRACE-FO mass-context series when current real products are available.\\
+\texttt{/api/geomag} & Normalized daily GFZ geomagnetic records.\\
+\texttt{/api/geomag-gfz} & Raw cached GFZ geomagnetic history.\\
+\texttt{/api/combined} & Lightweight merged EOP view with available real auxiliary series.\\
+\texttt{/api/combined-full} & Full combined dashboard dataset. Protected when API keys are configured.\\
+\texttt{/api/ephemeris} & DE442 Earth-geocentric overlay cache with distance, angular velocity, radial velocity, ecliptic longitude, and torque proxy.\\
+\texttt{/api/rolling-stats} & Rolling geometry, turning points, lag models, and conditional lag models.\\
+\texttt{/api/phase-stability} & Phase-conditioned \(\theta\)-\(\omega\) stability diagnostics.\\
+\texttt{/api/transition-forecast} & Experimental forward transition-probability summary derived from conditional lag structure.\\
+\texttt{/api/phase-escape} & Phase-Locked Escape Model state from internal EOP and DE442-derived composite phases.\\
+\texttt{/api/update-data} & Timestamp-aware source refresh pipeline used by the dashboard update workflow.\\
+\bottomrule
+\end{longtable}
+
+\section{Panel Summary}
+\begin{longtable}{p{0.28\linewidth}p{0.56\linewidth}p{0.10\linewidth}}
+\toprule
+\textbf{Panel} & \textbf{Diagnostic role} & \textbf{Status}\\
+\midrule
+3D Vector View & Earth-fixed comparison of drift axis and IERS polar-motion frame. & Core\\
+Polar Motion & Observed \(x_p,y_p\) trajectory, confinement, loops, and turning points. & Core\\
+Residual Polar Motion & Detrended residual XY phase-space path, rolling centroid, residual drift axis. & Core\\
+Polar Motion Trajectory & Live EOP path with chronological coloring. & Core\\
+Loop-Center Angular Velocity & Completed-loop center-angle velocity with provisional endpoint handling. & Core\\
+Drift Direction & Dominant local drift-axis longitude through time. & Core\\
+Phase Portrait & \((\theta,\omega)\) state-space view of fast cyclic structure. & Core\\
+Phase Diagnostics & Time-domain phase and angular-velocity behavior. & Core\\
+Orthogonal Deviation Ratio & Local elongation versus isotropy of inferred structure. & Core\\
+Lag Model & Average delayed response after turning points. & Context\\
+Conditional Lag Response & Lag response stratified by phase/state. & Context\\
+Overlay Plot & Synchronized comparison of selected signals. & Context\\
+Transition Probability & Lag-conditioned similarity to prior transition-like behavior. & Experimental\\
+Phase-Locked Escape Model & Phase-conditioned escape probability, drift, curvature, barrier ratio, Kramers-like index. & Experimental\\
+Phase Stability & Manifold departure, phase-conditioned \(\Zomega\), curvature, hysteresis, analogues, CSI. & Experimental\\
+Matsuyama-Proxy Stability Coordinate & \DRIFT\ phase-energy / basin-barrier proxy mapped to threshold-style regimes. & Experimental\\
+\bottomrule
+\end{longtable}
+
+\section{Selected References}
+\begin{thebibliography}{9}
+\bibitem{matsuyama2014} Matsuyama, I., Nimmo, F., and Mitrovica, J. X. (2014). Planetary reorientation. \emph{Annual Review of Earth and Planetary Sciences}.
+\bibitem{iers} International Earth Rotation and Reference Systems Service (IERS). Earth Orientation Parameters and related data products. \url{https://www.iers.org}
+\bibitem{jpl-eop2} Jet Propulsion Laboratory. EOP2 Earth orientation products. \url{https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long}
+\bibitem{gfz-kp} GFZ Potsdam. Kp index data service. \url{https://kp.gfz-potsdam.de/en/data}
+\bibitem{de442} JPL NAIF. DE planetary ephemerides, including DE442 kernels. \url{https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/}
+\bibitem{driftrepo} Stone, C. \DRIFT\ dashboard repository. \url{https://github.com/nobulart/drift}
+\bibitem{sourcepaper} Stone, C. \emph{Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Locked Planetary Torque Coupling in Polar Motion}. Source paper linked from the \DRIFT\ repository.
+\bibitem{phasestabilitypaper} Stone, C. \emph{Phase Stability Diagnostics for Polar Motion State-Space Analysis}. Companion Phase Stability paper linked from the \DRIFT\ repository.
+\end{thebibliography}
+
+\end{document}
