@@ -6,6 +6,8 @@ Source paper: [Earth-Fixed Geometric Structure, Bistable Dynamics, and Phase-Loc
 
 Phase Stability paper: [Phase Stability Diagnostics for Polar Motion State-Space Analysis](https://www.academia.edu/166976568/Phase_Stability_Diagnostics_for_Polar_Motion_State_Space_Analysis)
 
+v1.6.4 whitepaper: [DRIFT: A Constraint-First Polar Motion Diagnostic System](https://www.academia.edu/167254837/DRIFT_A_Constraint_First_Polar_Motion_Diagnostic_System_Whitepaper_for_version_1_6_4)
+
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
 Current release: `v1.6.4`

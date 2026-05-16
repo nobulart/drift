@@ -48,6 +48,8 @@ const sourcePaperHref =
   'https://www.academia.edu/165465085/Earth_Fixed_Geometric_Structure_Bistable_Dynamics_and_Phase_Locked_Planetary_Torque_Coupling_in_Polar_Motion';
 const phaseStabilityPaperHref =
   'https://www.academia.edu/166976568/Phase_Stability_Diagnostics_for_Polar_Motion_State_Space_Analysis';
+const whitepaperHref =
+  'https://www.academia.edu/167254837/DRIFT_A_Constraint_First_Polar_Motion_Diagnostic_System_Whitepaper_for_version_1_6_4';
 const matsuyamaDoiHref = 'https://doi.org/10.1146/annurev-earth-060313-054724';
 
 const pipelineSteps = [
@@ -183,6 +185,14 @@ export default function DocsPage() {
                 className="inline-flex text-sm font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/50 underline-offset-2 transition-colors hover:text-white"
               >
                 Phase Stability paper
+              </a>
+              <a
+                href={whitepaperHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex text-sm font-semibold text-[#93c5fd] underline decoration-[#60a5fa]/50 underline-offset-2 transition-colors hover:text-white"
+              >
+                v1.6.4 whitepaper
               </a>
             </div>
           </div>
