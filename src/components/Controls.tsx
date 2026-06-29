@@ -34,6 +34,17 @@ interface UpdateDataResponse {
   };
 }
 
+interface EOPSourceNotice {
+  fallbackActive?: boolean;
+  dataset?: string;
+  fallbackDataset?: string;
+  replacedDataset?: string;
+  message?: string;
+  defaultLatestDate?: string;
+  fallbackLatestDate?: string;
+  lagDays?: number;
+}
+
 function SidebarSection({ title, open, onToggle, children, className = '' }: SidebarSectionProps) {
   return (
     <section className={`flex flex-col gap-3 ${className}`}>
@@ -71,6 +82,7 @@ export default function Controls({
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [sourceNotice, setSourceNotice] = useState<EOPSourceNotice | null>(null);
   const [sectionOpen, setSectionOpen] = useState({
     currentState: true,
     markers: true,
@@ -97,6 +109,23 @@ export default function Controls({
     setStartDate(new Date(timeRange[0]).toISOString().slice(0, 10));
     setEndDate(new Date(timeRange[1]).toISOString().slice(0, 10));
   }, [timeRange, minDate, maxDate]);
+
+  const refreshSourceNotice = async () => {
+    try {
+      const response = await fetch('/api/eop-source-notice', { cache: 'no-store' });
+      if (!response.ok) {
+        return;
+      }
+      const notice = await response.json() as EOPSourceNotice;
+      setSourceNotice(notice);
+    } catch (error) {
+      console.warn('Could not load EOP source notice:', error);
+    }
+  };
+
+  useEffect(() => {
+    refreshSourceNotice();
+  }, [eopDataset]);
 
   const normalizedStart = startDate || minDate;
   const normalizedEnd = endDate || maxDate;
@@ -164,6 +193,7 @@ export default function Controls({
     try {
       setTimeRange(null);
       await setEOPDataset(datasetId);
+      await refreshSourceNotice();
       const nextDataset = getEOPDataset(datasetId);
       setUpdateMessage(`Loaded ${nextDataset.shortLabel} EOP dataset.`);
     } catch (error) {
@@ -190,6 +220,7 @@ export default function Controls({
       }
 
       await refetchData();
+      await refreshSourceNotice();
       const latestDate = result.summary?.latestEopDate || result.summary?.latestCombinedDate;
       setUpdateMessage(
         latestDate
@@ -274,6 +305,11 @@ export default function Controls({
           <p className="rounded-lg border border-[#374151] bg-[#0b1220]/60 px-3 py-2 text-xs leading-relaxed text-[#9ca3af]">
             {selectedDataset.description}
           </p>
+          {selectedDataset.id === 'finals' && sourceNotice?.fallbackActive && (
+            <p className="rounded-lg border border-amber-400/50 bg-amber-950/40 px-3 py-2 text-xs leading-relaxed text-amber-100">
+              {sourceNotice.message || 'IERS EOP is stale; using JPL EOP2 as the operational default.'}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">

@@ -10,9 +10,15 @@ v1.6.4 whitepaper: [DRIFT: A Constraint-First Polar Motion Diagnostic System](ht
 
 ![DRIFT Dashboard screenshot](docs/assets/drift-dashboard-v1.4.9.png)
 
-Current release: `v1.6.4`
+Current release: `v1.6.5`
 
 ## Release Notes
+
+### v1.6.5
+
+- Added an operational JPL EOP2 fallback when the default IERS EOP products are materially stale, with fallback records tagged as `jpl_eop2_fallback`.
+- Added `/api/eop-source-notice` plus `X-DRIFT-EOP-Fallback` and `X-DRIFT-EOP-Notice` response headers so the app and API clients can see when fallback is active.
+- Hardened startup freshness checks to inspect the latest EOP sample date and added upstream fetch timeouts so stalled IERS requests do not block the refresh pipeline indefinitely.
 
 ### v1.6.4
 

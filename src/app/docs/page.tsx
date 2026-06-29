@@ -65,8 +65,13 @@ const pipelineSteps = [
 const apiRows = [
   {
     route: '/api/eop',
-    purpose: 'Historical Earth Orientation Parameters cache. Optional `dataset` values: `finals` for finals.all IAU1980, `finals2000a` for finals.all IAU2000, `c04` for EOP 20u24 C04 IAU2000A, and `jpl` for JPL EOP2. Unknown or omitted values fall back to `finals`; the response header `X-DRIFT-EOP-Dataset` reports the resolved id.',
-    fields: 't, xp, yp',
+    purpose: 'Historical Earth Orientation Parameters cache. Optional `dataset` values: `finals` for finals.all IAU1980, `finals2000a` for finals.all IAU2000, `c04` for EOP 20u24 C04 IAU2000A, and `jpl` for JPL EOP2. Unknown or omitted values fall back to `finals`; response headers report the resolved dataset and any active operational fallback.',
+    fields: 't, xp, yp, source_eop when fallback is active',
+  },
+  {
+    route: '/api/eop-source-notice',
+    purpose: 'Current EOP source status, including whether the operational default is using JPL EOP2 because IERS products are stale.',
+    fields: 'fallbackActive, fallbackDataset, replacedDataset, message, defaultLatestDate, fallbackLatestDate, lagDays',
   },
   {
     route: '/api/inertia',
@@ -149,7 +154,7 @@ export default function DocsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <span className="rounded-full border border-[#374151] bg-[#0b1220] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#cbd5e1]">
-                Version v1.6.4
+                Version v1.6.5
               </span>
               <Link
                 href="/"
@@ -213,6 +218,12 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-white">Release Highlights</h2>
           {/* Keep this inline release-card list to the latest six versions; only highlight experimental item cards. */}
           <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.5 EOP Fallback</h3>
+              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
+                Added automatic JPL EOP2 fallback for stale IERS EOP feeds, exposed fallback status through API headers and `/api/eop-source-notice`, and surfaced an in-app Data Settings notice when the operational default is backed by JPL.
+              </p>
+            </article>
             <article className="rounded-xl border border-[#38bdf8]/50 bg-[#082f49]/30 p-4">
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.4 Matsuyama-Proxy Coordinate<sup className="ml-1 text-[10px] lowercase text-[#38bdf8]">experimental</sup></h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
@@ -250,12 +261,6 @@ export default function DocsPage() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.6.0 API Access Control</h3>
               <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
                 High-cost and mutating API routes can now be restricted to key holders, protecting the public instance from abusive requests while leaving local development open when no API key is configured.
-              </p>
-            </article>
-            <article className="rounded-xl border border-[#243041] bg-[#0b1220]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-[#93c5fd]">v1.5.9 Default Markers</h3>
-              <p className="mt-2 text-sm leading-6 text-[#cbd5e1]">
-                First-time visitors now start with the curated default marker set from data/markers.json. Marker file loads use the same merge, replace, or cancel confirmation as the default-marker control, while later visits keep each user&apos;s saved marker preferences.
               </p>
             </article>
           </div>

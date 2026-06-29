@@ -27,6 +27,7 @@ FRESHNESS_WINDOWS = {
     "grace": timedelta(days=7),
     "gfz_kp": timedelta(hours=6),
 }
+URL_TIMEOUT_SECONDS = 60
 
 
 def normalize_geomag_records(records):
@@ -132,13 +133,13 @@ def fetch_latest_eop(fetch_full=False):
     all_data = None
 
     try:
-        with urllib.request.urlopen(daily_url) as response:
+        with urllib.request.urlopen(daily_url, timeout=URL_TIMEOUT_SECONDS) as response:
             daily_json = json.loads(response.read().decode("utf-8"))
 
         if fetch_full:
             print("  Refreshing full cumulative IERS EOP data ...")
             try:
-                with urllib.request.urlopen(all_url) as response:
+                with urllib.request.urlopen(all_url, timeout=URL_TIMEOUT_SECONDS) as response:
                     all_data = json.loads(response.read().decode("utf-8"))
             except Exception as e:
                 print(f"  WARN: Could not fetch cumulative file ({e})")
@@ -237,7 +238,7 @@ def fetch_latest_eop(fetch_full=False):
 
         if fetch_full:
             try:
-                with urllib.request.urlopen(all_url) as response:
+                with urllib.request.urlopen(all_url, timeout=URL_TIMEOUT_SECONDS) as response:
                     all_data = json.loads(response.read().decode("utf-8"))
                 write_json("finals.all.json", all_data)
                 print("  Fallback: saved finals.all.json")
@@ -294,7 +295,7 @@ def fetch_latest_grace():
 
     try:
         # Fetch manifest
-        with urllib.request.urlopen(manifest_url) as response:
+        with urllib.request.urlopen(manifest_url, timeout=URL_TIMEOUT_SECONDS) as response:
             manifest = json.loads(response.read().decode("utf-8"))
 
         # Decode time data
@@ -360,7 +361,7 @@ def fetch_latest_kp(start_date, end_date):
         url = base_url + "?" + urllib.parse.urlencode(params)
 
         try:
-            with urllib.request.urlopen(url) as response:
+            with urllib.request.urlopen(url, timeout=URL_TIMEOUT_SECONDS) as response:
                 data = json.loads(response.read().decode("utf-8"))
 
             dates = data.get("datetime", [])
@@ -474,6 +475,8 @@ def main():
             combined = []
             for d in eop_full:
                 record = {"t": d["t"], "xp": d["xp"], "yp": d["yp"]}
+                if d.get("source_eop") is not None:
+                    record["source_eop"] = d["source_eop"]
 
                 if d["t"] in grace_map:
                     record["grace_lwe_mean"] = grace_map[d["t"]]["lwe_mean"]

@@ -12,7 +12,7 @@ import re
 import sys
 import argparse
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -27,6 +27,9 @@ ALL_JSON_URL = "https://datacenter.iers.org/data/json/finals.all.json"
 JPL_EOP2_LONG_URL = "https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.long"
 JPL_EOP2_SHORT_URL = "https://eop2-external.jpl.nasa.gov/eop2/latest_eop2.short"
 FULL_BACKFILL_REFRESH_WINDOW = timedelta(days=7)
+JPL_FALLBACK_MIN_LAG_DAYS = 3
+EOP_SOURCE_NOTICE_FILENAME = "eop_source_notice.json"
+URL_TIMEOUT_SECONDS = 60
 EOP_DATASETS = {
     "finals2000a": {
         "label": "finals.all (IAU2000)",
@@ -227,7 +230,7 @@ def fetch_from_daily_json():
     """Fetch confirmed EOP data from the finals.daily.json endpoint."""
     print(f"  Fetching {DAILY_JSON_URL} ...")
     try:
-        with urllib.request.urlopen(DAILY_JSON_URL) as response:
+        with urllib.request.urlopen(DAILY_JSON_URL, timeout=URL_TIMEOUT_SECONDS) as response:
             daily_json = json.loads(response.read().decode("utf-8"))
             return extract_finals(daily_json)
     except Exception as e:
@@ -239,7 +242,7 @@ def fetch_from_daily_2000a_json():
     """Fetch confirmed EOP data from the finals2000A.daily.json endpoint."""
     print(f"  Fetching {DAILY_2000A_JSON_URL} ...")
     try:
-        with urllib.request.urlopen(DAILY_2000A_JSON_URL) as response:
+        with urllib.request.urlopen(DAILY_2000A_JSON_URL, timeout=URL_TIMEOUT_SECONDS) as response:
             daily_json = json.loads(response.read().decode("utf-8"))
             return extract_finals(daily_json)
     except Exception as e:
@@ -251,7 +254,7 @@ def fetch_from_all_json():
     """Fetch the full cumulative finals.all.json from IERS."""
     print(f"  Fetching {ALL_JSON_URL} ...")
     try:
-        with urllib.request.urlopen(ALL_JSON_URL) as response:
+        with urllib.request.urlopen(ALL_JSON_URL, timeout=URL_TIMEOUT_SECONDS) as response:
             all_json = json.loads(response.read().decode("utf-8"))
             return extract_finals(all_json)
     except Exception as e:
@@ -261,7 +264,7 @@ def fetch_from_all_json():
 
 def fetch_text(url):
     """Fetch a text payload from a URL."""
-    with urllib.request.urlopen(url, timeout=60) as response:
+    with urllib.request.urlopen(url, timeout=URL_TIMEOUT_SECONDS) as response:
         return response.read().decode("utf-8", errors="replace")
 
 
@@ -437,7 +440,7 @@ def fetch_alternate_eop_dataset(config):
     if config["parser"] == "finals_json":
         print(f"  Fetching {config['json_url']} ...")
         try:
-            with urllib.request.urlopen(config["json_url"], timeout=60) as response:
+            with urllib.request.urlopen(config["json_url"], timeout=URL_TIMEOUT_SECONDS) as response:
                 return extract_finals(json.loads(response.read().decode("utf-8")))
         except Exception as exc:
             print(f"  ERROR: Could not fetch {config['label']}: {exc}")
@@ -491,6 +494,81 @@ def merge_eop_records(historic_data, daily_data):
     ]
 
 
+def parse_date(value):
+    return datetime.strptime(value[:10], "%Y-%m-%d").date()
+
+
+def latest_record_date(records):
+    if not records:
+        return None
+    return parse_date(records[-1]["t"])
+
+
+def write_eop_notice(payload):
+    output = {
+        "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        **payload,
+    }
+    write_json(EOP_SOURCE_NOTICE_FILENAME, output)
+
+
+def maybe_apply_jpl_fallback(default_records, jpl_records):
+    """Use JPL EOP2 as the operational default when IERS is materially stale."""
+    default_latest = latest_record_date(default_records)
+    jpl_latest = latest_record_date(jpl_records)
+
+    if default_latest is None or jpl_latest is None:
+        write_eop_notice({
+            "fallbackActive": False,
+            "dataset": "finals",
+            "message": "Default IERS EOP remains active; fallback could not be evaluated.",
+            "defaultLatestDate": default_records[-1]["t"] if default_records else None,
+            "fallbackLatestDate": jpl_records[-1]["t"] if jpl_records else None,
+        })
+        return default_records
+
+    lag_days = (jpl_latest - default_latest).days
+    if lag_days < JPL_FALLBACK_MIN_LAG_DAYS:
+        write_eop_notice({
+            "fallbackActive": False,
+            "dataset": "finals",
+            "message": "Default IERS EOP remains active.",
+            "defaultLatestDate": default_latest.isoformat(),
+            "fallbackLatestDate": jpl_latest.isoformat(),
+            "lagDays": lag_days,
+        })
+        return default_records
+
+    fallback_records = [
+        {
+            **record,
+            "source_eop": "jpl_eop2_fallback",
+        }
+        for record in jpl_records
+    ]
+    output_file = write_json("eop_historic.json", fallback_records)
+    message = (
+        f"Default IERS EOP is {lag_days} days behind JPL EOP2; "
+        f"using JPL EOP2 as the operational default through {jpl_latest.isoformat()}."
+    )
+    write_eop_notice({
+        "fallbackActive": True,
+        "dataset": "jpl",
+        "fallbackDataset": "jpl",
+        "replacedDataset": "finals",
+        "message": message,
+        "defaultLatestDate": default_latest.isoformat(),
+        "fallbackLatestDate": jpl_latest.isoformat(),
+        "lagDays": lag_days,
+        "thresholdDays": JPL_FALLBACK_MIN_LAG_DAYS,
+    })
+    print()
+    print("5. Operational EOP fallback")
+    print(f"   {message}")
+    print(f"   Rewrote default eop_historic.json with {len(fallback_records)} JPL EOP2 records: {output_file}")
+    return fallback_records
+
+
 def fetch_finals_daily():
     """
     Legacy: fetch latest IERS daily data from the text-format daily file.
@@ -499,7 +577,7 @@ def fetch_finals_daily():
     url = "https://datacenter.iers.org/data/latestVersion/finals.daily.iau1980.txt"
 
     try:
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=URL_TIMEOUT_SECONDS) as response:
             content = response.read().decode("utf-8")
             lines = content.split("\n")
 
@@ -547,7 +625,7 @@ def fetch_from_grace_ftp():
     url = "ftp://ftp.gfz.de/pub/home/obs/Kp_ap_Ap_SN_F107/Kp_ap_since_1932.txt"
 
     try:
-        with urllib.request.urlopen(url) as response:
+        with urllib.request.urlopen(url, timeout=URL_TIMEOUT_SECONDS) as response:
             lines = response.read().decode("utf-8").split("\n")
 
         data = []
@@ -686,6 +764,7 @@ def main():
     print("4. Updating alternate EOP datasets ...")
     daily_2000a_data = None
     jpl_eop2_tail = None
+    alternate_records = {}
     for dataset_id, config in EOP_DATASETS.items():
         print()
         print(f"   {config['label']}")
@@ -740,8 +819,11 @@ def main():
                 print("   WARN: No JPL EOP2 short tail available; writing long series only.")
 
         output_file = write_json(config["output"], records)
+        alternate_records[dataset_id] = records
         print(f"   Saved {len(records)} records to {output_file}")
         print(f"   Range: {records[0]['t']} to {records[-1]['t']}")
+
+    maybe_apply_jpl_fallback(merged, alternate_records.get("jpl", []))
 
     print()
     print("Note: GFZ Kp data requires separate processing.")

@@ -23,6 +23,9 @@ export async function GET() {
         xp: d.xp,
         yp: d.yp
       };
+      if (d.source_eop !== undefined) {
+        point.source_eop = d.source_eop;
+      }
       
       if (graceMap[d.t]) {
         point.grace_lwe_mean = graceMap[d.t].lwe_mean;

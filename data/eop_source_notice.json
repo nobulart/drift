@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-06-29T08:44:28Z",
+  "fallbackActive": true,
+  "dataset": "jpl",
+  "fallbackDataset": "jpl",
+  "replacedDataset": "finals",
+  "message": "Default IERS EOP is 39 days behind JPL EOP2; using JPL EOP2 as the operational default through 2026-06-28.",
+  "defaultLatestDate": "2026-05-20",
+  "fallbackLatestDate": "2026-06-28",
+  "lagDays": 39,
+  "thresholdDays": 3
+}

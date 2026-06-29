@@ -75,6 +75,8 @@ def main():
     for eop_point in eop_data:
         date = eop_point["t"]
         record = {"t": date, "xp": eop_point["xp"], "yp": eop_point["yp"]}
+        if eop_point.get("source_eop") is not None:
+            record["source_eop"] = eop_point["source_eop"]
 
         # Add GRACE data if available
         grace_point = grace_map.get(date)

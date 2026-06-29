@@ -24,6 +24,7 @@ interface UpdateSummary {
   latestGeomagDate?: string;
   combinedRecordCount?: number;
   latestCombinedDate?: string;
+  eopSourceNotice?: any;
 }
 
 let activeUpdate: Promise<UpdateResult> | null = null;
@@ -95,6 +96,7 @@ async function collectUpdateSummary(): Promise<UpdateSummary> {
     readPipelineJson<any[]>('geomag_gfz_kp.json').catch(() => undefined),
     readPipelineJson<any[]>('combined_historic.json').catch(() => undefined),
   ]);
+  const eopSourceNotice = await readPipelineJson<any>('eop_source_notice.json').catch(() => undefined);
   const eopSummary = summarizeSeries(eop);
   const geomagSummary = summarizeSeries(geomag);
   const combinedSummary = summarizeSeries(combined);
@@ -106,6 +108,7 @@ async function collectUpdateSummary(): Promise<UpdateSummary> {
     latestGeomagDate: geomagSummary.latestDate,
     combinedRecordCount: combinedSummary.recordCount,
     latestCombinedDate: combinedSummary.latestDate,
+    eopSourceNotice,
   };
 }
 
